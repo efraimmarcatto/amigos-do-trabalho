@@ -49,6 +49,9 @@ var _sleep_label: Label = null
 # External pause flag — when true, pet stays IDLE and skips all state processing
 var paused: bool = false
 
+# Interaction menu open flag — when true, pet stays IDLE and skips walk target selection
+var menu_open: bool = false
+
 # Color tints for each mood
 const COLOR_HAPPY := Color(0.5, 1.0, 0.5, 1.0)   # Green tint
 const COLOR_NEUTRAL := Color(1.0, 1.0, 1.0, 1.0)  # Normal
@@ -65,6 +68,7 @@ func _ready() -> void:
 	var menu := get_parent().get_node("InteractionMenu")
 	if menu:
 		menu.interaction_performed.connect(_on_interaction_performed)
+		menu.visibility_changed.connect(_on_menu_visibility_changed.bind(menu))
 	_update_visual(_current_mood)
 	_idle_timer = randf_range(1.0, 5.0)
 
@@ -86,6 +90,8 @@ func _process(delta: float) -> void:
 
 
 func _process_idle(delta: float) -> void:
+	if menu_open:
+		return
 	_idle_timer -= delta
 	if _idle_timer <= 0.0:
 		var half_w := (texture.get_size().x * scale.abs().x) / 2.0
@@ -370,12 +376,26 @@ func _toggle_menu() -> void:
 	if menu.visible:
 		menu.visible = false
 	else:
+		# Stop pet and lock to IDLE while menu is open
+		if current_state == PetState.WALKING or current_state == PetState.FALLING:
+			_velocity = Vector2.ZERO
+			_change_state(PetState.IDLE)
+		menu_open = true
 		var tex_size: Vector2 = texture.get_size() * scale.abs()
 		var menu_pos := Vector2(global_position.x + tex_size.x / 2.0 + 10, global_position.y - tex_size.y / 2.0)
 		menu.show_menu(menu_pos)
 
 
+func _on_menu_visibility_changed(menu: PanelContainer) -> void:
+	if not menu.visible:
+		menu_open = false
+
+
 func _on_interaction_performed(_interaction_name: String) -> void:
+	# Enter INTERACTING state briefly for the bounce animation
+	menu_open = false
+	_interaction_timer = 0.3
+	_change_state(PetState.INTERACTING)
 	_play_bounce()
 
 
