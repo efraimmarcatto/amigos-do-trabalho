@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://bqf6tu0fytkmq" path="res://scripts/shop.gd" id="6_shop"]
 [ext_resource type="Script" uid="uid://bye0way64lndc" path="res://scripts/slide_menu.gd" id="7_slide_menu"]
 [ext_resource type="Script" path="res://scripts/coin_hud.gd" id="8_coin_hud"]
+[ext_resource type="Script" path="res://scripts/inventory_system.gd" id="9_inventory"]
 
 [node name="Main" type="Control" unique_id=222507356]
 layout_mode = 3
@@ -31,6 +32,9 @@ sprite_sheet = ExtResource("2_icon")
 
 [node name="CoinSystem" type="Node" parent="." unique_id=757001182]
 script = ExtResource("3_coin")
+
+[node name="InventorySystem" type="Node" parent="."]
+script = ExtResource("9_inventory")
 
 [node name="CoinHud" type="PanelContainer" parent="."]
 layout_mode = 0

@@ -14,6 +14,7 @@ const FURNITURE_SCENE := preload("res://scenes/furniture.tscn")
 @onready var interaction_menu: PanelContainer = $InteractionMenu
 @onready var slide_menu: Control = $SlideMenu
 @onready var shop_panel: PanelContainer = $ShopPanel
+@onready var inventory_system: Node = $InventorySystem
 
 # Spawned furniture instances keyed by furniture_id
 var _furniture_nodes: Dictionary = {}
@@ -100,6 +101,7 @@ func _save_state() -> void:
 		"pet_mood": pet_sprite._current_mood,
 		"owned_furniture": shop_panel.get_owned(),
 		"furniture_positions": _furniture_positions,
+		"inventory": inventory_system.get_inventory_for_save(),
 	}
 	var json_string := JSON.stringify(data)
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -130,6 +132,14 @@ func _load_state() -> void:
 			var pos = data["furniture_positions"][fid]
 			if pos is Dictionary and pos.has("x") and pos.has("y"):
 				_furniture_positions[fid] = {"x": float(pos["x"]), "y": float(pos["y"])}
+	if data.has("inventory") and data["inventory"] is Dictionary:
+		var inv_data: Dictionary = {}
+		for key in data["inventory"]:
+			if key is String and data["inventory"][key] is float:
+				inv_data[key] = int(data["inventory"][key])
+			elif key is String and data["inventory"][key] is int:
+				inv_data[key] = data["inventory"][key]
+		inventory_system.set_inventory(inv_data)
 	if data.has("owned_furniture") and data["owned_furniture"] is Array:
 		var owned: Array[String] = []
 		for item in data["owned_furniture"]:

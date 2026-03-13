@@ -15,3 +15,4 @@ can_fall_off_edge = false
 interaction_type = ""
 interaction_coin_bonus = 0
 interaction_cooldown = 0.0
+discard_refund_ratio = 0.6

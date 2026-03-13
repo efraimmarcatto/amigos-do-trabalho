@@ -25,3 +25,5 @@ extends Resource
 @export var interaction_coin_bonus: int = 0
 ## Seconds between allowed interactions
 @export var interaction_cooldown: float = 0.0
+## Ratio of coin_cost refunded when discarding from inventory (0.0–1.0)
+@export var discard_refund_ratio: float = 0.5
