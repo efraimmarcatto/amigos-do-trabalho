@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://cs3du000k83pc" path="res://scripts/pet.gd" id="4_pet"]
 [ext_resource type="Script" uid="uid://buwscas5p16ym" path="res://scripts/interaction_menu.gd" id="5_menu"]
 [ext_resource type="Script" uid="uid://bqf6tu0fytkmq" path="res://scripts/shop.gd" id="6_shop"]
+[ext_resource type="Script" path="res://scripts/slide_menu.gd" id="7_slide_menu"]
 
 [node name="Main" type="Control" unique_id=222507356]
 layout_mode = 3
@@ -59,13 +60,44 @@ text = "Feed (10 coins)"
 layout_mode = 2
 text = "Play (15 coins)"
 
-[node name="ShopButton" type="Button" parent="." unique_id=315961158]
+[node name="SlideMenu" type="Control" parent="." unique_id=415961158]
 layout_mode = 0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 90.0
+script = ExtResource("7_slide_menu")
+
+[node name="ToggleButton" type="Button" parent="SlideMenu"]
+layout_mode = 0
+offset_right = 40.0
 offset_bottom = 40.0
+text = "☰"
+
+[node name="MenuPanel" type="PanelContainer" parent="SlideMenu"]
+layout_mode = 0
+offset_right = 180.0
+offset_bottom = 160.0
+
+[node name="VBox" type="VBoxContainer" parent="SlideMenu/MenuPanel"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="SlideMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Menu"
+horizontal_alignment = 1
+
+[node name="ShopButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
+layout_mode = 2
 text = "Shop"
+
+[node name="EditLayoutButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Edit Layout"
+
+[node name="Separator" type="HSeparator" parent="SlideMenu/MenuPanel/VBox"]
+layout_mode = 2
+
+[node name="SettingsPlaceholder" type="Label" parent="SlideMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Settings (coming soon)"
+horizontal_alignment = 1
 
 [node name="ShopPanel" type="PanelContainer" parent="." unique_id=759142325]
 visible = false

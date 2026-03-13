@@ -12,7 +12,7 @@ const FURNITURE_SCENE := preload("res://scenes/furniture.tscn")
 @onready var coin_system: Node = $CoinSystem
 @onready var coin_label: Label = $CoinLabel
 @onready var interaction_menu: PanelContainer = $InteractionMenu
-@onready var shop_button: Button = $ShopButton
+@onready var slide_menu: Control = $SlideMenu
 @onready var shop_panel: PanelContainer = $ShopPanel
 
 # Spawned furniture instances keyed by furniture_id
@@ -44,8 +44,9 @@ func _ready() -> void:
 	# Connect coin system to update the label
 	coin_system.coins_changed.connect(_on_coins_changed)
 
-	# Connect shop button and purchase signal
-	shop_button.pressed.connect(_on_shop_button_pressed)
+	# Set up slide menu and connect signals
+	slide_menu.setup(floor_y)
+	slide_menu.shop_requested.connect(_on_shop_button_pressed)
 	shop_panel.furniture_purchased.connect(_on_furniture_purchased)
 
 	# Share furniture nodes dict and floor_y with pet
@@ -217,9 +218,14 @@ func _update_passthrough() -> void:
 	if interaction_menu and interaction_menu.visible:
 		rects.append(interaction_menu.get_global_rect())
 
-	# Include shop button
-	if shop_button and shop_button.visible:
-		rects.append(shop_button.get_global_rect())
+	# Include slide menu toggle button (always visible)
+	if slide_menu:
+		var toggle_rect := slide_menu.get_toggle_rect()
+		if toggle_rect.size.x > 0:
+			rects.append(toggle_rect)
+		var panel_rect := slide_menu.get_panel_rect()
+		if panel_rect.size.x > 0:
+			rects.append(panel_rect)
 
 	# Include shop panel when visible
 	if shop_panel and shop_panel.visible:
