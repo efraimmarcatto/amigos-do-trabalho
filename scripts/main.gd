@@ -3,7 +3,7 @@ extends Control
 ## Main scene controller for the desktop pet.
 ## Manages transparent window with click-through on empty areas
 ## and captures clicks on the pet sprite and interaction menu.
-## Handles save/load of pet state and coins to user://save_data.json.
+## Handles save/load of pet state, coins, and inventory to user://save_data.json.
 
 const SAVE_PATH := "user://save_data.json"
 const FURNITURE_SCENE := preload("res://scenes/furniture.tscn")
@@ -62,7 +62,6 @@ func _ready() -> void:
 	slide_menu.menu_opened.connect(_on_menu_opened)
 	slide_menu.menu_closed.connect(_on_menu_closed)
 	slide_menu.on_before_close = _handle_menu_close
-	shop_panel.furniture_purchased.connect(_on_furniture_purchased)
 
 	# Set up shop panel adjacent to menu
 	shop_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
@@ -99,7 +98,6 @@ func _save_state() -> void:
 	var data := {
 		"coins": coin_system.get_coins(),
 		"pet_mood": pet_sprite._current_mood,
-		"owned_furniture": shop_panel.get_owned(),
 		"furniture_positions": _furniture_positions,
 		"inventory": inventory_system.get_inventory_for_save(),
 	}
@@ -140,15 +138,18 @@ func _load_state() -> void:
 			elif key is String and data["inventory"][key] is int:
 				inv_data[key] = data["inventory"][key]
 		inventory_system.set_inventory(inv_data)
+	# Spawn furniture from saved positions (backward compat: also check owned_furniture)
+	var furniture_to_spawn: Array[String] = []
+	for fid in _furniture_positions:
+		if fid is String:
+			furniture_to_spawn.append(fid)
+	# Legacy: if there are owned_furniture entries not in furniture_positions, spawn those too
 	if data.has("owned_furniture") and data["owned_furniture"] is Array:
-		var owned: Array[String] = []
 		for item in data["owned_furniture"]:
-			if item is String:
-				owned.append(item)
-		shop_panel.set_owned(owned)
-		# Spawn all owned furniture
-		for fid in owned:
-			_spawn_furniture(fid)
+			if item is String and not _furniture_positions.has(item):
+				furniture_to_spawn.append(item)
+	for fid in furniture_to_spawn:
+		_spawn_furniture(fid)
 
 
 func _on_coins_changed(new_total: int) -> void:
@@ -180,10 +181,6 @@ func _on_shop_button_pressed() -> void:
 		return
 	# Delay shop open slightly for a chained animation feel
 	get_tree().create_timer(0.1).timeout.connect(shop_panel.open_shop)
-
-
-func _on_furniture_purchased(furniture_id: String) -> void:
-	_enter_placement_mode(furniture_id)
 
 
 func _enter_placement_mode(furniture_id: String) -> void:
@@ -220,12 +217,8 @@ func _exit_placement_mode(confirmed: bool) -> void:
 		# Spawn furniture at the preview position
 		_spawn_furniture_at(_placement_furniture_id, _placement_preview.global_position)
 	else:
-		# Cancelled — refund the coins
-		var fdata = shop_panel.get_furniture_data(_placement_furniture_id)
-		if fdata:
-			coin_system.add_coins(fdata.coin_cost)
-			# Remove from owned list
-			shop_panel.remove_owned(_placement_furniture_id)
+		# Cancelled — return item to inventory
+		inventory_system.add_to_inventory(_placement_furniture_id)
 
 	# Clean up preview
 	if _placement_preview:
