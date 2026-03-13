@@ -16,6 +16,9 @@ func _ready() -> void:
 	# Make the viewport background transparent
 	get_viewport().transparent_bg = true
 
+	# Start global input hooks for keyboard/mouse tracking
+	GlobalInput.start_hooks()
+
 	# Update the mouse passthrough so transparent areas pass clicks through
 	_update_passthrough()
 
@@ -28,6 +31,7 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		GlobalInput.stop_hooks()
 		_save_state()
 		get_tree().quit()
 
