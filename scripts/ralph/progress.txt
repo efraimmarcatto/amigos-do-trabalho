@@ -1,177 +1,42 @@
 # Ralph Progress Log
-Started: Thu Mar 12 15:19:39 PDT 2026
+Started: Thu Mar 12 21:45:43 PDT 2026
 ---
 
 ## Codebase Patterns
-- Godot 4.6 project using GL Compatibility renderer
-- GDScript files go in `scripts/`, scene files in `scenes/`
-- Use `GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git -c user.name="Efraim Marcatto" -c user.email="esilva@fastprobr.com"` for all git commands (broken .gitconfig in container)
-- No Godot CLI available in container — cannot run automated GDScript syntax checks
-- Project name: "Amigos do Trabalho"
-- icon.svg (128x128) used as placeholder pet texture
-- GDExtension C++ files go in `gdextension/src/`, binaries in `gdextension/bin/`
-- `.gdextension` config file lives in project root (global_input.gdextension)
-- GlobalInput singleton registered via register_types.cpp using Engine::register_singleton
-- SConstruct expects godot-cpp at `gdextension/godot-cpp/` or via GODOT_CPP_PATH env var
-- Platform-specific start_hooks/stop_hooks are compiled via #ifdef guards; global_input.cpp has fallback for unsupported platforms
-- Use `_increment_key_count()` and `_increment_click_count()` public helpers to increment counters from platform hook callbacks (avoids private member access issues)
-- Autoload singletons in project.godot use `*` prefix: `GlobalInput="*res://scripts/mock_global_input.gd"`
-- GlobalInput API: `get_key_count()`, `get_click_count()`, `reset_counts()` — poll via Timer, then reset
-- CoinSystem API: `get_coins()`, `set_coins()`, `add_coins()`, `spend_coins(amount) -> bool`, signal `coins_changed(new_total: int)`
-- CoinSystem is a child node of Main scene (access via `$CoinSystem`), not an autoload
-- Pet script (pet.gd) is on PetSprite (Sprite2D) node — access siblings via `get_parent().get_node()`
-- Pet states: SAD (<10 coins), NEUTRAL (10-49), HAPPY (>=50) — uses modulate color tinting
-- Scene .tscn ext_resource IDs follow pattern: "1_main", "2_icon", "3_coin", "4_pet", "5_menu", etc.
-- InteractionMenu API: `show_menu(pos)`, signal `interaction_performed(name)` — positioned dynamically relative to pet
-- Passthrough polygon in main.gd must be expanded to include any visible popup UI (not just the pet sprite)
-- Save/load uses `user://save_data.json` with JSON class; JSON.parse() returns numbers as float — cast to int when needed
+- GlobalInput is a C++ GDExtension singleton registered via Engine::register_singleton in register_types.cpp — no autoload needed
+- The .gitconfig has gpg.format that must be set to "openpgp" (was empty/broken)
+- Project uses Godot 4.6 with GL Compatibility renderer and transparent viewport
+- Save data stored at user://save_data.json — extend this for future features
+- Pet visual states (SAD/NEUTRAL/HAPPY) use modulate color tinting on the Sprite2D
+- main.gd is a Control node that manages passthrough polygon for click-through transparency
+- _update_passthrough() collects Rect2 from all visible elements and merges them — add new UI elements there
+- Window is set to fullscreen at runtime via DisplayServer.screen_get_size() in main.gd _ready()
 
-## 2026-03-12 - US-001: Transparent Always-On-Top Window
-- Implemented transparent, borderless, always-on-top window via project.godot settings
-- Created main scene (scenes/main.tscn) with Control root + Sprite2D pet using icon.svg
-- Created main script (scripts/main.gd) with mouse_passthrough_polygon that only captures clicks on the pet sprite area
-- Passthrough polygon dynamically calculated from pet sprite texture size and position
-- Files changed: project.godot, scenes/main.tscn, scripts/main.gd
-- **Learnings for future iterations:**
-  - Godot 4.x mouse_passthrough_polygon on Window: set polygon to the area you WANT to capture (not the area to pass through)
-  - Sprite2D inside a Control node works fine as a child — no need for CanvasLayer
-  - The .tscn format uses ExtResource references with string IDs like "1_main"
-  - display/window settings go under [display] section in project.godot, rendering settings under [rendering]
 ---
 
-## 2026-03-12 - US-002: GDExtension Build System and Structure
-- Created GDExtension directory structure: gdextension/src/ and gdextension/bin/
-- Created SConstruct with godot-cpp integration and platform detection (windows/linux)
-- Created global_input.gdextension in project root registering both platforms
-- Created register_types.h/cpp with initialize/uninitialize that registers GlobalInput singleton
-- Created global_input.h declaring GlobalInput class (inherits Object, GDCLASS macro) with all required methods
-- Created global_input.cpp with method bindings, atomic counters, and placeholder start/stop_hooks
-- Updated .gitignore for build artifacts
-- Files changed: gdextension/SConstruct, gdextension/src/register_types.h, gdextension/src/register_types.cpp, gdextension/src/global_input.h, gdextension/src/global_input.cpp, global_input.gdextension, .gitignore
+## 2026-03-12 - US-001
+- Replaced mock GlobalInput autoload with real GDExtension C++ singleton
+- Removed [autoload] section from project.godot (GlobalInput registers itself via Engine::register_singleton)
+- Added GlobalInput.start_hooks() call in main.gd _ready()
+- Added GlobalInput.stop_hooks() call in main.gd _notification(NOTIFICATION_WM_CLOSE_REQUEST) before quit
+- Deleted scripts/mock_global_input.gd
+- Files changed: project.godot, scripts/main.gd, scripts/mock_global_input.gd (deleted)
 - **Learnings for future iterations:**
-  - GDExtension entry symbol in .gdextension must match the extern "C" function name in register_types.cpp
-  - GlobalInput uses std::atomic<int> for thread-safe key/click counters
-  - Platform-specific start_hooks/stop_hooks will be overridden in US-003 (Windows) and US-004 (Linux) — current global_input.cpp has placeholder implementations
-  - The SConstruct inherits from godot-cpp's SConstruct which provides `env["platform"]`, `env["suffix"]`, etc.
+  - The GDExtension singleton auto-registers via register_types.cpp — just removing the autoload is sufficient
+  - coin_system.gd references GlobalInput.get_key_count(), get_click_count(), reset_counts() which resolve to the C++ singleton
+  - The .gitconfig had a broken empty gpg.format value that needed fixing to "openpgp"
+  - global_input.gdextension file at project root maps to compiled .so/.dll in gdextension/bin/
 ---
 
-## 2026-03-12 - US-003: GDExtension Windows Global Input Hook
-- Created `gdextension/src/global_input_windows.cpp` with Windows-specific SetWindowsHookEx implementation
-- Uses WH_KEYBOARD_LL and WH_MOUSE_LL hooks on a dedicated thread with GetMessage message pump
-- Added `_increment_key_count()` and `_increment_click_count()` public helpers to GlobalInput class for hook callback access
-- Wrapped placeholder start_hooks/stop_hooks in global_input.cpp with `#if !defined(_WIN32) && !defined(__linux__)` guards
-- Files changed: gdextension/src/global_input.h, gdextension/src/global_input.cpp, gdextension/src/global_input_windows.cpp
+## 2026-03-12 - US-002
+- Set window to fullscreen transparent: DisplayServer.screen_get_size() + position Vector2i.ZERO in main.gd _ready()
+- Updated project.godot viewport to 1920x1080 defaults with window overrides
+- Refactored _update_passthrough() to dynamically merge rects from all visible elements (pet, coin label, interaction menu)
+- Repositioned pet sprite, coin label, and interaction menu for fullscreen layout
+- Files changed: scripts/main.gd, project.godot, scenes/main.tscn
 - **Learnings for future iterations:**
-  - Windows low-level hooks (WH_KEYBOARD_LL/WH_MOUSE_LL) require a message loop (GetMessage) on the installing thread
-  - Hook callbacks are plain C function pointers — can't access private class members. Use public increment helpers + file-static instance pointer
-  - Use PostThreadMessage(WM_QUIT) to cleanly break the hook thread's message loop on shutdown
-  - Platform .cpp files provide start_hooks/stop_hooks implementations; global_input.cpp's fallback is guarded with `#if !defined(_WIN32) && !defined(__linux__)`
----
-
-## 2026-03-12 - US-004: GDExtension Linux Global Input Capture
-- Created `gdextension/src/global_input_linux.cpp` with X11 XRecord-based global input capture
-- Uses two Display connections (ctrl + data) as required by XRecord
-- Capture runs on a dedicated thread via XRecordEnableContext (blocking call)
-- Clean shutdown via XRecordDisableContext from the control display to unblock the capture thread
-- Captures KeyPress for key counting and ButtonPress for click counting
-- Graceful error logging if X11 display unavailable or XRecord extension missing
-- Mentions input group membership in error message for permission issues
-- SConstruct already had `X11` and `Xtst` libs configured for Linux platform
-- Files changed: gdextension/src/global_input_linux.cpp
-- **Learnings for future iterations:**
-  - XRecord requires two separate Display connections: one for control (disable/free context), one for data (enable context)
-  - XRecordEnableContext is a blocking call — it blocks until XRecordDisableContext is called from another thread/connection
-  - XRecord is in libXtst (already linked in SConstruct as "Xtst")
-  - device_events range with first=KeyPress, last=ButtonPress captures both key and mouse button events
-  - Use XFlush after XRecordDisableContext to ensure the disable command is sent before joining the thread
----
-
-## 2026-03-12 - US-005: Mock GlobalInput Singleton for Development
-- Created `scripts/mock_global_input.gd` with mock implementation of GlobalInput API
-- Implements `get_key_count()`, `get_click_count()`, `reset_counts()` matching the C++ extension API
-- Generates simulated random input counts each frame (~30% chance of keys, ~10% chance of clicks)
-- Registered as autoload singleton `GlobalInput` in project.godot `[autoload]` section
-- Includes `@export var debug_mode: bool` flag for console logging
-- Files changed: scripts/mock_global_input.gd, project.godot
-- **Learnings for future iterations:**
-  - Godot autoload singletons use `*` prefix in project.godot (e.g., `GlobalInput="*res://scripts/mock_global_input.gd"`)
-  - The `[autoload]` section in project.godot goes between `[display]` and `[physics]` (alphabetical order)
-  - To swap mock for real GDExtension: remove the `[autoload]` entry; the GDExtension registers its own singleton via `Engine::register_singleton`
-  - Mock uses `_process()` for continuous simulation; consumers should poll via Timer (not every frame) to get meaningful accumulated counts
----
-
-## 2026-03-12 - US-007: Passive Coin Decay
-- Added idle tracking and coin decay to `scripts/coin_system.gd`
-- New exported variables: `decay_interval` (default 30s), `decay_amount` (default 1)
-- Idle time accumulates each poll tick when no input detected; resets on any input
-- When idle_time >= decay_interval, subtracts decay_amount from coins (floor at 0 via existing `set_coins`)
-- Files changed: scripts/coin_system.gd
-- **Learnings for future iterations:**
-  - `set_coins()` already enforces `max(value, 0)` so no need for extra floor checks in decay logic
-  - Idle tracking uses `_poll_timer.wait_time` to increment rather than delta, since it's driven by the Timer callback
-  - Decay resets `_idle_time` to 0 after each decay tick so it triggers again after another full interval
----
-
-## 2026-03-12 - US-006: Coin/Money System
-- Created `scripts/coin_system.gd` with Timer-based polling of GlobalInput every 1 second
-- Configurable `coins_per_key` and `coins_per_click` exported variables (default: 1 each)
-- Emits `coins_changed(new_total)` signal when coin total changes
-- Added CoinSystem node and CoinLabel (Label) to `scenes/main.tscn`
-- Connected `coins_changed` signal in `scripts/main.gd` to update the label text
-- Utility methods: `get_coins()`, `set_coins()`, `add_coins()`, `spend_coins()` for use by future stories
-- Files changed: scripts/coin_system.gd (new), scripts/main.gd, scenes/main.tscn
-- **Learnings for future iterations:**
-  - CoinSystem is a child node of Main scene (not an autoload) — access via `$CoinSystem` from main.gd
-  - `coins_changed` signal passes the new total as an int — connect to it for UI updates
-  - `spend_coins(amount)` returns bool (true if sufficient funds) — useful for US-009 interactions
-  - Timer node created programmatically in `_ready()` with `autostart = true` — no need for a Timer in the .tscn
-  - Label positioned just below the pet sprite at (160, 260) with center alignment
----
-
-## 2026-03-12 - US-008: Pet Visual States
-- Created `scripts/pet.gd` managing pet visual states based on coin balance
-- Three states: Happy (green tint, >= 50 coins), Neutral (normal, >= 10 coins), Sad (blue/gray tint, < 10 coins)
-- State thresholds configurable via `@export` variables (`neutral_threshold`, `happy_threshold`)
-- Sprite modulate color changes in real time via `coins_changed` signal connection
-- Attached pet.gd script to PetSprite node in `scenes/main.tscn`
-- Files changed: scripts/pet.gd (new), scenes/main.tscn
-- **Learnings for future iterations:**
-  - Pet script is on the Sprite2D node itself — access sibling nodes via `get_parent().get_node("NodeName")`
-  - Use `modulate` property on Sprite2D for simple color tinting — no need for separate sprites
-  - Pet state enum (SAD, NEUTRAL, HAPPY) can be extended for future states (e.g., EXCITED for interactions)
-  - ext_resource IDs in .tscn follow pattern: "4_pet" for the 4th resource
----
-
-## 2026-03-12 - US-009: Spend Coins on Pet Interactions
-- Created `scripts/interaction_menu.gd` — PanelContainer popup with Feed (10 coins) and Play (15 coins) buttons
-- Feed grants 5 bonus coins, Play grants 8 bonus coins after spending
-- Buttons disabled/grayed when insufficient coins
-- Menu opens on pet click (toggle), closes on button press or clicking outside
-- Visual reaction: scale bounce tween (1.3x → 0.9x → 1.0x) on successful interaction
-- Updated `scripts/pet.gd` with click detection (`_input`), menu toggle, and bounce animation
-- Updated `scripts/main.gd` to expand passthrough polygon to include menu when visible
-- Updated `scenes/main.tscn` with InteractionMenu PanelContainer + VBoxContainer + buttons
-- Files changed: scripts/interaction_menu.gd (new), scripts/pet.gd, scripts/main.gd, scenes/main.tscn
-- **Learnings for future iterations:**
-  - Use `_input` on Sprite2D for click detection (not a Control node, so no GUI input handling)
-  - Use `_unhandled_input` in menu for close-on-outside-click — this way button presses are consumed by GUI first
-  - `set_input_as_handled()` prevents click-through from pet click to menu close handler
-  - Passthrough polygon must be expanded to include popup menus — otherwise OS captures the clicks
-  - Store `_base_scale` in `_ready()` for tween animations that modify scale
-  - PanelContainer with `mouse_filter = MOUSE_FILTER_STOP` captures all clicks on the panel area
----
-
-## 2026-03-12 - US-010: Save/Load Pet State
-- Added save/load functionality to `scripts/main.gd`
-- Saves coin total and pet state to `user://save_data.json` on window close
-- Loads saved state on launch in `_ready()`, restoring coin balance (which triggers pet visual state update via signal)
-- Handles missing save file (returns early) and corrupted/invalid JSON (returns early with defaults)
-- Uses `_notification(NOTIFICATION_WM_CLOSE_REQUEST)` to trigger save before quit
-- Files changed: scripts/main.gd
-- **Learnings for future iterations:**
-  - Godot JSON.parse() returns all numbers as `float` — must handle both `float` and `int` when loading integer values
-  - `_notification(NOTIFICATION_WM_CLOSE_REQUEST)` requires calling `get_tree().quit()` manually to actually close the window
-  - Loading coins via `set_coins()` automatically triggers `coins_changed` signal, which updates both the label and pet visual state — no need to restore pet state separately
-  - `FileAccess.file_exists()` is the safest way to check for save file before attempting to open
-  - `user://` path is Godot's user data directory — platform-independent save location
+  - Window sizing at runtime uses DisplayServer.screen_get_size() and get_window().size/position
+  - _update_passthrough() uses Rect2.merge() to combine multiple element rects into one bounding polygon
+  - project.godot window_width_override/window_height_override set the actual window size separately from viewport
+  - No Godot binary available in CI — typecheck must be verified manually or in a Godot-enabled environment
 ---

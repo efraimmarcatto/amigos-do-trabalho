@@ -16,6 +16,12 @@ func _ready() -> void:
 	# Make the viewport background transparent
 	get_viewport().transparent_bg = true
 
+	# Set window to cover entire primary monitor
+	var screen_size := DisplayServer.screen_get_size()
+	var win := get_window()
+	win.position = Vector2i.ZERO
+	win.size = screen_size
+
 	# Start global input hooks for keyboard/mouse tracking
 	GlobalInput.start_hooks()
 
@@ -74,31 +80,38 @@ func _on_coins_changed(new_total: int) -> void:
 func _update_passthrough() -> void:
 	# Godot's mouse_passthrough_polygon: if set, only the area INSIDE the polygon
 	# receives mouse events; everything outside is passed through.
-	# We set it to cover the pet sprite and the interaction menu (when visible).
+	# We build a bounding box covering all visible interactive elements.
 
-	if not pet_sprite or not pet_sprite.texture:
+	var rects: Array[Rect2] = []
+
+	# Include pet sprite rect
+	if pet_sprite and pet_sprite.texture:
+		var pet_pos: Vector2 = pet_sprite.global_position
+		var tex_size: Vector2 = pet_sprite.texture.get_size() * pet_sprite.scale
+		var half_size: Vector2 = tex_size / 2.0
+		rects.append(Rect2(pet_pos - half_size, tex_size))
+
+	# Include coin label rect
+	if coin_label and coin_label.visible:
+		rects.append(coin_label.get_global_rect())
+
+	# Include interaction menu when visible
+	if interaction_menu and interaction_menu.visible:
+		rects.append(interaction_menu.get_global_rect())
+
+	if rects.is_empty():
 		return
 
-	var pet_pos: Vector2 = pet_sprite.global_position
-	var tex_size: Vector2 = pet_sprite.texture.get_size() * pet_sprite.scale
-	var half_size: Vector2 = tex_size / 2.0
-
-	var min_pt := pet_pos - half_size
-	var max_pt := pet_pos + half_size
-
-	# Expand bounding box to include the interaction menu when visible
-	if interaction_menu and interaction_menu.visible:
-		var menu_rect := interaction_menu.get_global_rect()
-		min_pt.x = min(min_pt.x, menu_rect.position.x)
-		min_pt.y = min(min_pt.y, menu_rect.position.y)
-		max_pt.x = max(max_pt.x, menu_rect.end.x)
-		max_pt.y = max(max_pt.y, menu_rect.end.y)
+	# Merge all rects into one bounding box
+	var merged := rects[0]
+	for i in range(1, rects.size()):
+		merged = merged.merge(rects[i])
 
 	var polygon: PackedVector2Array = PackedVector2Array([
-		min_pt,
-		Vector2(max_pt.x, min_pt.y),
-		max_pt,
-		Vector2(min_pt.x, max_pt.y),
+		merged.position,
+		Vector2(merged.end.x, merged.position.y),
+		merged.end,
+		Vector2(merged.position.x, merged.end.y),
 	])
 
 	get_window().mouse_passthrough_polygon = polygon

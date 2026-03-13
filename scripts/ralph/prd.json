@@ -1,178 +1,193 @@
 {
   "project": "Amigos do Trabalho - Desktop Virtual Pet",
-  "branchName": "ralph/desktop-pet",
-  "description": "A virtual desktop pet that lives as a transparent overlay, rewarding productivity by converting real keyboard and mouse activity into in-game coins. The pet reacts visually to activity level.",
+  "branchName": "ralph/desktop-pet-upgrade",
+  "description": "Upgrade the desktop pet to fullscreen transparent companion with real GDExtension input, physics (gravity, drag-and-drop), idle walking AI, and a coin-purchasable furniture system with walkable surfaces and pet interactions.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Transparent Always-On-Top Window",
-      "description": "As a user, I want the pet to float on my desktop without blocking my work, so that it feels like a companion rather than an obstruction.",
+      "title": "Replace mock GlobalInput with real GDExtension",
+      "description": "As a developer, I want the game to use the compiled GlobalInput C++ extension so that real keyboard and mouse events drive the coin system instead of simulated random input.",
       "acceptanceCriteria": [
-        "project.godot has display/window/per_pixel_transparency/allowed = true",
-        "project.godot has display/window/size/transparent = true",
-        "Window is borderless (display/window/size/borderless = true)",
-        "Window is always-on-top (display/window/size/always_on_top = true)",
-        "Main scene has a root node that sets mouse_passthrough_polygon for transparent regions",
-        "Clicking on the pet sprite is captured by Godot (not passed through)",
-        "A main scene (main.tscn) is created and set as the project run scene",
-        "GDScript files parse without errors"
+        "GlobalInput autoload entry removed from project.godot [autoload] section",
+        "global_input.gdextension is present in project root and referenced via Godot's extension system",
+        "coin_system.gd works unchanged — GlobalInput.get_key_count(), get_click_count(), reset_counts() resolve to the C++ singleton",
+        "scripts/mock_global_input.gd is deleted",
+        "main.gd calls GlobalInput.start_hooks() in _ready()",
+        "main.gd calls GlobalInput.stop_hooks() in _notification(NOTIFICATION_WM_CLOSE_REQUEST) before quit",
+        "No GDScript errors from GlobalInput references when parsing scripts",
+        "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Use Godot 4.6 project settings for transparency. Use mouse_passthrough_polygon on the Window node for click-through on transparent areas."
+      "notes": "The GDExtension registers GlobalInput as a singleton via register_types.cpp Engine::register_singleton. Removing the autoload is sufficient — the C++ singleton takes over. The .so/.dll must be pre-compiled in gdextension/bin/."
     },
     {
       "id": "US-002",
-      "title": "GDExtension Build System and Structure",
-      "description": "As a developer, I need the GDExtension directory structure, SConstruct build file, and .gdextension configuration so that platform-specific C++ code can be compiled and loaded by Godot.",
+      "title": "Fullscreen transparent always-on-top window",
+      "description": "As a user, I want the game window to cover my entire screen transparently so the pet and furniture appear to live on my desktop.",
       "acceptanceCriteria": [
-        "Directory structure: gdextension/src/ for C++ source, gdextension/bin/ for compiled output",
-        "SConstruct file configured for godot-cpp with platform detection (windows, linux)",
-        "global_input.gdextension file in project root registers the extension for both platforms",
-        "Header file gdextension/src/register_types.h with initialize/uninitialize declarations",
-        "Source file gdextension/src/register_types.cpp that registers GlobalInput singleton",
-        "Header file gdextension/src/global_input.h declaring the GlobalInput class with get_key_count(), get_click_count(), reset_counts(), start_hooks(), stop_hooks()",
-        "GlobalInput class inherits from Object and uses GDCLASS macro",
-        "GDScript files parse without errors"
+        "Window size set to DisplayServer.screen_get_size() at startup in main.gd _ready()",
+        "Window position set to Vector2.ZERO at startup",
+        "Window remains borderless, always-on-top, and transparent",
+        "project.godot display settings updated for fullscreen transparent behavior",
+        "Existing _update_passthrough() logic updated to dynamically cover all visible elements",
+        "Typecheck passes"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Use godot-cpp bindings. Platform-specific implementations will be added in US-003 and US-004. Use #ifdef for platform detection. The GlobalInput class should use atomic counters for thread safety."
+      "notes": "Current window is a fixed small size. This changes it to cover the full primary monitor. Passthrough polygon must be rebuilt to include pet rect plus any future furniture/UI rects."
     },
     {
       "id": "US-003",
-      "title": "GDExtension Windows Global Input Hook",
-      "description": "As a developer, I need the Windows implementation of GlobalInput that captures system-wide keyboard and mouse events using SetWindowsHookEx.",
+      "title": "Pet state machine foundation",
+      "description": "As a developer, I want pet.gd to use a state machine (IDLE, WALKING, FALLING, DRAGGED, INTERACTING) so that movement behaviors are cleanly separated.",
       "acceptanceCriteria": [
-        "gdextension/src/global_input_windows.cpp implements Windows-specific hooks",
-        "Uses SetWindowsHookEx with WH_KEYBOARD_LL and WH_MOUSE_LL",
-        "Hook runs on a dedicated thread with its own message pump",
-        "Key and click counters use atomic integers for thread safety",
-        "start_hooks() installs hooks, stop_hooks() uninstalls them cleanly",
-        "Code compiles with #ifdef _WIN32 guards",
-        "GDScript files parse without errors"
+        "pet.gd has an enum PetState with values: IDLE, WALKING, FALLING, DRAGGED, INTERACTING",
+        "A current_state variable tracks the active state",
+        "_process() delegates to state-specific handler methods (e.g. _process_idle, _process_walking, etc.)",
+        "Existing click/interaction logic integrated into the state machine without breaking current behavior",
+        "Pet visual states (SAD/NEUTRAL/HAPPY) remain independent of movement states",
+        "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "The hook thread needs a message loop (GetMessage/TranslateMessage/DispatchMessage) for low-level hooks to work. Use std::atomic<int> for counters."
+      "passes": false,
+      "notes": "This refactors pet.gd to support the new movement features (drag, fall, walk) added in subsequent stories. Keep existing modulate color tinting and interaction menu logic working."
     },
     {
       "id": "US-004",
-      "title": "GDExtension Linux Global Input Capture",
-      "description": "As a developer, I need the Linux implementation of GlobalInput that captures system-wide keyboard and mouse events using X11 XRecord.",
+      "title": "Pet drag-and-drop with gravity",
+      "description": "As a user, I want to click and drag the pet and have it fall realistically when I release it.",
       "acceptanceCriteria": [
-        "gdextension/src/global_input_linux.cpp implements Linux-specific capture",
-        "Uses X11 XRecord extension to capture global key and mouse events",
-        "Capture runs on a dedicated thread",
-        "Key and click counters use atomic integers for thread safety",
-        "start_hooks() begins capture, stop_hooks() stops cleanly",
-        "Logs clear error message if XRecord is unavailable or permissions insufficient",
-        "Code compiles with #ifdef __linux__ guards",
-        "GDScript files parse without errors"
+        "Left-click + hold on the pet sprite enters DRAGGED state; pet follows the cursor",
+        "On release, pet enters FALLING state with configurable gravity (@export var gravity: float)",
+        "Pet lands on screen bottom (screen_height - pet_height) and transitions to IDLE",
+        "Pet does not fall below the screen bottom",
+        "While dragging, pet shows a grabbed visual (slight rotation or scale change)",
+        "Dragging does not open the interaction menu (menu opens only on click without drag — use 4px threshold)",
+        "Physics uses manual velocity integration (position += velocity * delta), not Godot RigidBody",
+        "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "XRecord requires two Display connections. Falls back gracefully with error logging if X11/XRecord not available. Document that input group membership may be needed for /dev/input fallback."
+      "passes": false,
+      "notes": "FR-6: Drag detection uses InputEventMouseButton press. If mouse moves more than 4px before release, it's a drag not a click. Convert pet from simple Sprite2D positioning to velocity-based movement."
     },
     {
       "id": "US-005",
-      "title": "Mock GlobalInput Singleton for Development",
-      "description": "As a developer, I need a GDScript mock of GlobalInput so that the game logic can be developed and tested without the compiled C++ extension.",
+      "title": "Pet idle walking",
+      "description": "As a user, I want the pet to walk around on its own when idle so it feels alive.",
       "acceptanceCriteria": [
-        "scripts/mock_global_input.gd implements the same API: get_key_count(), get_click_count(), reset_counts()",
-        "Mock generates simulated input counts (e.g., random small numbers each poll)",
-        "Autoload registered in project.godot as GlobalInput singleton",
-        "Can be easily swapped out for the real GDExtension later by removing the autoload",
-        "Includes a debug mode flag to print input counts to console",
-        "GDScript files parse without errors"
+        "When IDLE, pet picks a random horizontal direction and distance (50-300px) after a random wait (1-5 seconds)",
+        "Pet walks at configurable speed (@export var walk_speed: float)",
+        "After reaching target, pet returns to IDLE and waits before next walk",
+        "Pet sprite flips horizontally based on walking direction",
+        "Pet is constrained to screen bounds (does not walk off screen edges)",
+        "Walking state is interrupted immediately when user starts dragging",
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "This mock allows all subsequent GDScript stories to be developed and tested without needing the compiled C++ extension. When the real extension is ready, just remove this autoload."
+      "passes": false,
+      "notes": "Uses the state machine from US-003. IDLE state has a timer; when it fires, transition to WALKING. WALKING moves toward target, then back to IDLE. Screen bottom is the only surface for now — furniture surfaces come in US-010."
     },
     {
       "id": "US-006",
-      "title": "Coin/Money System",
-      "description": "As a user, I want my keystrokes and clicks to earn me coins so that I feel rewarded for being productive.",
+      "title": "FurnitureData resource class",
+      "description": "As a developer, I want a structured FurnitureData resource so each piece of furniture has consistent, configurable properties.",
       "acceptanceCriteria": [
-        "scripts/coin_system.gd polls GlobalInput every 1 second using a Timer",
-        "Each key press earns configurable coins (default: 1 per keystroke)",
-        "Each mouse click earns configurable coins (default: 1 per click)",
-        "Coin rates are exported variables for easy configuration",
-        "CoinSystem emits a signal when coin total changes",
-        "A small Label node near the pet displays the current coin total",
-        "CoinSystem is added to the main scene",
-        "GDScript files parse without errors"
+        "scripts/furniture_data.gd is a Resource class with exported fields: id (String), display_name (String), texture (Texture2D), coin_cost (int), walkable (bool), walk_surface_y_offset (int), can_fall_off_edge (bool), interaction_type (String), interaction_coin_bonus (int), interaction_cooldown (float)",
+        "At least 5 FurnitureData .tres files created under furniture/data/: sofa (walkable, sleep), bookshelf (not walkable, inert), food_bowl (not walkable, eat), toy (not walkable, play), table (walkable, no interaction)",
+        "Placeholder textures used (colored rectangles or existing icon)",
+        "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Use a Timer node with 1.0s wait_time. Poll GlobalInput.get_key_count() and GlobalInput.get_click_count(), then call reset_counts(). Emit coins_changed signal."
+      "passes": false,
+      "notes": "These are pure data resources. No scene or behavior logic yet. The .tres files can use simple placeholder textures — real art is not required for first iteration."
     },
     {
       "id": "US-007",
-      "title": "Passive Coin Decay",
-      "description": "As a user, I want my coins to slowly drain over time during idle periods so that I need to stay active to keep my pet happy.",
+      "title": "Furniture node scene",
+      "description": "As a developer, I want a reusable Furniture scene so each furniture instance in the world behaves consistently.",
       "acceptanceCriteria": [
-        "Coins decay at configurable rate (default: 1 coin per 30 seconds of zero input)",
-        "Decay only occurs when no keystrokes or clicks were registered in the current polling window",
-        "Coins cannot go below zero",
-        "Decay rate is an exported variable on CoinSystem",
-        "Idle time tracking resets when any input is detected",
-        "GDScript files parse without errors"
+        "scenes/furniture.tscn with script scripts/furniture.gd extending Node2D",
+        "Takes @export var data: FurnitureData resource",
+        "Displays furniture texture via Sprite2D child",
+        "Exposes get_surface_y() returning global Y of walkable surface (top of sprite + walk_surface_y_offset)",
+        "Exposes get_left_x() and get_right_x() for edge detection",
+        "Has Area2D + CollisionShape2D child sized to the sprite for overlap detection",
+        "Emits pet_interacted(furniture) signal when triggered",
+        "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Add idle tracking to the existing CoinSystem. Track seconds since last input. When idle_time >= decay_interval, subtract decay_amount and reset idle timer."
+      "passes": false,
+      "notes": "This is the runtime scene that gets instantiated for each placed furniture piece. The Area2D is used for pet proximity detection in US-012."
     },
     {
       "id": "US-008",
-      "title": "Pet Visual States",
-      "description": "As a user, I want the pet to visually react to my activity level so I can tell at a glance how it's doing.",
+      "title": "Furniture shop UI",
+      "description": "As a user, I want to browse and buy furniture with my coins so I can decorate my desktop.",
       "acceptanceCriteria": [
-        "Pet has at least 3 visual states: Happy (high coins), Neutral (moderate), Sad (low coins)",
-        "State thresholds are configurable via exported variables",
-        "Pet sprite changes based on current state (sprite swap or modulate color change)",
-        "State updates in real time when coins change (connected to coins_changed signal)",
-        "scripts/pet.gd manages pet state logic",
-        "Placeholder sprites or colored rectangles used for each state",
-        "GDScript files parse without errors"
+        "A Shop button is added to the screen, anchored to a corner, always visible",
+        "Clicking Shop opens a panel listing all FurnitureData items with icon, name, and cost",
+        "Owned items show 'Owned', affordable items show 'Buy', too-expensive items are greyed out",
+        "Buying deducts coins via CoinSystem.spend_coins() and adds item to owned list",
+        "Owned furniture list saved to user://save_data.json alongside existing coins data",
+        "Shop panel included in passthrough polygon while visible",
+        "Shop closes when clicking outside it",
+        "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "Use simple placeholder visuals (e.g., ColorRect or Sprite2D with modulate). Happy=green tint, Neutral=normal, Sad=blue/gray tint. Connect to CoinSystem.coins_changed signal."
+      "passes": false,
+      "notes": "Extend save_data.json schema to include owned_furniture array. Load FurnitureData resources from res://furniture/data/ at runtime into a registry dictionary."
     },
     {
       "id": "US-009",
-      "title": "Spend Coins on Pet Interactions",
-      "description": "As a user, I want to click the pet and spend coins to feed or play with it, boosting its mood.",
+      "title": "Furniture placement in the world",
+      "description": "As a user, I want owned furniture to appear on screen so my desktop looks decorated.",
       "acceptanceCriteria": [
-        "Clicking the pet opens a small popup menu with interaction options (Feed, Play)",
-        "Each interaction costs a configurable amount of coins (default: Feed=10, Play=15)",
-        "Successful interaction triggers a visual reaction (e.g., scale bounce or color flash)",
-        "Interaction temporarily boosts coin balance (adds bonus coins)",
-        "Buttons are disabled/grayed when insufficient coins",
-        "Menu closes after selecting an interaction or clicking elsewhere",
-        "GDScript files parse without errors"
+        "Owned furniture items are spawned into main scene at startup from save data",
+        "Each furniture piece has a saved position (Vector2) in save_data.json",
+        "Default positions assigned on first purchase (staggered along screen bottom)",
+        "Passthrough polygon updated to include all furniture rects",
+        "Furniture does not overlap the pet's starting position",
+        "Typecheck passes"
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "Use a PopupMenu or VBoxContainer that shows/hides on pet click. Connect to CoinSystem to check balance and deduct coins."
+      "passes": false,
+      "notes": "This loads the furniture scene (US-007) and positions instances based on save data. Positions are fixed after placement — no drag-to-reposition (non-goal)."
     },
     {
       "id": "US-010",
-      "title": "Save/Load Pet State",
-      "description": "As a user, I want my pet's state and coins to persist when I close and reopen the game.",
+      "title": "Pet walks on furniture surfaces",
+      "description": "As a developer, I want the pet to land on and walk along walkable furniture surfaces instead of always falling to the screen bottom.",
       "acceptanceCriteria": [
-        "On quit, save coin total and pet state to user://save_data.json",
-        "On launch, load saved state and restore coin total and pet state",
-        "Handle missing save file gracefully (start fresh with defaults)",
-        "Handle corrupted/invalid JSON gracefully (start fresh with defaults)",
-        "Save triggers on _notification(NOTIFICATION_WM_CLOSE_REQUEST)",
-        "GDScript files parse without errors"
+        "When falling, pet lands on the first walkable furniture surface below it (comparing Y and X range)",
+        "Pet can also land on screen bottom if no furniture is below",
+        "When walking on a furniture surface, pet is constrained to that surface's left/right edges",
+        "If can_fall_off_edge is true for the furniture, pet walks off the edge and falls",
+        "If can_fall_off_edge is false, pet treats the edge as a wall and turns around",
+        "Non-walkable furniture is treated as a wall (pet does not walk through it)",
+        "Typecheck passes"
       ],
       "priority": 10,
-      "passes": true,
-      "notes": "Use FileAccess and JSON class. Save to user:// directory. Load on _ready() of a SaveManager autoload or in the main scene."
+      "passes": false,
+      "notes": "This integrates furniture awareness into the pet's FALLING and WALKING states from US-004 and US-005. Surface detection: compare pet bottom Y against each walkable furniture's get_surface_y() within get_left_x()..get_right_x() range."
+    },
+    {
+      "id": "US-011",
+      "title": "Pet interacts with interactive furniture",
+      "description": "As a user, I want to see the pet react when it walks into interactive furniture so the world feels dynamic.",
+      "acceptanceCriteria": [
+        "When pet enters Area2D of interactive furniture (interaction_type != ''), pet enters INTERACTING state",
+        "Player earns interaction_coin_bonus coins via CoinSystem.add_coins()",
+        "Interaction blocked if interaction_cooldown has not elapsed since last trigger for that piece",
+        "sleep interaction: pet shows sleeping visual (e.g. Zzz label or tint) for 2-3 seconds then resumes",
+        "eat interaction: pet plays scale bounce animation and awards coins",
+        "play interaction: same bounce as existing _play_bounce() in pet.gd",
+        "Cooldown state resets on app restart (not persisted)",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Uses the Furniture scene's pet_interacted signal and Area2D overlap detection. The INTERACTING state in the pet state machine blocks other movement until the interaction animation finishes."
     }
   ]
 }
