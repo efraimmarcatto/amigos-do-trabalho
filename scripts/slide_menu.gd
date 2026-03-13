@@ -140,6 +140,11 @@ func _on_inventory() -> void:
 	inventory_requested.emit()
 
 
+func set_edit_button_text(text: String) -> void:
+	## Updates the edit layout button label (e.g., "Edit Layout" vs "Save Edit").
+	_edit_button.text = text
+
+
 func _on_edit_layout() -> void:
 	edit_layout_requested.emit()
 	close_menu()

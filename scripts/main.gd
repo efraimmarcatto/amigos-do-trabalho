@@ -351,10 +351,13 @@ func _enter_edit_mode() -> void:
 	pet_sprite.paused = true
 	if pet_sprite.current_state == pet_sprite.PetState.WALKING:
 		pet_sprite._change_state(pet_sprite.PetState.IDLE)
-	# Highlight all furniture
+	# Highlight all furniture and add remove buttons
 	for fid in _furniture_nodes:
 		var fnode: Furniture = _furniture_nodes[fid]
 		fnode.modulate = Color(1.2, 1.2, 0.8, 1.0)
+		_add_remove_button(fid, fnode)
+	# Update edit button label
+	slide_menu.set_edit_button_text("Save Edit")
 	# Disable passthrough to capture all input
 	get_window().mouse_passthrough_polygon = PackedVector2Array()
 
@@ -366,12 +369,69 @@ func _exit_edit_mode() -> void:
 	_edit_dragging_id = ""
 	# Resume pet
 	pet_sprite.paused = false
-	# Remove furniture highlights
+	# Remove furniture highlights and remove buttons
 	for fid in _furniture_nodes:
 		var fnode: Furniture = _furniture_nodes[fid]
 		fnode.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		_remove_remove_button(fnode)
+	# Restore edit button label
+	slide_menu.set_edit_button_text("Edit Layout")
 	# Save positions
 	_save_state()
+
+
+func _add_remove_button(furniture_id: String, fnode: Furniture) -> void:
+	## Adds a small "X" button above the furniture piece for removal during edit mode.
+	var btn := Button.new()
+	btn.name = "RemoveButton"
+	btn.text = "X"
+	btn.size = Vector2(28, 28)
+	# Position above the furniture sprite (centered horizontally)
+	var tex_h := 0.0
+	if fnode.data and fnode.data.texture:
+		tex_h = fnode.data.texture.get_size().y
+	btn.position = Vector2(-14.0, -(tex_h / 2.0) - 32.0)
+	btn.pressed.connect(_on_remove_furniture.bind(furniture_id))
+	# Style the button with a red-ish background
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.8, 0.2, 0.2, 0.9)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	btn.add_theme_stylebox_override("normal", style)
+	btn.add_theme_color_override("font_color", Color.WHITE)
+	fnode.add_child(btn)
+
+
+func _remove_remove_button(fnode: Furniture) -> void:
+	## Removes the remove button from a furniture node if it exists.
+	var btn := fnode.get_node_or_null("RemoveButton")
+	if btn:
+		btn.queue_free()
+
+
+func _on_remove_furniture(furniture_id: String) -> void:
+	## Removes furniture from the scene during edit mode and adds it to inventory.
+	if not _edit_mode:
+		return
+	if not _furniture_nodes.has(furniture_id):
+		return
+
+	var fnode: Furniture = _furniture_nodes[furniture_id]
+
+	# Check if pet is standing on this furniture — force FALLING state
+	if pet_sprite._current_surface == fnode:
+		pet_sprite._current_surface = null
+		pet_sprite._change_state(pet_sprite.PetState.FALLING)
+
+	# Remove from scene and tracking
+	fnode.queue_free()
+	_furniture_nodes.erase(furniture_id)
+	_furniture_positions.erase(furniture_id)
+
+	# Add back to inventory
+	inventory_system.add_to_inventory(furniture_id)
 
 
 func _get_furniture_at_point(point: Vector2) -> String:
@@ -515,9 +575,24 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
+func _is_click_on_remove_button(point: Vector2) -> bool:
+	## Returns true if the point is within any furniture's remove button.
+	for fid in _furniture_nodes:
+		var fnode: Furniture = _furniture_nodes[fid]
+		var btn := fnode.get_node_or_null("RemoveButton")
+		if btn and btn is Button:
+			var btn_rect := Rect2(fnode.global_position + btn.position, btn.size)
+			if btn_rect.has_point(point):
+				return true
+	return false
+
+
 func _handle_edit_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			# Don't intercept clicks on remove buttons — let Button handle them
+			if _is_click_on_remove_button(event.position):
+				return
 			# Start dragging a furniture piece
 			var fid := _get_furniture_at_point(event.position)
 			if fid != "":
