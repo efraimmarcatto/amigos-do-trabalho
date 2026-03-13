@@ -16,6 +16,8 @@ Started: Thu Mar 12 21:45:43 PDT 2026
 - Window is set to fullscreen at runtime via DisplayServer.screen_get_size() in main.gd _ready()
 - When sprite flips (scale.x negative), use scale.abs() for size calculations in _is_point_on_pet() and _toggle_menu()
 - _idle_timer in pet.gd controls wait between walks (1-5s random); _walk_target_x is the horizontal destination
+- FurnitureData is a Resource with class_name — globally available, .tres files live in furniture/data/
+- .tres resource files use [gd_resource script_class="FurnitureData"] format; load_steps = ext_resources + 1
 
 ---
 
@@ -93,4 +95,17 @@ Started: Thu Mar 12 21:45:43 PDT 2026
   - _change_state() now resets scale.x on WALKING exit — keep this in sync if adding other scale modifications
   - _idle_timer is set both in _ready() and on IDLE enter via _change_state() — single source of truth
   - US-010 will need to modify _process_idle target picking to account for furniture surface boundaries
+---
+
+## 2026-03-12 - US-006
+- Created scripts/furniture_data.gd Resource class with all exported fields: id, display_name, texture, coin_cost, walkable, walk_surface_y_offset, can_fall_off_edge, interaction_type, interaction_coin_bonus, interaction_cooldown
+- Created 5 FurnitureData .tres files under furniture/data/: sofa (walkable, sleep), bookshelf (not walkable, inert), food_bowl (not walkable, eat), toy (not walkable, play), table (walkable, no interaction)
+- All .tres files use icon.svg as placeholder texture
+- Files changed: scripts/furniture_data.gd (new), furniture/data/sofa.tres (new), furniture/data/bookshelf.tres (new), furniture/data/food_bowl.tres (new), furniture/data/toy.tres (new), furniture/data/table.tres (new)
+- **Learnings for future iterations:**
+  - FurnitureData uses class_name so it's globally available — no need for preload in scripts that reference it
+  - .tres files use [gd_resource type="Resource" script_class="FurnitureData"] format with ext_resource refs for script and texture
+  - Placeholder textures reference res://icon.svg — replace with real art later
+  - furniture/data/ directory holds all .tres data resources; US-008 shop will load them from this path
+  - Godot .tres format requires load_steps count matching total ext_resources + 1 (for the resource itself)
 ---

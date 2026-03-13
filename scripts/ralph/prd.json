@@ -99,7 +99,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "These are pure data resources. No scene or behavior logic yet. The .tres files can use simple placeholder textures — real art is not required for first iteration."
     },
     {
