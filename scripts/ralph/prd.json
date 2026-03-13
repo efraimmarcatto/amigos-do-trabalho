@@ -36,7 +36,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "This may require refactoring shop.gd's show/hide logic to use tweened positioning instead of simple visibility toggling. The shop panel's X position should be calculated relative to the menu panel's left edge."
     },
     {

@@ -7,6 +7,9 @@ Started: Fri Mar 13 14:59:40 PDT 2026
 - All interactive UI must be included in the passthrough polygon via `_update_passthrough()` in main.gd — use `get_rect()` or `get_global_rect()` helpers
 - Tween animations use 0.3s duration, `EASE_OUT`, `TRANS_CUBIC` — match this for consistency
 - slide_menu.gd emits `menu_opened`/`menu_closed` signals for coordinating UI animations
+- Adjacent panels (shop, inventory, settings) use `setup(menu_open_x, menu_panel_y)` for positioning relative to the slide menu
+- Use `on_before_close: Callable` on slide_menu to intercept close and sequence panel close animations
+- Panel open/close uses tween on `position:x` with `_animate_x()` pattern — hidden off-screen at `screen_w`, visible at computed `_open_x`
 - coin_hud.gd builds its UI programmatically in `_build_ui()` (no child nodes in .tscn)
 - The CoinSystem emits `coins_changed(new_total: int)` — connect to this for coin display updates
 
@@ -26,4 +29,23 @@ Started: Fri Mar 13 14:59:40 PDT 2026
   - `coin_hud.setup()` uses `await get_tree().process_frame` to wait for layout — call it after adding to tree
   - No Godot binary available in this environment for typecheck — manual code review required
   - ext_resource in .tscn needs a uid for Godot to auto-generate; omitting uid works but Godot will assign one on next editor open
+---
+
+## 2026-03-13 - US-021
+- Shop panel now slides in/out adjacent to (left of) the slide menu with tween animation
+- Shop positioned at `menu_open_x - SHOP_WIDTH - GAP` via new `setup()` method
+- 0.1s delay before shop open animation for chained visual effect
+- Close sequencing: if shop is open when menu closes, shop closes first (0.3s), then menu closes
+- `on_before_close` callable on slide_menu intercepts all close paths (toggle, click-outside)
+- Shop toggle behavior: clicking Shop button again closes the shop
+- Removed shop's own `_unhandled_input` close — all close coordination through main.gd
+- Shop close on edit layout and placement mode entry
+- Shop included in passthrough polygon via `is_shop_open()` check
+- Files changed: scripts/shop.gd, scripts/slide_menu.gd, scripts/main.gd
+- **Learnings for future iterations:**
+  - `_get_panel_open_x()` renamed to `get_panel_open_x()` (public) — use this for adjacent panel positioning
+  - `get_panel_y()` added to slide_menu for aligning panels vertically
+  - When adding new adjacent panels (inventory, settings), follow the same pattern: `setup(menu_open_x, menu_panel_y)`, `_animate_x()`, `is_*_open()`, close interceptor coordination
+  - Close interceptor uses `get_tree().create_timer(duration).timeout.connect()` for sequenced animations — watch for edge cases with rapid toggling
+  - `close_shop()` is idempotent (checks `_is_open`) — safe to call multiple times
 ---
