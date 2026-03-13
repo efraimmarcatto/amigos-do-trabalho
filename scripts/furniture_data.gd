@@ -17,6 +17,8 @@ extends Resource
 @export var walk_surface_y_offset: int = 0
 ## Whether the pet can fall off the edges of this furniture
 @export var can_fall_off_edge: bool = true
+## Whether the pet can jump onto this furniture from the floor
+@export var jumpable: bool = false
 ## Type of interaction the pet performs (empty string = no interaction)
 @export var interaction_type: String = ""
 ## Bonus coins awarded when the pet interacts

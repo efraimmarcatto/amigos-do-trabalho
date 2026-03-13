@@ -12,6 +12,7 @@ coin_cost = 120
 walkable = true
 walk_surface_y_offset = 0
 can_fall_off_edge = true
+jumpable = true
 interaction_type = ""
 interaction_coin_bonus = 0
 interaction_cooldown = 0.0

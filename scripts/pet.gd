@@ -6,7 +6,7 @@ extends AnimatedSprite2D
 ## Uses AnimatedSprite2D with SpriteFrames for distinct animation states.
 
 # Movement state machine
-enum PetState { IDLE, WALKING, FALLING, DRAGGED, INTERACTING }
+enum PetState { IDLE, WALKING, FALLING, DRAGGED, INTERACTING, JUMP_PREP, JUMPING }
 
 # Visual mood (independent of movement state)
 enum PetMood { SAD, NEUTRAL, HAPPY }
@@ -37,6 +37,15 @@ enum PetMood { SAD, NEUTRAL, HAPPY }
 @export var jump_row: int = 0
 @export var fall_row: int = 0
 @export var interact_row: int = 0
+
+## Probability (0.0–1.0) of jumping onto nearby jumpable furniture per idle cycle
+@export var jump_probability: float = 0.3
+## Distance in pixels within which the pet will consider jumping onto furniture
+@export var jump_range: float = 80.0
+## Vertical impulse speed for jumping (pixels/sec, upward)
+@export var jump_vertical_impulse: float = 500.0
+## Duration of jump_prep pause before launching (seconds)
+@export var jump_prep_duration: float = 0.15
 
 ## Frame count per animation (defaults to sheet_columns if 0)
 @export var idle_frames: int = 0
@@ -78,6 +87,10 @@ var paused: bool = false
 
 # Interaction menu open flag — when true, pet stays IDLE and skips walk target selection
 var menu_open: bool = false
+
+# Jump state tracking
+var _jump_prep_timer: float = 0.0
+var _jump_target_furniture: Furniture = null
 
 # Color tints for each mood
 const COLOR_HAPPY := Color(0.5, 1.0, 0.5, 1.0)   # Green tint
@@ -170,6 +183,10 @@ func _process(delta: float) -> void:
 			_process_dragged(delta)
 		PetState.INTERACTING:
 			_process_interacting(delta)
+		PetState.JUMP_PREP:
+			_process_jump_prep(delta)
+		PetState.JUMPING:
+			_process_jumping(delta)
 
 
 func _process_idle(delta: float) -> void:
@@ -177,6 +194,12 @@ func _process_idle(delta: float) -> void:
 		return
 	_idle_timer -= delta
 	if _idle_timer <= 0.0:
+		# If on furniture, chance to jump down
+		if _current_surface and _current_surface.data and _current_surface.data.jumpable:
+			if randf() < jump_probability:
+				_jump_down_from_furniture()
+				return
+
 		var half_w := (get_sprite_size().x * scale.abs().x) / 2.0
 		var min_x: float
 		var max_x: float
@@ -261,6 +284,12 @@ func _process_walking(_delta: float) -> void:
 	if current_state == PetState.INTERACTING:
 		return
 
+	# Check for jumpable furniture nearby (only when on floor)
+	if not _current_surface:
+		_try_jump_onto_furniture()
+		if current_state == PetState.JUMP_PREP:
+			return
+
 	# Check if reached target
 	if (dir > 0.0 and position.x >= _walk_target_x) or (dir < 0.0 and position.x <= _walk_target_x):
 		position.x = _walk_target_x
@@ -327,6 +356,124 @@ func _process_interacting(delta: float) -> void:
 			_sleep_label = null
 		_interacting_furniture = null
 		_change_state(PetState.IDLE)
+
+
+func _process_jump_prep(delta: float) -> void:
+	_jump_prep_timer -= delta
+	if _jump_prep_timer <= 0.0:
+		if _jump_target_furniture:
+			# Launch toward furniture surface
+			var target_x := _jump_target_furniture.global_position.x
+			var target_y := _jump_target_furniture.get_surface_y()
+			var half_h := (get_sprite_size().y * scale.abs().y) / 2.0
+			var land_y := target_y - half_h
+
+			# Calculate horizontal velocity to reach target during the arc
+			var dx := target_x - position.x
+			# Estimate time from vertical impulse and gravity: t ≈ 2 * v0 / g
+			var arc_time := 2.0 * jump_vertical_impulse / gravity
+			var vx := dx / maxf(arc_time, 0.1)
+
+			_velocity = Vector2(vx, -jump_vertical_impulse)
+			# Face direction of jump
+			var dir := signf(dx)
+			if dir != 0.0:
+				scale.x = absf(_base_scale.x) * dir
+			_change_state(PetState.JUMPING)
+		else:
+			_change_state(PetState.IDLE)
+
+
+func _process_jumping(delta: float) -> void:
+	_velocity.y += gravity * delta
+	position += _velocity * delta
+
+	# Switch animation based on vertical direction
+	if _velocity.y < 0.0:
+		_play_anim("jump")
+	else:
+		_play_anim("fall")
+
+	var half_h := (get_sprite_size().y * scale.abs().y) / 2.0
+	var half_w := (get_sprite_size().x * scale.abs().x) / 2.0
+
+	# Check if we've landed on the target furniture
+	if _jump_target_furniture and _velocity.y > 0.0:
+		var surf_y := _jump_target_furniture.get_surface_y()
+		var land_y := surf_y - half_h
+		var f_left := _jump_target_furniture.get_left_x()
+		var f_right := _jump_target_furniture.get_right_x()
+		if position.x >= f_left + half_w and position.x <= f_right - half_w and position.y >= land_y:
+			position.y = land_y
+			_velocity = Vector2.ZERO
+			_current_surface = _jump_target_furniture
+			_jump_target_furniture = null
+			_change_state(PetState.IDLE)
+			return
+
+	# Also check any other walkable furniture surface (in case we overshoot)
+	if _velocity.y > 0.0:
+		for fid in _furniture_nodes:
+			var fnode: Furniture = _furniture_nodes[fid]
+			if not fnode or not fnode.data or not fnode.data.texture:
+				continue
+			if not fnode.data.walkable:
+				continue
+			var surf_y := fnode.get_surface_y()
+			var f_left := fnode.get_left_x()
+			var f_right := fnode.get_right_x()
+			var land_y := surf_y - half_h
+			if position.x >= f_left + half_w and position.x <= f_right - half_w and position.y >= land_y:
+				position.y = land_y
+				_velocity = Vector2.ZERO
+				_current_surface = fnode
+				_jump_target_furniture = null
+				_change_state(PetState.IDLE)
+				return
+
+	# Land on floor
+	var land_floor_y := floor_y - half_h
+	if position.y >= land_floor_y:
+		position.y = land_floor_y
+		_velocity = Vector2.ZERO
+		_current_surface = null
+		_jump_target_furniture = null
+		_change_state(PetState.IDLE)
+
+
+func _try_jump_onto_furniture() -> void:
+	## Check for nearby jumpable furniture and probabilistically initiate a jump.
+	var half_w := (get_sprite_size().x * scale.abs().x) / 2.0
+	for fid in _furniture_nodes:
+		var fnode: Furniture = _furniture_nodes[fid]
+		if not fnode or not fnode.data or not fnode.data.texture:
+			continue
+		if not fnode.data.jumpable:
+			continue
+		# Check distance from pet to furniture center
+		var dist := absf(position.x - fnode.global_position.x)
+		if dist <= jump_range + fnode.data.texture.get_size().x / 2.0:
+			if randf() < jump_probability:
+				_jump_target_furniture = fnode
+				_jump_prep_timer = jump_prep_duration
+				# Face toward the furniture
+				var dir := signf(fnode.global_position.x - position.x)
+				if dir != 0.0:
+					scale.x = absf(_base_scale.x) * dir
+				_change_state(PetState.JUMP_PREP)
+				return
+
+
+func _jump_down_from_furniture() -> void:
+	## Jump down from current furniture surface to the floor.
+	_current_surface = null
+	# Small horizontal velocity in a random direction + upward impulse
+	var dir := 1.0 if randf() > 0.5 else -1.0
+	_velocity = Vector2(dir * walk_speed, -jump_vertical_impulse * 0.4)
+	if dir != 0.0:
+		scale.x = absf(_base_scale.x) * dir
+	_jump_target_furniture = null
+	_change_state(PetState.JUMPING)
 
 
 func _try_furniture_interaction() -> void:
@@ -415,6 +562,10 @@ func _change_state(new_state: PetState) -> void:
 		_play_anim("walk")
 	elif new_state == PetState.INTERACTING:
 		_play_anim("interact")
+	elif new_state == PetState.JUMP_PREP:
+		_play_anim("jump_prep")
+	elif new_state == PetState.JUMPING:
+		_play_anim("jump")
 
 
 func _input(event: InputEvent) -> void:
