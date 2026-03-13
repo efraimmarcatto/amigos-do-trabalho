@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/furniture_data.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://icon.svg" id="2_texture"]
+
+[resource]
+script = ExtResource("1_script")
+id = "bookshelf"
+display_name = "Bookshelf"
+texture = ExtResource("2_texture")
+coin_cost = 150
+walkable = false
+walk_surface_y_offset = 0
+can_fall_off_edge = false
+interaction_type = ""
+interaction_coin_bonus = 0
+interaction_cooldown = 0.0
