@@ -117,7 +117,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "This is the runtime scene that gets instantiated for each placed furniture piece. The Area2D is used for pet proximity detection in US-012."
     },
     {

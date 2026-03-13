@@ -104,8 +104,24 @@ Started: Thu Mar 12 21:45:43 PDT 2026
 - Files changed: scripts/furniture_data.gd (new), furniture/data/sofa.tres (new), furniture/data/bookshelf.tres (new), furniture/data/food_bowl.tres (new), furniture/data/toy.tres (new), furniture/data/table.tres (new)
 - **Learnings for future iterations:**
   - FurnitureData uses class_name so it's globally available — no need for preload in scripts that reference it
+- Furniture scene (scenes/furniture.tscn) uses @onready nodes: Sprite2D, Area2D, Area2D/CollisionShape2D — collision shape sized dynamically in _ready()
+- Furniture class_name is globally available; use get_surface_y(), get_left_x(), get_right_x() for pet physics integration
   - .tres files use [gd_resource type="Resource" script_class="FurnitureData"] format with ext_resource refs for script and texture
   - Placeholder textures reference res://icon.svg — replace with real art later
   - furniture/data/ directory holds all .tres data resources; US-008 shop will load them from this path
   - Godot .tres format requires load_steps count matching total ext_resources + 1 (for the resource itself)
+---
+
+## 2026-03-12 - US-007
+- Created scripts/furniture.gd (class_name Furniture, extends Node2D) with @export var data: FurnitureData
+- Displays texture via Sprite2D child, sizes Area2D/CollisionShape2D dynamically in _ready()
+- Exposes get_surface_y(), get_left_x(), get_right_x() for pet physics integration
+- Emits pet_interacted(furniture) signal for US-011 interaction system
+- Created scenes/furniture.tscn with Node2D root, Sprite2D, Area2D, and CollisionShape2D children
+- Files changed: scripts/furniture.gd (new), scenes/furniture.tscn (new)
+- **Learnings for future iterations:**
+  - Furniture collision shape is created dynamically as RectangleShape2D sized to texture — no static shape needed in .tscn
+  - get_surface_y() returns top of sprite + walk_surface_y_offset — used by US-010 for pet landing
+  - The pet_interacted signal is declared but not yet emitted — US-011 will connect Area2D body_entered to trigger it
+  - Scene uses @onready for child nodes — data must be set before _ready() or texture/shape won't initialize
 ---
