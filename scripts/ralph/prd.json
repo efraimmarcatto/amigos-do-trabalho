@@ -85,7 +85,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Uses the state machine from US-003. IDLE state has a timer; when it fires, transition to WALKING. WALKING moves toward target, then back to IDLE. Screen bottom is the only surface for now — furniture surfaces come in US-010."
     },
     {

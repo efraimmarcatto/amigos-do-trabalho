@@ -14,6 +14,8 @@ Started: Thu Mar 12 21:45:43 PDT 2026
 - _change_state() in pet.gd handles enter/exit visual effects for state transitions — add new state visuals there
 - Floor Y for pet landing = DisplayServer.screen_get_size().y - (texture height * scale.y) / 2.0
 - Window is set to fullscreen at runtime via DisplayServer.screen_get_size() in main.gd _ready()
+- When sprite flips (scale.x negative), use scale.abs() for size calculations in _is_point_on_pet() and _toggle_menu()
+- _idle_timer in pet.gd controls wait between walks (1-5s random); _walk_target_x is the horizontal destination
 
 ---
 
@@ -74,4 +76,21 @@ Started: Thu Mar 12 21:45:43 PDT 2026
   - _velocity is reset to Vector2.ZERO when entering FALLING from drag — pet falls from rest
   - When dragging interrupts other states, ensure _mouse_pressed tracking stays consistent
   - US-005 (walking) and US-010 (furniture surfaces) will need to update the floor detection logic
+---
+
+## 2026-03-12 - US-005
+- Implemented pet idle walking with random direction/distance and configurable speed
+- Added @export var walk_speed: float = 120.0
+- _process_idle() counts down random timer (1-5s), then picks random walk target (50-300px away)
+- _process_walking() moves toward target, flips sprite horizontally based on direction
+- Pet constrained to screen bounds via clampf on walk target
+- Walking interrupted immediately by drag (existing _input handler calls _change_state(DRAGGED))
+- Fixed _is_point_on_pet() and _toggle_menu() to use scale.abs() for correct size when sprite is flipped
+- _change_state() updated with proper enter/exit logic for WALKING and IDLE states
+- Files changed: scripts/pet.gd
+- **Learnings for future iterations:**
+  - When flipping sprite via negative scale.x, all size calculations must use scale.abs() to avoid negative Rect2
+  - _change_state() now resets scale.x on WALKING exit — keep this in sync if adding other scale modifications
+  - _idle_timer is set both in _ready() and on IDLE enter via _change_state() — single source of truth
+  - US-010 will need to modify _process_idle target picking to account for furniture surface boundaries
 ---
