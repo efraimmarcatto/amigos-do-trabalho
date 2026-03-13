@@ -129,7 +129,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "AnimatedSprite2D with SpriteFrames resource. Each animation name corresponds to a state. Rows in sprite sheet map to animation names. Frame counts per animation configurable."
     },
     {

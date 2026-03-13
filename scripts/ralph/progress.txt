@@ -12,6 +12,8 @@ Started: Fri Mar 13 09:16:18 PDT 2026
 - When replacing UI elements, update both the `.tscn` node tree AND the `@onready` references in the parent script
 - To capture all input (disable passthrough), set `get_window().mouse_passthrough_polygon = PackedVector2Array()` and skip `_update_passthrough()` in `_process()`
 - Pet can be paused externally via `pet_sprite.paused = true` — `_process()` early-returns, keeping pet frozen in current state
+- AnimatedSprite2D uses `sprite_frames` not `texture` — use `get_sprite_size()` helper for frame dimensions instead of `texture.get_size()`
+- Animation states: idle, walk, jump_prep, jump, fall, interact — played via `_play_anim()` in `_change_state()`
 ---
 
 ## 2026-03-13 - US-012
@@ -99,5 +101,25 @@ Started: Fri Mar 13 09:16:18 PDT 2026
   - Signal order in interaction_menu.gd: `interaction_performed` emits BEFORE `visible = false` — so `menu_open` must be cleared explicitly in `_on_interaction_performed()` to avoid the pet staying frozen if INTERACTING state finishes before visibility_changed fires
   - When stopping a falling pet, always reset `_velocity = Vector2.ZERO` to prevent residual motion
   - The `visibility_changed` signal on Control nodes fires when `.visible` is changed — useful for tracking menu state without polling
+  - Manual browser verification needed — no Godot binary available
+---
+
+## 2026-03-13 - US-018
+- Converted pet from Sprite2D to AnimatedSprite2D with SpriteFrames-based animation system
+- Defined 6 animation states: idle, walk, jump_prep, jump, fall, interact
+- Each animation maps to a configurable sprite sheet row via export vars (idle_row, walk_row, etc.)
+- SpriteFrames built programmatically in `_setup_animations()` using AtlasTexture regions from sprite sheet
+- Placeholder single-frame sprite sheet works (icon.svg) — all animations show the same frame
+- Animation FPS configurable via `animation_fps` export var
+- Added `get_sprite_size()` helper replacing all `texture.get_size()` calls (works for both pet.gd and main.gd)
+- Sprite still flips via scale.x for direction, compatible with bounce tween
+- Files changed: `scripts/pet.gd`, `scripts/main.gd`, `scenes/main.tscn`
+- **Learnings for future iterations:**
+  - AnimatedSprite2D has no `.texture` property — must use `sprite_frames.get_frame_texture(animation, frame)` for size
+  - `get_sprite_size()` is a public method on pet — main.gd calls `pet_sprite.get_sprite_size()` for positioning and passthrough
+  - SpriteFrames can be built programmatically: `SpriteFrames.new()` + `add_animation()` + `add_frame()` with AtlasTexture
+  - When using AtlasTexture for sprite sheet slicing, `.get_size()` returns the region size (correct for frame dimensions)
+  - The scene file (.tscn) uses `sprite_sheet = ExtResource(...)` for the export var, not `texture = ...`
+  - Child `_ready()` fires before parent `_ready()` in Godot — so pet's `_setup_animations()` runs before main.gd accesses `get_sprite_size()`
   - Manual browser verification needed — no Godot binary available
 ---
