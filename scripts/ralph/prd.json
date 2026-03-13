@@ -90,7 +90,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Toggle state in main.gd. Furniture nodes accept drag input (horizontal only, Y locked to floor). Pet state machine paused during edit mode. Depends on slide-out menu (US-014)."
     },
     {
