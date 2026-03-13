@@ -72,7 +72,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "New state in main.gd. Ghost sprite follows mouse constrained to floor Y. Left-click confirms, right-click/Escape cancels and refunds. Disable passthrough during placement."
     },
     {

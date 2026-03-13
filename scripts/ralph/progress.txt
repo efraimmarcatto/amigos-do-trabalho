@@ -10,6 +10,7 @@ Started: Fri Mar 13 09:16:18 PDT 2026
 - Floor Y is computed from `DisplayServer.screen_get_usable_rect()` in main.gd and shared to pet via `pet_sprite.floor_y` — all ground-level logic must use `floor_y` not `screen_get_size().y`
 - Slide menu in `scripts/slide_menu.gd` exposes `get_toggle_rect()` and `get_panel_rect()` for passthrough polygon inclusion — future UI panels should follow this pattern
 - When replacing UI elements, update both the `.tscn` node tree AND the `@onready` references in the parent script
+- To capture all input (disable passthrough), set `get_window().mouse_passthrough_polygon = PackedVector2Array()` and skip `_update_passthrough()` in `_process()`
 ---
 
 ## 2026-03-13 - US-012
@@ -50,5 +51,20 @@ Started: Fri Mar 13 09:16:18 PDT 2026
   - `get_toggle_rect()` / `get_panel_rect()` pattern is useful for passthrough — any new UI element that needs passthrough inclusion should expose similar helpers
   - Tween animation: `create_tween()` on the node, kill existing tween before starting new one to avoid conflicts
   - `mouse_filter = MOUSE_FILTER_IGNORE` on the parent Control lets child buttons still receive input while the Control itself doesn't block clicks
+  - Manual browser verification needed — no Godot binary available
+---
+
+## 2026-03-13 - US-015
+- Implemented furniture placement mode: after purchasing furniture, shop closes and a semi-transparent ghost preview follows the mouse cursor constrained to floor Y and screen bounds
+- Left-click confirms placement, right-click or Escape cancels and refunds coins
+- Passthrough is fully disabled during placement mode so the entire window captures input
+- Added `_spawn_furniture_at()` to spawn furniture at a specific position and save immediately
+- Added `remove_owned()` method to shop.gd for refund support when placement is cancelled
+- Files changed: `scripts/main.gd`, `scripts/shop.gd`
+- **Learnings for future iterations:**
+  - Placement mode disables passthrough by setting `mouse_passthrough_polygon` to an empty `PackedVector2Array()` — this makes the full window capture all input
+  - `_input()` in main.gd handles placement events and marks them as handled to prevent pet/menu from reacting
+  - When cancelling placement, must both refund coins via `coin_system.add_coins()` AND remove from owned list via `shop_panel.remove_owned()`
+  - `_process()` skips passthrough updates during placement mode to avoid overwriting the disabled state
   - Manual browser verification needed — no Godot binary available
 ---
