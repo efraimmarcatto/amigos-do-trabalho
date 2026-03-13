@@ -106,7 +106,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Add menu_open flag to pet state machine. While true, _process_idle() skips selecting new walk targets and state is locked to IDLE."
     },
     {

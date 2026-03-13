@@ -87,3 +87,17 @@ Started: Fri Mar 13 09:16:18 PDT 2026
   - `_input()` priority: edit mode is checked first, then placement mode — both return early to prevent other handlers from processing
   - Manual browser verification needed — no Godot binary available
 ---
+
+## 2026-03-13 - US-017
+- Pet now stops immediately (transitions to IDLE) when the interaction menu opens, including from FALLING state (previously only WALKING was handled)
+- Velocity reset on menu open prevents pet from resuming motion if it was falling
+- When Feed/Play interaction is selected, pet enters INTERACTING state with a 0.3s bounce animation (previously only bounced without state change)
+- `menu_open` flag prevents idle walk target selection while menu is visible
+- `_on_menu_visibility_changed()` clears `menu_open` when menu closes (click-away or after interaction)
+- Files changed: `scripts/pet.gd`
+- **Learnings for future iterations:**
+  - Signal order in interaction_menu.gd: `interaction_performed` emits BEFORE `visible = false` — so `menu_open` must be cleared explicitly in `_on_interaction_performed()` to avoid the pet staying frozen if INTERACTING state finishes before visibility_changed fires
+  - When stopping a falling pet, always reset `_velocity = Vector2.ZERO` to prevent residual motion
+  - The `visibility_changed` signal on Control nodes fires when `.visible` is changed — useful for tracking menu state without polling
+  - Manual browser verification needed — no Godot binary available
+---
