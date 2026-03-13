@@ -11,6 +11,8 @@ Started: Thu Mar 12 21:45:43 PDT 2026
 - pet.gd uses PetState enum (IDLE, WALKING, FALLING, DRAGGED, INTERACTING) for movement; _process() delegates to _process_<state>() handlers
 - main.gd is a Control node that manages passthrough polygon for click-through transparency
 - _update_passthrough() collects Rect2 from all visible elements and merges them — add new UI elements there
+- _change_state() in pet.gd handles enter/exit visual effects for state transitions — add new state visuals there
+- Floor Y for pet landing = DisplayServer.screen_get_size().y - (texture height * scale.y) / 2.0
 - Window is set to fullscreen at runtime via DisplayServer.screen_get_size() in main.gd _ready()
 
 ---
@@ -54,4 +56,22 @@ Started: Thu Mar 12 21:45:43 PDT 2026
   - main.gd _save_state() references pet_sprite._current_mood — keep in sync if renaming
   - _load_state() doesn't actually restore mood (only coins), so the save key rename is safe
   - State handler methods are placeholders — US-004/005/011 will fill them in
+---
+
+## 2026-03-12 - US-004
+- Implemented pet drag-and-drop with gravity physics
+- Added @export var gravity: float = 980.0 for configurable gravity
+- Added drag tracking with 4px threshold to distinguish click from drag
+- _process_dragged() follows cursor; _process_falling() applies gravity with velocity integration
+- Pet lands on screen bottom (screen_height - half sprite height) and transitions to IDLE
+- Grabbed visual: 5° rotation while dragged, reset on release
+- _input() rewritten to handle press/release/motion for drag detection
+- Menu only opens on click (no drag), drag hides menu if open
+- Files changed: scripts/pet.gd
+- **Learnings for future iterations:**
+  - _change_state() now handles enter/exit visual effects — add new state visuals there
+  - Floor Y calculation: DisplayServer.screen_get_size().y - (texture.get_size().y * scale.y) / 2.0
+  - _velocity is reset to Vector2.ZERO when entering FALLING from drag — pet falls from rest
+  - When dragging interrupts other states, ensure _mouse_pressed tracking stays consistent
+  - US-005 (walking) and US-010 (furniture surfaces) will need to update the floor detection logic
 ---

@@ -68,7 +68,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "FR-6: Drag detection uses InputEventMouseButton press. If mouse moves more than 4px before release, it's a drag not a click. Convert pet from simple Sprite2D positioning to velocity-based movement."
     },
     {
