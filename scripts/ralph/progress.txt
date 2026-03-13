@@ -1,148 +1,29 @@
 # Ralph Progress Log
-Started: Fri Mar 13 09:16:18 PDT 2026
+Started: Fri Mar 13 14:59:40 PDT 2026
 ---
 
 ## Codebase Patterns
-- Passthrough polygon in main.gd `_update_passthrough()` must use `.abs()` on all Rect2 values before `.merge()` — Godot Rect2 can have negative dimensions from `get_global_rect()`
-- GDScript files live in `/workspace/scripts/`, scenes in `/workspace/scenes/`
-- No Godot binary is available in this dev environment — manual typecheck verification needed
-- Furniture system: FurnitureData resources in `/workspace/resources/furniture/`, Furniture scene at `/workspace/scenes/furniture.tscn`
-- Floor Y is computed from `DisplayServer.screen_get_usable_rect()` in main.gd and shared to pet via `pet_sprite.floor_y` — all ground-level logic must use `floor_y` not `screen_get_size().y`
-- Slide menu in `scripts/slide_menu.gd` exposes `get_toggle_rect()` and `get_panel_rect()` for passthrough polygon inclusion — future UI panels should follow this pattern
-- When replacing UI elements, update both the `.tscn` node tree AND the `@onready` references in the parent script
-- To capture all input (disable passthrough), set `get_window().mouse_passthrough_polygon = PackedVector2Array()` and skip `_update_passthrough()` in `_process()`
-- Pet can be paused externally via `pet_sprite.paused = true` — `_process()` early-returns, keeping pet frozen in current state
-- AnimatedSprite2D uses `sprite_frames` not `texture` — use `get_sprite_size()` helper for frame dimensions instead of `texture.get_size()`
-- Animation states: idle, walk, jump_prep, jump, fall, interact — played via `_play_anim()` in `_change_state()`
-- Pet jump states: JUMP_PREP (pause before launch) → JUMPING (arc with gravity) — `_jump_target_furniture` tracks the destination
-- FurnitureData `jumpable` flag controls whether pet can jump onto furniture; jumpable implies walkable
-- Furniture .tres resources live in `/workspace/furniture/data/`, NOT `/workspace/resources/furniture/`
+- UI panels (shop, coin HUD, etc.) are positioned programmatically in `setup()` using `floor_y` and `DisplayServer.screen_get_size()`
+- All interactive UI must be included in the passthrough polygon via `_update_passthrough()` in main.gd — use `get_rect()` or `get_global_rect()` helpers
+- Tween animations use 0.3s duration, `EASE_OUT`, `TRANS_CUBIC` — match this for consistency
+- slide_menu.gd emits `menu_opened`/`menu_closed` signals for coordinating UI animations
+- coin_hud.gd builds its UI programmatically in `_build_ui()` (no child nodes in .tscn)
+- The CoinSystem emits `coins_changed(new_total: int)` — connect to this for coin display updates
+
 ---
 
-## 2026-03-13 - US-012
-- Fixed Rect2 negative size error in `_update_passthrough()` by calling `.abs()` on every Rect2 before merging
-- Files changed: `scripts/main.gd`
+## 2026-03-13 - US-020
+- Replaced CoinLabel (plain text "Coins: 0") with styled CoinHud (PanelContainer with coin icon + animated counter)
+- CoinHud: white/light background, rounded corners (StyleBoxFlat), yellow circle icon placeholder, dark text
+- Positioned directly left of the menu toggle button at bottom-right
+- Counter animates on value change using Tween (~0.3s interpolation)
+- Coin HUD moves upward when slide menu opens, returns to base position on close (same tween timing)
+- Included in mouse passthrough polygon via `get_rect()` helper
+- Added `menu_opened`/`menu_closed` signals to slide_menu.gd
+- Files changed: scripts/coin_hud.gd (new), scripts/main.gd, scripts/slide_menu.gd, scenes/main.tscn
 - **Learnings for future iterations:**
-  - `Rect2` from `get_global_rect()` can return negative width/height when UI elements are at screen edges
-  - `.abs()` normalizes the Rect2 to always have positive dimensions
-  - The passthrough polygon is rebuilt every `_process()` frame, so the fix applies continuously
-  - No Godot binary in environment — typecheck cannot be run automatically
----
-
-## 2026-03-13 - US-013
-- Aligned game floor to taskbar top edge using `DisplayServer.screen_get_usable_rect()`
-- Added `_compute_floor_y()` in main.gd that computes floor Y from usable rect with fallback to full screen height
-- Pet position, furniture default placement, and coin label all repositioned dynamically to floor_y
-- Pet falling logic in pet.gd now lands at `floor_y` instead of `screen_get_size().y`
-- Files changed: `scripts/main.gd`, `scripts/pet.gd`
-- **Learnings for future iterations:**
-  - `DisplayServer.screen_get_usable_rect()` returns a Rect2i excluding OS-reserved areas (taskbar, dock, etc.)
-  - Floor Y = `usable.position.y + usable.size.y` — this is the bottom of the usable area (top of taskbar)
-  - `floor_y` is shared from main.gd to pet.gd as a public var — future stories should use this instead of raw screen height
-  - Pet starting position in the .tscn is overridden at runtime by main.gd `_ready()`, so the scene value doesn't matter
-  - Coin label offset_top/offset_bottom are set dynamically — future UI elements near the floor should follow this pattern
----
-
-## 2026-03-13 - US-014
-- Implemented collapsible slide-out menu replacing the standalone shop button
-- Created `scripts/slide_menu.gd` with Tween-animated panel slide, toggle button at bottom-right
-- Menu contains: Shop button, Edit Layout button, separator, and settings placeholder
-- Toggle button always visible at bottom-right above taskbar; panel slides left on open
-- Clicking outside menu or toggle button again closes it
-- Passthrough polygon updated to include toggle button (always) and panel (when open)
-- Old standalone ShopButton node removed from main.tscn
-- Files changed: `scripts/slide_menu.gd` (new), `scripts/main.gd`, `scenes/main.tscn`
-- **Learnings for future iterations:**
-  - Slide menu uses `setup(floor_y)` to position itself — must be called after `_compute_floor_y()`
-  - `get_toggle_rect()` / `get_panel_rect()` pattern is useful for passthrough — any new UI element that needs passthrough inclusion should expose similar helpers
-  - Tween animation: `create_tween()` on the node, kill existing tween before starting new one to avoid conflicts
-  - `mouse_filter = MOUSE_FILTER_IGNORE` on the parent Control lets child buttons still receive input while the Control itself doesn't block clicks
-  - Manual browser verification needed — no Godot binary available
----
-
-## 2026-03-13 - US-015
-- Implemented furniture placement mode: after purchasing furniture, shop closes and a semi-transparent ghost preview follows the mouse cursor constrained to floor Y and screen bounds
-- Left-click confirms placement, right-click or Escape cancels and refunds coins
-- Passthrough is fully disabled during placement mode so the entire window captures input
-- Added `_spawn_furniture_at()` to spawn furniture at a specific position and save immediately
-- Added `remove_owned()` method to shop.gd for refund support when placement is cancelled
-- Files changed: `scripts/main.gd`, `scripts/shop.gd`
-- **Learnings for future iterations:**
-  - Placement mode disables passthrough by setting `mouse_passthrough_polygon` to an empty `PackedVector2Array()` — this makes the full window capture all input
-  - `_input()` in main.gd handles placement events and marks them as handled to prevent pet/menu from reacting
-  - When cancelling placement, must both refund coins via `coin_system.add_coins()` AND remove from owned list via `shop_panel.remove_owned()`
-  - `_process()` skips passthrough updates during placement mode to avoid overwriting the disabled state
-  - Manual browser verification needed — no Godot binary available
----
-
-## 2026-03-13 - US-016
-- Implemented furniture repositioning via edit mode triggered from the slide-out menu's "Edit Layout" button
-- Edit mode: highlights all furniture (yellow tint), disables passthrough to capture all input, pauses the pet
-- Furniture can be dragged horizontally along the floor (Y stays fixed), clamped to screen bounds
-- Overlap detection prevents furniture from being dragged on top of other pieces
-- Escape key or clicking "Edit Layout" again exits edit mode
-- Positions saved to save_data.json on exit from edit mode
-- Added `paused` flag to pet.gd — when true, `_process()` returns early (pet stays IDLE)
-- Files changed: `scripts/main.gd`, `scripts/pet.gd`
-- **Learnings for future iterations:**
-  - Edit mode reuses the same passthrough-disable pattern as placement mode (`PackedVector2Array()` + skip `_update_passthrough()` in `_process()`)
-  - Furniture drag uses offset tracking (`_edit_drag_offset_x`) to prevent the piece from snapping to cursor center
-  - Overlap detection compares horizontal extents of all furniture pieces — only X matters since all furniture sits at the same floor Y
-  - Pet pausing is a simple `paused` bool — `_process()` early-returns, so the pet stays in whatever state it was in (forced to IDLE on enter)
-  - `_input()` priority: edit mode is checked first, then placement mode — both return early to prevent other handlers from processing
-  - Manual browser verification needed — no Godot binary available
----
-
-## 2026-03-13 - US-017
-- Pet now stops immediately (transitions to IDLE) when the interaction menu opens, including from FALLING state (previously only WALKING was handled)
-- Velocity reset on menu open prevents pet from resuming motion if it was falling
-- When Feed/Play interaction is selected, pet enters INTERACTING state with a 0.3s bounce animation (previously only bounced without state change)
-- `menu_open` flag prevents idle walk target selection while menu is visible
-- `_on_menu_visibility_changed()` clears `menu_open` when menu closes (click-away or after interaction)
-- Files changed: `scripts/pet.gd`
-- **Learnings for future iterations:**
-  - Signal order in interaction_menu.gd: `interaction_performed` emits BEFORE `visible = false` — so `menu_open` must be cleared explicitly in `_on_interaction_performed()` to avoid the pet staying frozen if INTERACTING state finishes before visibility_changed fires
-  - When stopping a falling pet, always reset `_velocity = Vector2.ZERO` to prevent residual motion
-  - The `visibility_changed` signal on Control nodes fires when `.visible` is changed — useful for tracking menu state without polling
-  - Manual browser verification needed — no Godot binary available
----
-
-## 2026-03-13 - US-018
-- Converted pet from Sprite2D to AnimatedSprite2D with SpriteFrames-based animation system
-- Defined 6 animation states: idle, walk, jump_prep, jump, fall, interact
-- Each animation maps to a configurable sprite sheet row via export vars (idle_row, walk_row, etc.)
-- SpriteFrames built programmatically in `_setup_animations()` using AtlasTexture regions from sprite sheet
-- Placeholder single-frame sprite sheet works (icon.svg) — all animations show the same frame
-- Animation FPS configurable via `animation_fps` export var
-- Added `get_sprite_size()` helper replacing all `texture.get_size()` calls (works for both pet.gd and main.gd)
-- Sprite still flips via scale.x for direction, compatible with bounce tween
-- Files changed: `scripts/pet.gd`, `scripts/main.gd`, `scenes/main.tscn`
-- **Learnings for future iterations:**
-  - AnimatedSprite2D has no `.texture` property — must use `sprite_frames.get_frame_texture(animation, frame)` for size
-  - `get_sprite_size()` is a public method on pet — main.gd calls `pet_sprite.get_sprite_size()` for positioning and passthrough
-  - SpriteFrames can be built programmatically: `SpriteFrames.new()` + `add_animation()` + `add_frame()` with AtlasTexture
-  - When using AtlasTexture for sprite sheet slicing, `.get_size()` returns the region size (correct for frame dimensions)
-  - The scene file (.tscn) uses `sprite_sheet = ExtResource(...)` for the export var, not `texture = ...`
-  - Child `_ready()` fires before parent `_ready()` in Godot — so pet's `_setup_animations()` runs before main.gd accesses `get_sprite_size()`
-  - Manual browser verification needed — no Godot binary available
----
-
-## 2026-03-13 - US-019
-- Added `jumpable: bool` property to FurnitureData resource
-- Added JUMP_PREP and JUMPING states to pet state machine
-- Pet walking on floor near jumpable furniture has a random chance (configurable `jump_probability`) to initiate a jump
-- Jump sequence: stop → jump_prep animation (0.15s pause) → launch with horizontal velocity toward furniture center + vertical impulse → gravity arc → land on furniture surface
-- Pet can also jump DOWN from jumpable furniture when idle (random chance per idle cycle)
-- Jump down uses smaller vertical impulse (40% of full) + random horizontal direction
-- JUMPING state handles landing on target furniture, any other walkable furniture, or the floor
-- Animation switches between "jump" (ascending) and "fall" (descending) during arc
-- Updated table.tres and sofa.tres with `jumpable = true`
-- Export vars for tuning: `jump_probability`, `jump_range`, `jump_vertical_impulse`, `jump_prep_duration`
-- Files changed: `scripts/furniture_data.gd`, `scripts/pet.gd`, `furniture/data/table.tres`, `furniture/data/sofa.tres`
-- **Learnings for future iterations:**
-  - FurnitureData .tres files are in `/workspace/furniture/data/`, not `/workspace/resources/furniture/` as noted in earlier patterns
-  - Jump arc time is estimated as `2 * v0 / gravity` — horizontal velocity is calculated to cover the distance in that time
-  - JUMPING state is separate from FALLING — JUMPING handles horizontal+vertical motion with furniture landing, FALLING is simpler (vertical only from drag/edge)
-  - When adding new PetState values, update: enum, `_process()` match, `_change_state()` enter block
-  - Manual browser verification needed — no Godot binary available
+  - The scene tree expects `$CoinHud` — if renaming, update both main.gd `@onready` and main.tscn node name
+  - `coin_hud.setup()` uses `await get_tree().process_frame` to wait for layout — call it after adding to tree
+  - No Godot binary available in this environment for typecheck — manual code review required
+  - ext_resource in .tscn needs a uid for Godot to auto-generate; omitting uid works but Godot will assign one on next editor open
 ---
