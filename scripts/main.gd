@@ -45,7 +45,7 @@ func _notification(what: int) -> void:
 func _save_state() -> void:
 	var data := {
 		"coins": coin_system.get_coins(),
-		"pet_state": pet_sprite._current_state,
+		"pet_mood": pet_sprite._current_mood,
 	}
 	var json_string := JSON.stringify(data)
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)

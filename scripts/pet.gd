@@ -1,20 +1,25 @@
 extends Sprite2D
 
-## Manages pet visual states based on coin balance.
+## Manages pet movement states and visual mood based on coin balance.
 ## Connects to CoinSystem.coins_changed to update appearance in real time.
 ## Handles click detection to open the interaction menu.
 
-enum PetState { SAD, NEUTRAL, HAPPY }
+# Movement state machine
+enum PetState { IDLE, WALKING, FALLING, DRAGGED, INTERACTING }
+
+# Visual mood (independent of movement state)
+enum PetMood { SAD, NEUTRAL, HAPPY }
 
 ## Coin threshold to enter Neutral state (below this = Sad)
 @export var neutral_threshold: int = 10
 ## Coin threshold to enter Happy state (below this but >= neutral = Neutral)
 @export var happy_threshold: int = 50
 
-var _current_state: PetState = PetState.NEUTRAL
+var current_state: PetState = PetState.IDLE
+var _current_mood: PetMood = PetMood.NEUTRAL
 var _base_scale: Vector2
 
-# Color tints for each state
+# Color tints for each mood
 const COLOR_HAPPY := Color(0.5, 1.0, 0.5, 1.0)   # Green tint
 const COLOR_NEUTRAL := Color(1.0, 1.0, 1.0, 1.0)  # Normal
 const COLOR_SAD := Color(0.6, 0.6, 0.8, 1.0)      # Blue/gray tint
@@ -30,7 +35,50 @@ func _ready() -> void:
 	var menu := get_parent().get_node("InteractionMenu")
 	if menu:
 		menu.interaction_performed.connect(_on_interaction_performed)
-	_update_visual(PetState.NEUTRAL)
+	_update_visual(_current_mood)
+
+
+func _process(delta: float) -> void:
+	match current_state:
+		PetState.IDLE:
+			_process_idle(delta)
+		PetState.WALKING:
+			_process_walking(delta)
+		PetState.FALLING:
+			_process_falling(delta)
+		PetState.DRAGGED:
+			_process_dragged(delta)
+		PetState.INTERACTING:
+			_process_interacting(delta)
+
+
+func _process_idle(_delta: float) -> void:
+	# Placeholder — idle behavior (random walk timer) added in US-005
+	pass
+
+
+func _process_walking(_delta: float) -> void:
+	# Placeholder — walking behavior added in US-005
+	pass
+
+
+func _process_falling(_delta: float) -> void:
+	# Placeholder — gravity/falling added in US-004
+	pass
+
+
+func _process_dragged(_delta: float) -> void:
+	# Placeholder — drag behavior added in US-004
+	pass
+
+
+func _process_interacting(_delta: float) -> void:
+	# Placeholder — furniture interaction added in US-011
+	pass
+
+
+func _change_state(new_state: PetState) -> void:
+	current_state = new_state
 
 
 func _input(event: InputEvent) -> void:
@@ -73,26 +121,26 @@ func _play_bounce() -> void:
 
 
 func _on_coins_changed(new_total: int) -> void:
-	var new_state := _get_state_for_coins(new_total)
-	if new_state != _current_state:
-		_current_state = new_state
-		_update_visual(_current_state)
+	var new_mood := _get_mood_for_coins(new_total)
+	if new_mood != _current_mood:
+		_current_mood = new_mood
+		_update_visual(_current_mood)
 
 
-func _get_state_for_coins(coins: int) -> PetState:
+func _get_mood_for_coins(coins: int) -> PetMood:
 	if coins >= happy_threshold:
-		return PetState.HAPPY
+		return PetMood.HAPPY
 	elif coins >= neutral_threshold:
-		return PetState.NEUTRAL
+		return PetMood.NEUTRAL
 	else:
-		return PetState.SAD
+		return PetMood.SAD
 
 
-func _update_visual(state: PetState) -> void:
-	match state:
-		PetState.HAPPY:
+func _update_visual(mood: PetMood) -> void:
+	match mood:
+		PetMood.HAPPY:
 			modulate = COLOR_HAPPY
-		PetState.NEUTRAL:
+		PetMood.NEUTRAL:
 			modulate = COLOR_NEUTRAL
-		PetState.SAD:
+		PetMood.SAD:
 			modulate = COLOR_SAD
