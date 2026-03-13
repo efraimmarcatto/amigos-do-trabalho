@@ -127,7 +127,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-022 (inventory system). Modifies existing placement mode logic in main.gd. The key change: cancel no longer refunds coins, it stores to inventory. The chest button is an additional explicit way to do the same thing."
     },
     {

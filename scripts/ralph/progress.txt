@@ -127,3 +127,17 @@ Started: Fri Mar 13 14:59:40 PDT 2026
   - When dynamically adding/removing UI during edit mode, use `queue_free()` and `get_node_or_null()` pattern for safe cleanup
   - `slide_menu.set_edit_button_text()` can be used to dynamically update any button label on the slide menu
 ---
+
+## 2026-03-13 - US-026
+- Added chest/inventory button ("📦 To Inventory") visible during placement mode at bottom-center of screen
+- Button styled with blue background, white text, rounded corners
+- Clicking chest button calls `_exit_placement_mode(false)` which stores item to inventory
+- Left-click on chest button area excluded from placement confirmation via `get_global_rect().has_point()` check
+- Right-click and Escape already send to inventory (implemented in US-023) — no refund behavior exists
+- Passthrough already disabled during placement mode (empty polygon), so chest button is clickable
+- Files changed: scripts/main.gd
+- **Learnings for future iterations:**
+  - During placement mode, passthrough is fully disabled — no need to add buttons to passthrough polygon
+  - Use `get_global_rect().has_point()` in `_input` to avoid intercepting clicks meant for dynamically added Buttons
+  - The `_placement_chest_btn` variable follows the same pattern as `_placement_preview` — create in enter, queue_free in exit
+---
