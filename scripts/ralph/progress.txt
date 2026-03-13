@@ -14,6 +14,9 @@ Started: Fri Mar 13 09:16:18 PDT 2026
 - Pet can be paused externally via `pet_sprite.paused = true` — `_process()` early-returns, keeping pet frozen in current state
 - AnimatedSprite2D uses `sprite_frames` not `texture` — use `get_sprite_size()` helper for frame dimensions instead of `texture.get_size()`
 - Animation states: idle, walk, jump_prep, jump, fall, interact — played via `_play_anim()` in `_change_state()`
+- Pet jump states: JUMP_PREP (pause before launch) → JUMPING (arc with gravity) — `_jump_target_furniture` tracks the destination
+- FurnitureData `jumpable` flag controls whether pet can jump onto furniture; jumpable implies walkable
+- Furniture .tres resources live in `/workspace/furniture/data/`, NOT `/workspace/resources/furniture/`
 ---
 
 ## 2026-03-13 - US-012
@@ -121,5 +124,25 @@ Started: Fri Mar 13 09:16:18 PDT 2026
   - When using AtlasTexture for sprite sheet slicing, `.get_size()` returns the region size (correct for frame dimensions)
   - The scene file (.tscn) uses `sprite_sheet = ExtResource(...)` for the export var, not `texture = ...`
   - Child `_ready()` fires before parent `_ready()` in Godot — so pet's `_setup_animations()` runs before main.gd accesses `get_sprite_size()`
+  - Manual browser verification needed — no Godot binary available
+---
+
+## 2026-03-13 - US-019
+- Added `jumpable: bool` property to FurnitureData resource
+- Added JUMP_PREP and JUMPING states to pet state machine
+- Pet walking on floor near jumpable furniture has a random chance (configurable `jump_probability`) to initiate a jump
+- Jump sequence: stop → jump_prep animation (0.15s pause) → launch with horizontal velocity toward furniture center + vertical impulse → gravity arc → land on furniture surface
+- Pet can also jump DOWN from jumpable furniture when idle (random chance per idle cycle)
+- Jump down uses smaller vertical impulse (40% of full) + random horizontal direction
+- JUMPING state handles landing on target furniture, any other walkable furniture, or the floor
+- Animation switches between "jump" (ascending) and "fall" (descending) during arc
+- Updated table.tres and sofa.tres with `jumpable = true`
+- Export vars for tuning: `jump_probability`, `jump_range`, `jump_vertical_impulse`, `jump_prep_duration`
+- Files changed: `scripts/furniture_data.gd`, `scripts/pet.gd`, `furniture/data/table.tres`, `furniture/data/sofa.tres`
+- **Learnings for future iterations:**
+  - FurnitureData .tres files are in `/workspace/furniture/data/`, not `/workspace/resources/furniture/` as noted in earlier patterns
+  - Jump arc time is estimated as `2 * v0 / gravity` — horizontal velocity is calculated to cover the distance in that time
+  - JUMPING state is separate from FALLING — JUMPING handles horizontal+vertical motion with furniture landing, FALLING is simpler (vertical only from drag/edge)
+  - When adding new PetState values, update: enum, `_process()` match, `_change_state()` enter block
   - Manual browser verification needed — no Godot binary available
 ---

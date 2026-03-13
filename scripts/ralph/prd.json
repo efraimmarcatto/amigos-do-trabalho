@@ -149,7 +149,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "FurnitureData gains jumpable: bool. Pet walking logic checks nearby jumpable furniture and probabilistically initiates jump arc. Jump uses horizontal speed + vertical impulse + gravity. Depends on US-018 for animation states."
     }
   ]
