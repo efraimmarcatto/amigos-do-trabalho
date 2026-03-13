@@ -1,0 +1,11 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# GDExtension build artifacts
+gdextension/bin/*.so
+gdextension/bin/*.dll
+gdextension/bin/*.dylib
+gdextension/bin/*.obj
+gdextension/bin/*.o
+gdextension/godot-cpp/

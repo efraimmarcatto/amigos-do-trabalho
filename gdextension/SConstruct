@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+"""SConstruct for GlobalInput GDExtension."""
+
+import os
+import sys
+
+# Try to detect godot-cpp path
+godot_cpp_path = os.environ.get("GODOT_CPP_PATH", "godot-cpp")
+
+env = SConscript(os.path.join(godot_cpp_path, "SConstruct"))
+
+# Add source files
+env.Append(CPPPATH=["src/"])
+
+sources = Glob("src/*.cpp")
+
+# Platform-specific settings
+if env["platform"] == "windows":
+    env.Append(LIBS=["user32"])
+elif env["platform"] == "linux":
+    env.Append(LIBS=["X11", "Xtst"])
+
+# Build the shared library
+library = env.SharedLibrary(
+    target="bin/libglobal_input{}{}".format(env["suffix"], env["SHLIBSUFFIX"]),
+    source=sources,
+)
+
+Default(library)

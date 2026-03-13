@@ -1,0 +1,57 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Texture2D" path="res://icon.svg" id="2_icon"]
+[ext_resource type="Script" path="res://scripts/coin_system.gd" id="3_coin"]
+[ext_resource type="Script" path="res://scripts/pet.gd" id="4_pet"]
+[ext_resource type="Script" path="res://scripts/interaction_menu.gd" id="5_menu"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="PetSprite" type="Sprite2D" parent="."]
+position = Vector2(200, 200)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("2_icon")
+script = ExtResource("4_pet")
+
+[node name="CoinSystem" type="Node" parent="."]
+script = ExtResource("3_coin")
+
+[node name="CoinLabel" type="Label" parent="."]
+offset_left = 160.0
+offset_top = 260.0
+offset_right = 240.0
+offset_bottom = 280.0
+horizontal_alignment = 1
+text = "Coins: 0"
+
+[node name="InteractionMenu" type="PanelContainer" parent="."]
+visible = false
+offset_left = 240.0
+offset_top = 155.0
+offset_right = 370.0
+offset_bottom = 245.0
+script = ExtResource("5_menu")
+
+[node name="VBox" type="VBoxContainer" parent="InteractionMenu"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="InteractionMenu/VBox"]
+layout_mode = 2
+text = "Pet Actions"
+horizontal_alignment = 1
+
+[node name="FeedButton" type="Button" parent="InteractionMenu/VBox"]
+layout_mode = 2
+text = "Feed (10 coins)"
+
+[node name="PlayButton" type="Button" parent="InteractionMenu/VBox"]
+layout_mode = 2
+text = "Play (15 coins)"
