@@ -215,9 +215,11 @@ func _update_passthrough() -> void:
 		return
 
 	# Merge all rects into one bounding box
-	var merged := rects[0]
+	# Use .abs() on every Rect2 to guarantee positive dimensions before merging.
+	# Rect2 with negative width/height can occur when UI elements are at screen edges.
+	var merged := rects[0].abs()
 	for i in range(1, rects.size()):
-		merged = merged.merge(rects[i])
+		merged = merged.merge(rects[i].abs())
 
 	var polygon: PackedVector2Array = PackedVector2Array([
 		merged.position,
