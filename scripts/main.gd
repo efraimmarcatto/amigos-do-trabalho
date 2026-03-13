@@ -43,6 +43,9 @@ func _ready() -> void:
 	shop_button.pressed.connect(_on_shop_button_pressed)
 	shop_panel.furniture_purchased.connect(_on_furniture_purchased)
 
+	# Share furniture nodes dict with pet for surface detection
+	pet_sprite._furniture_nodes = _furniture_nodes
+
 	# Load saved state (also spawns furniture)
 	_load_state()
 
@@ -121,7 +124,7 @@ func _on_furniture_purchased(furniture_id: String) -> void:
 func _spawn_furniture(furniture_id: String) -> void:
 	if _furniture_nodes.has(furniture_id):
 		return
-	var fdata := shop_panel.get_furniture_data(furniture_id)
+	var fdata = shop_panel.get_furniture_data(furniture_id)
 	if not fdata:
 		return
 
@@ -160,7 +163,7 @@ func _default_furniture_position(furniture_id: String) -> Vector2:
 	x = clampf(x, 100.0, screen_w - 100.0)
 
 	# Place at screen bottom, accounting for furniture texture height
-	var fdata := shop_panel.get_furniture_data(furniture_id)
+	var fdata = shop_panel.get_furniture_data(furniture_id)
 	var tex_h := 128.0  # fallback
 	if fdata and fdata.texture:
 		tex_h = fdata.texture.get_size().y

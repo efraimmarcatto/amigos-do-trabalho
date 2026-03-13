@@ -34,6 +34,10 @@ const DRAG_THRESHOLD := 4.0
 var _idle_timer: float = 0.0
 var _walk_target_x: float = 0.0
 
+# Furniture surface tracking
+var _furniture_nodes: Dictionary = {}  # Set by main.gd — keyed by furniture_id
+var _current_surface: Furniture = null  # null = screen floor
+
 # Color tints for each mood
 const COLOR_HAPPY := Color(0.5, 1.0, 0.5, 1.0)   # Green tint
 const COLOR_NEUTRAL := Color(1.0, 1.0, 1.0, 1.0)  # Normal
@@ -71,11 +75,16 @@ func _process(delta: float) -> void:
 func _process_idle(delta: float) -> void:
 	_idle_timer -= delta
 	if _idle_timer <= 0.0:
-		# Pick a random walk target within screen bounds
-		var screen_w := float(DisplayServer.screen_get_size().x)
-		var half_w := (texture.get_size().x * scale.x) / 2.0
-		var min_x := half_w
-		var max_x := screen_w - half_w
+		var half_w := (texture.get_size().x * scale.abs().x) / 2.0
+		var min_x: float
+		var max_x: float
+		if _current_surface:
+			min_x = _current_surface.get_left_x() + half_w
+			max_x = _current_surface.get_right_x() - half_w
+		else:
+			var screen_w := float(DisplayServer.screen_get_size().x)
+			min_x = half_w
+			max_x = screen_w - half_w
 		var direction := 1.0 if randf() > 0.5 else -1.0
 		var distance := randf_range(50.0, 300.0)
 		_walk_target_x = clampf(position.x + direction * distance, min_x, max_x)
@@ -93,6 +102,58 @@ func _process_walking(_delta: float) -> void:
 
 	position.x += dir * walk_speed * _delta
 
+	var half_w := (texture.get_size().x * scale.abs().x) / 2.0
+
+	# Check furniture surface edge constraints
+	if _current_surface:
+		var left_edge := _current_surface.get_left_x() + half_w
+		var right_edge := _current_surface.get_right_x() - half_w
+		if position.x <= left_edge or position.x >= right_edge:
+			if _current_surface.data.can_fall_off_edge:
+				# Walk off the edge and fall
+				_current_surface = null
+				_velocity = Vector2.ZERO
+				_change_state(PetState.FALLING)
+				return
+			else:
+				# Treat edge as wall — stop and go idle
+				position.x = clampf(position.x, left_edge, right_edge)
+				scale.x = absf(_base_scale.x)
+				_change_state(PetState.IDLE)
+				return
+	else:
+		# On screen floor — check screen bounds
+		var screen_w := float(DisplayServer.screen_get_size().x)
+		position.x = clampf(position.x, half_w, screen_w - half_w)
+
+	# Check for non-walkable furniture as walls (on screen floor only)
+	if not _current_surface:
+		var pet_half_h := (texture.get_size().y * scale.abs().y) / 2.0
+		var pet_bottom := position.y + pet_half_h
+		for fid in _furniture_nodes:
+			var fnode: Furniture = _furniture_nodes[fid]
+			if not fnode or not fnode.data or not fnode.data.texture:
+				continue
+			if fnode.data.walkable:
+				continue
+			# Check if pet collides horizontally with this non-walkable furniture
+			var f_left := fnode.get_left_x()
+			var f_right := fnode.get_right_x()
+			var f_top := fnode.global_position.y - fnode.data.texture.get_size().y / 2.0
+			var f_bottom := fnode.global_position.y + fnode.data.texture.get_size().y / 2.0
+			# Only block if pet overlaps vertically with the furniture
+			if pet_bottom > f_top and position.y - pet_half_h < f_bottom:
+				if dir > 0.0 and position.x + half_w > f_left and position.x < f_left:
+					position.x = f_left - half_w
+					scale.x = absf(_base_scale.x)
+					_change_state(PetState.IDLE)
+					return
+				elif dir < 0.0 and position.x - half_w < f_right and position.x > f_right:
+					position.x = f_right + half_w
+					scale.x = absf(_base_scale.x)
+					_change_state(PetState.IDLE)
+					return
+
 	# Check if reached target
 	if (dir > 0.0 and position.x >= _walk_target_x) or (dir < 0.0 and position.x <= _walk_target_x):
 		position.x = _walk_target_x
@@ -101,16 +162,49 @@ func _process_walking(_delta: float) -> void:
 
 
 func _process_falling(delta: float) -> void:
+	var prev_y := position.y
 	_velocity.y += gravity * delta
 	position += _velocity * delta
 
+	var half_h := (texture.get_size().y * scale.abs().y) / 2.0
+	var pet_bottom := position.y + half_h
+	var half_w := (texture.get_size().x * scale.abs().x) / 2.0
+
+	# Check walkable furniture surfaces — find the highest one below us
+	var best_surface: Furniture = null
+	var best_surface_y: float = INF
+	for fid in _furniture_nodes:
+		var fnode: Furniture = _furniture_nodes[fid]
+		if not fnode or not fnode.data or not fnode.data.texture:
+			continue
+		if not fnode.data.walkable:
+			continue
+		var surf_y := fnode.get_surface_y()
+		var f_left := fnode.get_left_x()
+		var f_right := fnode.get_right_x()
+		# Pet center X must be within the furniture X range
+		if position.x >= f_left + half_w and position.x <= f_right - half_w:
+			# Only land if we're crossing this surface (were above, now at or below)
+			var land_y := surf_y - half_h
+			if prev_y <= land_y and position.y >= land_y:
+				if land_y < best_surface_y:
+					best_surface_y = land_y
+					best_surface = fnode
+
+	if best_surface:
+		position.y = best_surface_y
+		_velocity = Vector2.ZERO
+		_current_surface = best_surface
+		_change_state(PetState.IDLE)
+		return
+
 	# Land on screen bottom
-	var screen_h := DisplayServer.screen_get_size().y
-	var half_h := (texture.get_size().y * scale.y) / 2.0
+	var screen_h := float(DisplayServer.screen_get_size().y)
 	var floor_y := screen_h - half_h
 	if position.y >= floor_y:
 		position.y = floor_y
 		_velocity = Vector2.ZERO
+		_current_surface = null
 		_change_state(PetState.IDLE)
 
 
@@ -136,6 +230,11 @@ func _change_state(new_state: PetState) -> void:
 	# Enter state setup
 	if new_state == PetState.DRAGGED:
 		rotation_degrees = 5.0
+		_current_surface = null
+	elif new_state == PetState.FALLING:
+		# When entering FALLING from drag, clear surface (will detect new one)
+		if old_state == PetState.DRAGGED:
+			_current_surface = null
 	elif new_state == PetState.IDLE:
 		_idle_timer = randf_range(1.0, 5.0)
 
