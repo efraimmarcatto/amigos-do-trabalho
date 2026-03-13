@@ -50,7 +50,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "This refactors pet.gd to support the new movement features (drag, fall, walk) added in subsequent stories. Keep existing modulate color tinting and interaction menu logic working."
     },
     {

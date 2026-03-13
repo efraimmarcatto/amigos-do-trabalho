@@ -7,7 +7,8 @@ Started: Thu Mar 12 21:45:43 PDT 2026
 - The .gitconfig has gpg.format that must be set to "openpgp" (was empty/broken)
 - Project uses Godot 4.6 with GL Compatibility renderer and transparent viewport
 - Save data stored at user://save_data.json — extend this for future features
-- Pet visual states (SAD/NEUTRAL/HAPPY) use modulate color tinting on the Sprite2D
+- Pet visual states (SAD/NEUTRAL/HAPPY) use modulate color tinting on the Sprite2D — now called PetMood (separate from PetState movement enum)
+- pet.gd uses PetState enum (IDLE, WALKING, FALLING, DRAGGED, INTERACTING) for movement; _process() delegates to _process_<state>() handlers
 - main.gd is a Control node that manages passthrough polygon for click-through transparency
 - _update_passthrough() collects Rect2 from all visible elements and merges them — add new UI elements there
 - Window is set to fullscreen at runtime via DisplayServer.screen_get_size() in main.gd _ready()
@@ -39,4 +40,18 @@ Started: Thu Mar 12 21:45:43 PDT 2026
   - _update_passthrough() uses Rect2.merge() to combine multiple element rects into one bounding polygon
   - project.godot window_width_override/window_height_override set the actual window size separately from viewport
   - No Godot binary available in CI — typecheck must be verified manually or in a Godot-enabled environment
+---
+
+## 2026-03-12 - US-003
+- Added PetState movement enum (IDLE, WALKING, FALLING, DRAGGED, INTERACTING) to pet.gd
+- Renamed old PetState (mood) enum to PetMood to separate visual mood from movement state
+- Added _process() with state dispatch to _process_idle(), _process_walking(), _process_falling(), _process_dragged(), _process_interacting()
+- Added _change_state() helper method for state transitions
+- Updated main.gd save to use _current_mood instead of _current_state
+- Files changed: scripts/pet.gd, scripts/main.gd
+- **Learnings for future iterations:**
+  - PetMood (SAD/NEUTRAL/HAPPY) is independent of PetState (IDLE/WALKING/etc.) — mood is coin-driven, state is movement-driven
+  - main.gd _save_state() references pet_sprite._current_mood — keep in sync if renaming
+  - _load_state() doesn't actually restore mood (only coins), so the save key rename is safe
+  - State handler methods are placeholders — US-004/005/011 will fill them in
 ---
