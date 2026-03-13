@@ -10,7 +10,7 @@ const FURNITURE_SCENE := preload("res://scenes/furniture.tscn")
 
 @onready var pet_sprite: AnimatedSprite2D = $PetSprite
 @onready var coin_system: Node = $CoinSystem
-@onready var coin_label: Label = $CoinLabel
+@onready var coin_hud: PanelContainer = $CoinHud
 @onready var interaction_menu: PanelContainer = $InteractionMenu
 @onready var slide_menu: Control = $SlideMenu
 @onready var shop_panel: PanelContainer = $ShopPanel
@@ -58,6 +58,8 @@ func _ready() -> void:
 	slide_menu.setup(floor_y)
 	slide_menu.shop_requested.connect(_on_shop_button_pressed)
 	slide_menu.edit_layout_requested.connect(_on_edit_layout_requested)
+	slide_menu.menu_opened.connect(_on_menu_opened)
+	slide_menu.menu_closed.connect(_on_menu_closed)
 	shop_panel.furniture_purchased.connect(_on_furniture_purchased)
 
 	# Share furniture nodes dict and floor_y with pet
@@ -68,9 +70,9 @@ func _ready() -> void:
 	var pet_half_h = (pet_sprite.get_sprite_size().y * pet_sprite.scale.abs().y) / 2.0
 	pet_sprite.position.y = floor_y - pet_half_h
 
-	# Position coin label just above the floor
-	coin_label.offset_top = floor_y + 2.0
-	coin_label.offset_bottom = floor_y + 22.0
+	# Set up coin HUD to the left of the toggle button
+	var toggle_rect := slide_menu.get_toggle_rect()
+	coin_hud.setup(floor_y, toggle_rect.position.x, toggle_rect.size.x, slide_menu.panel_height)
 
 	# Load saved state (also spawns furniture)
 	_load_state()
@@ -136,7 +138,15 @@ func _load_state() -> void:
 
 
 func _on_coins_changed(new_total: int) -> void:
-	coin_label.text = "Coins: " + str(new_total)
+	coin_hud.update_coins(new_total)
+
+
+func _on_menu_opened() -> void:
+	coin_hud.animate_up()
+
+
+func _on_menu_closed() -> void:
+	coin_hud.animate_down()
 
 
 func _on_shop_button_pressed() -> void:
@@ -357,9 +367,9 @@ func _update_passthrough() -> void:
 		var half_size: Vector2 = tex_size / 2.0
 		rects.append(Rect2(pet_pos - half_size, tex_size))
 
-	# Include coin label rect
-	if coin_label and coin_label.visible:
-		rects.append(coin_label.get_global_rect())
+	# Include coin HUD rect
+	if coin_hud and coin_hud.visible:
+		rects.append(coin_hud.get_rect())
 
 	# Include interaction menu when visible
 	if interaction_menu and interaction_menu.visible:

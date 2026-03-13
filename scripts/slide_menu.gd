@@ -6,6 +6,8 @@ extends Control
 
 signal shop_requested
 signal edit_layout_requested
+signal menu_opened
+signal menu_closed
 
 ## Duration of the slide animation in seconds.
 @export var slide_duration: float = 0.3
@@ -78,6 +80,7 @@ func open_menu() -> void:
 		return
 	_is_open = true
 	_animate_panel(_get_panel_open_x())
+	menu_opened.emit()
 
 
 func close_menu() -> void:
@@ -85,6 +88,7 @@ func close_menu() -> void:
 		return
 	_is_open = false
 	_animate_panel(_get_panel_closed_x())
+	menu_closed.emit()
 
 
 func _animate_panel(target_x: float) -> void:
