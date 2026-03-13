@@ -7,6 +7,7 @@ Started: Fri Mar 13 09:16:18 PDT 2026
 - GDScript files live in `/workspace/scripts/`, scenes in `/workspace/scenes/`
 - No Godot binary is available in this dev environment — manual typecheck verification needed
 - Furniture system: FurnitureData resources in `/workspace/resources/furniture/`, Furniture scene at `/workspace/scenes/furniture.tscn`
+- Floor Y is computed from `DisplayServer.screen_get_usable_rect()` in main.gd and shared to pet via `pet_sprite.floor_y` — all ground-level logic must use `floor_y` not `screen_get_size().y`
 ---
 
 ## 2026-03-13 - US-012
@@ -17,4 +18,18 @@ Started: Fri Mar 13 09:16:18 PDT 2026
   - `.abs()` normalizes the Rect2 to always have positive dimensions
   - The passthrough polygon is rebuilt every `_process()` frame, so the fix applies continuously
   - No Godot binary in environment — typecheck cannot be run automatically
+---
+
+## 2026-03-13 - US-013
+- Aligned game floor to taskbar top edge using `DisplayServer.screen_get_usable_rect()`
+- Added `_compute_floor_y()` in main.gd that computes floor Y from usable rect with fallback to full screen height
+- Pet position, furniture default placement, and coin label all repositioned dynamically to floor_y
+- Pet falling logic in pet.gd now lands at `floor_y` instead of `screen_get_size().y`
+- Files changed: `scripts/main.gd`, `scripts/pet.gd`
+- **Learnings for future iterations:**
+  - `DisplayServer.screen_get_usable_rect()` returns a Rect2i excluding OS-reserved areas (taskbar, dock, etc.)
+  - Floor Y = `usable.position.y + usable.size.y` — this is the bottom of the usable area (top of taskbar)
+  - `floor_y` is shared from main.gd to pet.gd as a public var — future stories should use this instead of raw screen height
+  - Pet starting position in the .tscn is overridden at runtime by main.gd `_ready()`, so the scene value doesn't matter
+  - Coin label offset_top/offset_bottom are set dynamically — future UI elements near the floor should follow this pattern
 ---

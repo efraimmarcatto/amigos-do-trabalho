@@ -34,7 +34,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Floor Y = DisplayServer.screen_get_usable_rect().position.y + DisplayServer.screen_get_usable_rect().size.y. This affects pet landing, furniture placement, and walking constraints. Must be done before UI stories so menu positioning respects usable rect."
     },
     {
