@@ -16,6 +16,8 @@ enum PetMood { SAD, NEUTRAL, HAPPY }
 @export var happy_threshold: int = 50
 ## Gravity acceleration in pixels/sec²
 @export var gravity: float = 980.0
+## Walking speed in pixels/sec
+@export var walk_speed: float = 120.0
 
 var current_state: PetState = PetState.IDLE
 var _current_mood: PetMood = PetMood.NEUTRAL
@@ -27,6 +29,10 @@ var _mouse_pressed: bool = false
 var _mouse_press_pos: Vector2 = Vector2.ZERO
 var _is_dragging: bool = false
 const DRAG_THRESHOLD := 4.0
+
+# Idle walking
+var _idle_timer: float = 0.0
+var _walk_target_x: float = 0.0
 
 # Color tints for each mood
 const COLOR_HAPPY := Color(0.5, 1.0, 0.5, 1.0)   # Green tint
@@ -45,6 +51,7 @@ func _ready() -> void:
 	if menu:
 		menu.interaction_performed.connect(_on_interaction_performed)
 	_update_visual(_current_mood)
+	_idle_timer = randf_range(1.0, 5.0)
 
 
 func _process(delta: float) -> void:
@@ -61,14 +68,36 @@ func _process(delta: float) -> void:
 			_process_interacting(delta)
 
 
-func _process_idle(_delta: float) -> void:
-	# Placeholder — idle behavior (random walk timer) added in US-005
-	pass
+func _process_idle(delta: float) -> void:
+	_idle_timer -= delta
+	if _idle_timer <= 0.0:
+		# Pick a random walk target within screen bounds
+		var screen_w := float(DisplayServer.screen_get_size().x)
+		var half_w := (texture.get_size().x * scale.x) / 2.0
+		var min_x := half_w
+		var max_x := screen_w - half_w
+		var direction := 1.0 if randf() > 0.5 else -1.0
+		var distance := randf_range(50.0, 300.0)
+		_walk_target_x = clampf(position.x + direction * distance, min_x, max_x)
+		# Don't walk if target is basically where we are
+		if absf(_walk_target_x - position.x) > 2.0:
+			_change_state(PetState.WALKING)
+		else:
+			_idle_timer = randf_range(1.0, 5.0)
 
 
 func _process_walking(_delta: float) -> void:
-	# Placeholder — walking behavior added in US-005
-	pass
+	var dir := signf(_walk_target_x - position.x)
+	# Flip sprite horizontally based on direction
+	scale.x = absf(_base_scale.x) * dir if dir != 0.0 else scale.x
+
+	position.x += dir * walk_speed * _delta
+
+	# Check if reached target
+	if (dir > 0.0 and position.x >= _walk_target_x) or (dir < 0.0 and position.x <= _walk_target_x):
+		position.x = _walk_target_x
+		scale.x = absf(_base_scale.x)
+		_change_state(PetState.IDLE)
 
 
 func _process_falling(delta: float) -> void:
@@ -98,11 +127,17 @@ func _change_state(new_state: PetState) -> void:
 	var old_state := current_state
 	current_state = new_state
 
-	# Enter/exit visual feedback for DRAGGED state
+	# Exit visual cleanup
+	if old_state == PetState.DRAGGED:
+		rotation_degrees = 0.0
+	if old_state == PetState.WALKING:
+		scale.x = absf(_base_scale.x)
+
+	# Enter state setup
 	if new_state == PetState.DRAGGED:
 		rotation_degrees = 5.0
-	elif old_state == PetState.DRAGGED:
-		rotation_degrees = 0.0
+	elif new_state == PetState.IDLE:
+		_idle_timer = randf_range(1.0, 5.0)
 
 
 func _input(event: InputEvent) -> void:
@@ -141,7 +176,7 @@ func _input(event: InputEvent) -> void:
 func _is_point_on_pet(point: Vector2) -> bool:
 	if not texture:
 		return false
-	var tex_size: Vector2 = texture.get_size() * scale
+	var tex_size: Vector2 = texture.get_size() * scale.abs()
 	var half: Vector2 = tex_size / 2.0
 	var rect := Rect2(global_position - half, tex_size)
 	return rect.has_point(point)
@@ -154,7 +189,7 @@ func _toggle_menu() -> void:
 	if menu.visible:
 		menu.visible = false
 	else:
-		var tex_size: Vector2 = texture.get_size() * scale
+		var tex_size: Vector2 = texture.get_size() * scale.abs()
 		var menu_pos := Vector2(global_position.x + tex_size.x / 2.0 + 10, global_position.y - tex_size.y / 2.0)
 		menu.show_menu(menu_pos)
 
