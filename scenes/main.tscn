@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://dpvfgdkx7o4i0" path="res://scripts/coin_system.gd" id="3_coin"]
 [ext_resource type="Script" uid="uid://cs3du000k83pc" path="res://scripts/pet.gd" id="4_pet"]
 [ext_resource type="Script" uid="uid://buwscas5p16ym" path="res://scripts/interaction_menu.gd" id="5_menu"]
-[ext_resource type="Script" path="res://scripts/shop.gd" id="6_shop"]
+[ext_resource type="Script" uid="uid://bqf6tu0fytkmq" path="res://scripts/shop.gd" id="6_shop"]
 
 [node name="Main" type="Control" unique_id=222507356]
 layout_mode = 3
@@ -59,7 +59,7 @@ text = "Feed (10 coins)"
 layout_mode = 2
 text = "Play (15 coins)"
 
-[node name="ShopButton" type="Button" parent="."]
+[node name="ShopButton" type="Button" parent="." unique_id=315961158]
 layout_mode = 0
 offset_left = 10.0
 offset_top = 10.0
@@ -67,7 +67,7 @@ offset_right = 90.0
 offset_bottom = 40.0
 text = "Shop"
 
-[node name="ShopPanel" type="PanelContainer" parent="."]
+[node name="ShopPanel" type="PanelContainer" parent="." unique_id=759142325]
 visible = false
 layout_mode = 0
 offset_left = 10.0
@@ -76,23 +76,23 @@ offset_right = 350.0
 offset_bottom = 400.0
 script = ExtResource("6_shop")
 
-[node name="VBox" type="VBoxContainer" parent="ShopPanel"]
+[node name="VBox" type="VBoxContainer" parent="ShopPanel" unique_id=561217778]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="ShopPanel/VBox"]
+[node name="Title" type="Label" parent="ShopPanel/VBox" unique_id=1388983363]
 layout_mode = 2
 text = "Furniture Shop"
 horizontal_alignment = 1
 
-[node name="CloseButton" type="Button" parent="ShopPanel/VBox"]
+[node name="CloseButton" type="Button" parent="ShopPanel/VBox" unique_id=1159981069]
 layout_mode = 2
 text = "Close"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="ShopPanel/VBox"]
+[node name="ScrollContainer" type="ScrollContainer" parent="ShopPanel/VBox" unique_id=594806675]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Items" type="VBoxContainer" parent="ShopPanel/VBox/ScrollContainer"]
+[node name="Items" type="VBoxContainer" parent="ShopPanel/VBox/ScrollContainer" unique_id=1588207456]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
