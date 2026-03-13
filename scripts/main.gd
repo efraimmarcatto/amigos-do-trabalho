@@ -34,6 +34,9 @@ var _edit_mode: bool = false
 var _edit_dragging_id: String = ""
 var _edit_drag_offset_x: float = 0.0
 
+# Chest button shown during placement mode
+var _placement_chest_btn: Button = null
+
 func _ready() -> void:
 	# Make the viewport background transparent
 	get_viewport().transparent_bg = true
@@ -234,6 +237,27 @@ func _enter_placement_mode(furniture_id: String) -> void:
 			floor_y - tex_h / 2.0
 		)
 
+	# Create chest/inventory button for storing item during placement
+	_placement_chest_btn = Button.new()
+	_placement_chest_btn.text = "📦 To Inventory"
+	_placement_chest_btn.size = Vector2(140, 36)
+	var screen_w := float(DisplayServer.screen_get_size().x)
+	_placement_chest_btn.position = Vector2(screen_w / 2.0 - 70.0, floor_y - 60.0)
+	var chest_style := StyleBoxFlat.new()
+	chest_style.bg_color = Color(0.2, 0.45, 0.7, 0.9)
+	chest_style.corner_radius_top_left = 6
+	chest_style.corner_radius_top_right = 6
+	chest_style.corner_radius_bottom_left = 6
+	chest_style.corner_radius_bottom_right = 6
+	chest_style.content_margin_left = 8
+	chest_style.content_margin_right = 8
+	chest_style.content_margin_top = 4
+	chest_style.content_margin_bottom = 4
+	_placement_chest_btn.add_theme_stylebox_override("normal", chest_style)
+	_placement_chest_btn.add_theme_color_override("font_color", Color.WHITE)
+	_placement_chest_btn.pressed.connect(_on_placement_chest_pressed)
+	add_child(_placement_chest_btn)
+
 	# Disable passthrough so full window captures input
 	get_window().mouse_passthrough_polygon = PackedVector2Array()
 
@@ -254,7 +278,16 @@ func _exit_placement_mode(confirmed: bool) -> void:
 	if _placement_preview:
 		_placement_preview.queue_free()
 		_placement_preview = null
+	# Clean up chest button
+	if _placement_chest_btn:
+		_placement_chest_btn.queue_free()
+		_placement_chest_btn = null
 	_placement_furniture_id = ""
+
+
+func _on_placement_chest_pressed() -> void:
+	## Chest button pressed during placement — store item to inventory.
+	_exit_placement_mode(false)
 
 
 func _spawn_furniture_at(furniture_id: String, pos: Vector2) -> void:
@@ -560,6 +593,9 @@ func _input(event: InputEvent) -> void:
 
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT:
+			# Don't intercept clicks on the chest button — let Button handle them
+			if _placement_chest_btn and _placement_chest_btn.get_global_rect().has_point(event.position):
+				return
 			# Confirm placement
 			_exit_placement_mode(true)
 			get_viewport().set_input_as_handled()
