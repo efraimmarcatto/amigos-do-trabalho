@@ -14,6 +14,7 @@ const FURNITURE_SCENE := preload("res://scenes/furniture.tscn")
 @onready var interaction_menu: PanelContainer = $InteractionMenu
 @onready var slide_menu: Control = $SlideMenu
 @onready var shop_panel: PanelContainer = $ShopPanel
+@onready var inventory_panel: PanelContainer = $InventoryPanel
 @onready var inventory_system: Node = $InventorySystem
 
 # Spawned furniture instances keyed by furniture_id
@@ -58,6 +59,7 @@ func _ready() -> void:
 	# Set up slide menu and connect signals
 	slide_menu.setup(floor_y)
 	slide_menu.shop_requested.connect(_on_shop_button_pressed)
+	slide_menu.inventory_requested.connect(_on_inventory_button_pressed)
 	slide_menu.edit_layout_requested.connect(_on_edit_layout_requested)
 	slide_menu.menu_opened.connect(_on_menu_opened)
 	slide_menu.menu_closed.connect(_on_menu_closed)
@@ -65,6 +67,10 @@ func _ready() -> void:
 
 	# Set up shop panel adjacent to menu
 	shop_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
+
+	# Set up inventory panel adjacent to menu
+	inventory_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
+	inventory_panel.place_requested.connect(_on_inventory_place_requested)
 
 	# Share furniture nodes dict and floor_y with pet
 	pet_sprite._furniture_nodes = _furniture_nodes
@@ -165,10 +171,15 @@ func _on_menu_closed() -> void:
 
 
 func _handle_menu_close() -> void:
-	## Intercepts menu close: if shop is open, close shop first, then close menu.
+	## Intercepts menu close: if a panel is open, close it first, then close menu.
 	if shop_panel.is_shop_open():
 		shop_panel.close_shop()
 		get_tree().create_timer(shop_panel.get_close_duration()).timeout.connect(
+			slide_menu.close_menu
+		)
+	elif inventory_panel.is_panel_open():
+		inventory_panel.close_panel()
+		get_tree().create_timer(inventory_panel.get_close_duration()).timeout.connect(
 			slide_menu.close_menu
 		)
 	else:
@@ -176,6 +187,9 @@ func _handle_menu_close() -> void:
 
 
 func _on_shop_button_pressed() -> void:
+	# Close inventory if open (mutual exclusivity)
+	if inventory_panel.is_panel_open():
+		inventory_panel.close_panel()
 	if shop_panel.is_shop_open():
 		shop_panel.close_shop()
 		return
@@ -183,12 +197,28 @@ func _on_shop_button_pressed() -> void:
 	get_tree().create_timer(0.1).timeout.connect(shop_panel.open_shop)
 
 
+func _on_inventory_button_pressed() -> void:
+	# Close shop if open (mutual exclusivity)
+	if shop_panel.is_shop_open():
+		shop_panel.close_shop()
+	if inventory_panel.is_panel_open():
+		inventory_panel.close_panel()
+		return
+	# Delay inventory open slightly for a chained animation feel
+	get_tree().create_timer(0.1).timeout.connect(inventory_panel.open_panel)
+
+
+func _on_inventory_place_requested(furniture_id: String) -> void:
+	_enter_placement_mode(furniture_id)
+
+
 func _enter_placement_mode(furniture_id: String) -> void:
 	_placement_mode = true
 	_placement_furniture_id = furniture_id
 
-	# Close the shop
+	# Close any open panels
 	shop_panel.close_shop()
+	inventory_panel.close_panel()
 
 	# Create a semi-transparent preview sprite
 	var fdata = shop_panel.get_furniture_data(furniture_id)
@@ -304,9 +334,11 @@ func _default_furniture_position(furniture_id: String) -> Vector2:
 
 
 func _on_edit_layout_requested() -> void:
-	# Close shop if open before entering/exiting edit mode
+	# Close panels if open before entering/exiting edit mode
 	if shop_panel.is_shop_open():
 		shop_panel.close_shop()
+	if inventory_panel.is_panel_open():
+		inventory_panel.close_panel()
 	if _edit_mode:
 		_exit_edit_mode()
 	else:
@@ -412,6 +444,10 @@ func _update_passthrough() -> void:
 	# Include shop panel when open
 	if shop_panel and shop_panel.is_shop_open():
 		rects.append(shop_panel.get_global_rect())
+
+	# Include inventory panel when open
+	if inventory_panel and inventory_panel.is_panel_open():
+		rects.append(inventory_panel.get_global_rect())
 
 	# Include all spawned furniture
 	for fid in _furniture_nodes:

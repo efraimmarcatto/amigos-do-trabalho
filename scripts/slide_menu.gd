@@ -5,6 +5,7 @@ extends Control
 ## left to reveal menu options (Shop, Edit Layout, etc.).
 
 signal shop_requested
+signal inventory_requested
 signal edit_layout_requested
 signal menu_opened
 signal menu_closed
@@ -16,7 +17,7 @@ signal menu_closed
 @export var panel_width: float = 180.0
 
 ## Height of the menu panel in pixels.
-@export var panel_height: float = 160.0
+@export var panel_height: float = 195.0
 
 ## Size of the toggle button.
 @export var button_size: Vector2 = Vector2(40, 40)
@@ -29,12 +30,14 @@ var on_before_close: Callable
 @onready var _toggle_button: Button = $ToggleButton
 @onready var _panel: PanelContainer = $MenuPanel
 @onready var _shop_button: Button = $MenuPanel/VBox/ShopButton
+@onready var _inventory_button: Button = $MenuPanel/VBox/InventoryButton
 @onready var _edit_button: Button = $MenuPanel/VBox/EditLayoutButton
 
 
 func _ready() -> void:
 	_toggle_button.pressed.connect(_on_toggle)
 	_shop_button.pressed.connect(_on_shop)
+	_inventory_button.pressed.connect(_on_inventory)
 	_edit_button.pressed.connect(_on_edit_layout)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -131,6 +134,10 @@ func get_panel_rect() -> Rect2:
 
 func _on_shop() -> void:
 	shop_requested.emit()
+
+
+func _on_inventory() -> void:
+	inventory_requested.emit()
 
 
 func _on_edit_layout() -> void:
