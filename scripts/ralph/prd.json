@@ -186,7 +186,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "Uses the Furniture scene's pet_interacted signal and Area2D overlap detection. The INTERACTING state in the pet state machine blocks other movement until the interaction animation finishes."
     }
   ]

@@ -22,6 +22,8 @@ Started: Thu Mar 12 21:45:43 PDT 2026
 - pet.gd _furniture_nodes is a shared Dictionary reference set by main.gd — new furniture spawns are automatically visible to pet
 - _current_surface tracks which Furniture the pet is standing on (null = screen floor) — used in IDLE, WALKING, FALLING
 - Furniture surface detection in FALLING uses prev_y/position.y crossing check to avoid tunneling through surfaces
+- Furniture interactions: can_interact() checks cooldown, mark_interacted() starts cooldown + emits pet_interacted signal
+- Pet interaction visuals: sleep=Zzz label+tint (2-3s), eat/play=bounce (0.3s) — all cleaned up on INTERACTING exit in _change_state()
 
 ---
 
@@ -176,4 +178,20 @@ Started: Thu Mar 12 21:45:43 PDT 2026
   - _current_surface is cleared on DRAGGED enter and on walking off a can_fall_off_edge surface
   - Non-walkable furniture wall detection only runs when pet is on screen floor (not on a furniture surface)
   - US-011 will need _current_surface and _furniture_nodes for interaction detection
+---
+
+## 2026-03-13 - US-011
+- Implemented pet interaction with interactive furniture (sleep, eat, play)
+- Added can_interact() and mark_interacted() to furniture.gd with cooldown tracking via Time.get_ticks_msec()
+- Added _try_furniture_interaction() in pet.gd — checks rect overlap while walking, triggers INTERACTING state
+- Added _start_interaction() — awards coins via CoinSystem.add_coins(), plays interaction-specific visuals
+- sleep: Zzz label + blue tint for 2-3 seconds; eat/play: scale bounce animation for 0.3s
+- _change_state() updated: INTERACTING exit restores mood color and cleans up sleep label
+- Cooldown resets on app restart (not persisted) — uses _last_interaction_time initialized to -9999.0
+- Files changed: scripts/pet.gd, scripts/furniture.gd
+- **Learnings for future iterations:**
+  - Furniture cooldown uses Time.get_ticks_msec() / 1000.0 for seconds — initial value -9999.0 ensures first interaction is always available
+  - _try_furniture_interaction() uses manual Rect2 overlap instead of Area2D signals — simpler with the existing _furniture_nodes dict
+  - _start_interaction() calls _change_state(PetState.INTERACTING) AFTER setting up visuals — order matters since _change_state may clean up on exit
+  - Sleep label is added as child of pet Sprite2D so it moves with the pet — cleaned up in both _process_interacting timer expiry and _change_state exit
 ---
