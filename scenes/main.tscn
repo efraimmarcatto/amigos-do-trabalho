@@ -6,7 +6,7 @@
 [ext_resource type="Script" uid="uid://cs3du000k83pc" path="res://scripts/pet.gd" id="4_pet"]
 [ext_resource type="Script" uid="uid://buwscas5p16ym" path="res://scripts/interaction_menu.gd" id="5_menu"]
 [ext_resource type="Script" uid="uid://bqf6tu0fytkmq" path="res://scripts/shop.gd" id="6_shop"]
-[ext_resource type="Script" path="res://scripts/slide_menu.gd" id="7_slide_menu"]
+[ext_resource type="Script" uid="uid://bye0way64lndc" path="res://scripts/slide_menu.gd" id="7_slide_menu"]
 
 [node name="Main" type="Control" unique_id=222507356]
 layout_mode = 3
@@ -17,11 +17,11 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
-[node name="PetSprite" type="Sprite2D" parent="." unique_id=1104589341]
+[node name="PetSprite" type="AnimatedSprite2D" parent="." unique_id=1104589341]
 position = Vector2(960, 1016)
 scale = Vector2(0.5, 0.5)
-texture = ExtResource("2_icon")
 script = ExtResource("4_pet")
+sprite_sheet = ExtResource("2_icon")
 
 [node name="CoinSystem" type="Node" parent="." unique_id=757001182]
 script = ExtResource("3_coin")
@@ -61,40 +61,40 @@ layout_mode = 2
 text = "Play (15 coins)"
 
 [node name="SlideMenu" type="Control" parent="." unique_id=415961158]
-layout_mode = 0
+anchors_preset = 0
 script = ExtResource("7_slide_menu")
 
-[node name="ToggleButton" type="Button" parent="SlideMenu"]
+[node name="ToggleButton" type="Button" parent="SlideMenu" unique_id=711266759]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
 text = "☰"
 
-[node name="MenuPanel" type="PanelContainer" parent="SlideMenu"]
+[node name="MenuPanel" type="PanelContainer" parent="SlideMenu" unique_id=573443583]
 layout_mode = 0
 offset_right = 180.0
 offset_bottom = 160.0
 
-[node name="VBox" type="VBoxContainer" parent="SlideMenu/MenuPanel"]
+[node name="VBox" type="VBoxContainer" parent="SlideMenu/MenuPanel" unique_id=1550490150]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="SlideMenu/MenuPanel/VBox"]
+[node name="Title" type="Label" parent="SlideMenu/MenuPanel/VBox" unique_id=381363098]
 layout_mode = 2
 text = "Menu"
 horizontal_alignment = 1
 
-[node name="ShopButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
+[node name="ShopButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=1175814831]
 layout_mode = 2
 text = "Shop"
 
-[node name="EditLayoutButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
+[node name="EditLayoutButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=1970582982]
 layout_mode = 2
 text = "Edit Layout"
 
-[node name="Separator" type="HSeparator" parent="SlideMenu/MenuPanel/VBox"]
+[node name="Separator" type="HSeparator" parent="SlideMenu/MenuPanel/VBox" unique_id=1705390882]
 layout_mode = 2
 
-[node name="SettingsPlaceholder" type="Label" parent="SlideMenu/MenuPanel/VBox"]
+[node name="SettingsPlaceholder" type="Label" parent="SlideMenu/MenuPanel/VBox" unique_id=1944742029]
 layout_mode = 2
 text = "Settings (coming soon)"
 horizontal_alignment = 1

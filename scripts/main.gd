@@ -8,7 +8,7 @@ extends Control
 const SAVE_PATH := "user://save_data.json"
 const FURNITURE_SCENE := preload("res://scenes/furniture.tscn")
 
-@onready var pet_sprite: Sprite2D = $PetSprite
+@onready var pet_sprite: AnimatedSprite2D = $PetSprite
 @onready var coin_system: Node = $CoinSystem
 @onready var coin_label: Label = $CoinLabel
 @onready var interaction_menu: PanelContainer = $InteractionMenu
@@ -65,7 +65,7 @@ func _ready() -> void:
 	pet_sprite.floor_y = floor_y
 
 	# Position pet at floor level
-	var pet_half_h := (pet_sprite.texture.get_size().y * pet_sprite.scale.abs().y) / 2.0
+	var pet_half_h := (pet_sprite.get_sprite_size().y * pet_sprite.scale.abs().y) / 2.0
 	pet_sprite.position.y = floor_y - pet_half_h
 
 	# Position coin label just above the floor
@@ -162,7 +162,7 @@ func _enter_placement_mode(furniture_id: String) -> void:
 		_placement_preview.modulate = Color(1.0, 1.0, 1.0, 0.5)
 		add_child(_placement_preview)
 		# Position at mouse, constrained to floor
-		var tex_h := fdata.texture.get_size().y
+		var tex_h = fdata.texture.get_size().y
 		_placement_preview.global_position = Vector2(
 			get_global_mouse_position().x,
 			floor_y - tex_h / 2.0
@@ -351,9 +351,9 @@ func _update_passthrough() -> void:
 	var rects: Array[Rect2] = []
 
 	# Include pet sprite rect
-	if pet_sprite and pet_sprite.texture:
+	if pet_sprite and pet_sprite.sprite_frames:
 		var pet_pos: Vector2 = pet_sprite.global_position
-		var tex_size: Vector2 = pet_sprite.texture.get_size() * pet_sprite.scale
+		var tex_size: Vector2 = pet_sprite.get_sprite_size() * pet_sprite.scale
 		var half_size: Vector2 = tex_size / 2.0
 		rects.append(Rect2(pet_pos - half_size, tex_size))
 
@@ -367,10 +367,10 @@ func _update_passthrough() -> void:
 
 	# Include slide menu toggle button (always visible)
 	if slide_menu:
-		var toggle_rect := slide_menu.get_toggle_rect()
+		var toggle_rect = slide_menu.get_toggle_rect()
 		if toggle_rect.size.x > 0:
 			rects.append(toggle_rect)
-		var panel_rect := slide_menu.get_panel_rect()
+		var panel_rect = slide_menu.get_panel_rect()
 		if panel_rect.size.x > 0:
 			rects.append(panel_rect)
 
@@ -420,8 +420,8 @@ func _input(event: InputEvent) -> void:
 		# Move preview to mouse X, constrained to floor Y and screen bounds
 		var fdata = shop_panel.get_furniture_data(_placement_furniture_id)
 		if fdata and fdata.texture:
-			var tex_w := fdata.texture.get_size().x
-			var tex_h := fdata.texture.get_size().y
+			var tex_w = fdata.texture.get_size().x
+			var tex_h = fdata.texture.get_size().y
 			var screen_w := float(DisplayServer.screen_get_size().x)
 			var x := clampf(event.position.x, tex_w / 2.0, screen_w - tex_w / 2.0)
 			_placement_preview.global_position = Vector2(x, floor_y - tex_h / 2.0)

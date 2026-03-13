@@ -1,8 +1,9 @@
-extends Sprite2D
+extends AnimatedSprite2D
 
 ## Manages pet movement states and visual mood based on coin balance.
 ## Connects to CoinSystem.coins_changed to update appearance in real time.
 ## Handles click detection to open the interaction menu.
+## Uses AnimatedSprite2D with SpriteFrames for distinct animation states.
 
 # Movement state machine
 enum PetState { IDLE, WALKING, FALLING, DRAGGED, INTERACTING }
@@ -18,6 +19,32 @@ enum PetMood { SAD, NEUTRAL, HAPPY }
 @export var gravity: float = 980.0
 ## Walking speed in pixels/sec
 @export var walk_speed: float = 120.0
+
+## Sprite sheet texture — each row is an animation, each column is a frame
+@export var sprite_sheet: Texture2D = null
+## Animation playback speed in frames per second
+@export var animation_fps: float = 8.0
+
+## Sprite sheet layout: number of columns (frames per row)
+@export var sheet_columns: int = 1
+## Sprite sheet layout: number of rows (one per animation)
+@export var sheet_rows: int = 1
+
+## Row index for each animation state (0-based)
+@export var idle_row: int = 0
+@export var walk_row: int = 0
+@export var jump_prep_row: int = 0
+@export var jump_row: int = 0
+@export var fall_row: int = 0
+@export var interact_row: int = 0
+
+## Frame count per animation (defaults to sheet_columns if 0)
+@export var idle_frames: int = 0
+@export var walk_frames: int = 0
+@export var jump_prep_frames: int = 0
+@export var jump_frames: int = 0
+@export var fall_frames: int = 0
+@export var interact_frames: int = 0
 
 var current_state: PetState = PetState.IDLE
 var _current_mood: PetMood = PetMood.NEUTRAL
@@ -60,6 +87,7 @@ const COLOR_SAD := Color(0.6, 0.6, 0.8, 1.0)      # Blue/gray tint
 
 func _ready() -> void:
 	_base_scale = scale
+	_setup_animations()
 	# Connect to CoinSystem signal — CoinSystem is a sibling node
 	var coin_system := get_parent().get_node("CoinSystem")
 	if coin_system:
@@ -71,6 +99,61 @@ func _ready() -> void:
 		menu.visibility_changed.connect(_on_menu_visibility_changed.bind(menu))
 	_update_visual(_current_mood)
 	_idle_timer = randf_range(1.0, 5.0)
+	play("idle")
+
+
+func _setup_animations() -> void:
+	var frames := SpriteFrames.new()
+	# Remove the default animation if it exists
+	if frames.has_animation("default"):
+		frames.remove_animation("default")
+
+	var anim_defs := {
+		"idle": {"row": idle_row, "count": idle_frames, "loop": true},
+		"walk": {"row": walk_row, "count": walk_frames, "loop": true},
+		"jump_prep": {"row": jump_prep_row, "count": jump_prep_frames, "loop": false},
+		"jump": {"row": jump_row, "count": jump_frames, "loop": false},
+		"fall": {"row": fall_row, "count": fall_frames, "loop": false},
+		"interact": {"row": interact_row, "count": interact_frames, "loop": true},
+	}
+
+	for anim_name in anim_defs:
+		var def: Dictionary = anim_defs[anim_name]
+		frames.add_animation(anim_name)
+		frames.set_animation_speed(anim_name, animation_fps)
+		frames.set_animation_loop(anim_name, def["loop"])
+
+		var frame_count: int = def["count"] if def["count"] > 0 else sheet_columns
+		frame_count = maxi(frame_count, 1)
+
+		if sprite_sheet:
+			var full_w := sprite_sheet.get_width()
+			var full_h := sprite_sheet.get_height()
+			var frame_w := full_w / maxi(sheet_columns, 1)
+			var frame_h := full_h / maxi(sheet_rows, 1)
+			var row: int = def["row"]
+
+			for col in range(frame_count):
+				var atlas := AtlasTexture.new()
+				atlas.atlas = sprite_sheet
+				atlas.region = Rect2(col * frame_w, row * frame_h, frame_w, frame_h)
+				frames.add_frame(anim_name, atlas)
+		else:
+			# No sprite sheet — create a single empty frame placeholder
+			frames.add_frame(anim_name, PlaceholderTexture2D.new())
+
+	sprite_frames = frames
+
+
+func get_sprite_size() -> Vector2:
+	## Returns the size of the current animation frame's texture.
+	if sprite_frames and sprite_frames.has_animation(animation):
+		var count := sprite_frames.get_frame_count(animation)
+		if count > 0:
+			var tex := sprite_frames.get_frame_texture(animation, 0)
+			if tex:
+				return tex.get_size()
+	return Vector2(128, 128)
 
 
 func _process(delta: float) -> void:
@@ -94,7 +177,7 @@ func _process_idle(delta: float) -> void:
 		return
 	_idle_timer -= delta
 	if _idle_timer <= 0.0:
-		var half_w := (texture.get_size().x * scale.abs().x) / 2.0
+		var half_w := (get_sprite_size().x * scale.abs().x) / 2.0
 		var min_x: float
 		var max_x: float
 		if _current_surface:
@@ -121,7 +204,7 @@ func _process_walking(_delta: float) -> void:
 
 	position.x += dir * walk_speed * _delta
 
-	var half_w := (texture.get_size().x * scale.abs().x) / 2.0
+	var half_w := (get_sprite_size().x * scale.abs().x) / 2.0
 
 	# Check furniture surface edge constraints
 	if _current_surface:
@@ -147,7 +230,7 @@ func _process_walking(_delta: float) -> void:
 
 	# Check for non-walkable furniture as walls (on screen floor only)
 	if not _current_surface:
-		var pet_half_h := (texture.get_size().y * scale.abs().y) / 2.0
+		var pet_half_h := (get_sprite_size().y * scale.abs().y) / 2.0
 		var pet_bottom := position.y + pet_half_h
 		for fid in _furniture_nodes:
 			var fnode: Furniture = _furniture_nodes[fid]
@@ -190,9 +273,9 @@ func _process_falling(delta: float) -> void:
 	_velocity.y += gravity * delta
 	position += _velocity * delta
 
-	var half_h := (texture.get_size().y * scale.abs().y) / 2.0
+	var half_h := (get_sprite_size().y * scale.abs().y) / 2.0
 	var pet_bottom := position.y + half_h
-	var half_w := (texture.get_size().x * scale.abs().x) / 2.0
+	var half_w := (get_sprite_size().x * scale.abs().x) / 2.0
 
 	# Check walkable furniture surfaces — find the highest one below us
 	var best_surface: Furniture = null
@@ -248,8 +331,8 @@ func _process_interacting(delta: float) -> void:
 
 func _try_furniture_interaction() -> void:
 	# Check if pet overlaps any interactive furniture's Area2D
-	var pet_half_w := (texture.get_size().x * scale.abs().x) / 2.0
-	var pet_half_h := (texture.get_size().y * scale.abs().y) / 2.0
+	var pet_half_w := (get_sprite_size().x * scale.abs().x) / 2.0
+	var pet_half_h := (get_sprite_size().y * scale.abs().y) / 2.0
 	var pet_rect := Rect2(position.x - pet_half_w, position.y - pet_half_h, pet_half_w * 2.0, pet_half_h * 2.0)
 
 	for fid in _furniture_nodes:
@@ -315,16 +398,23 @@ func _change_state(new_state: PetState) -> void:
 			_sleep_label.queue_free()
 			_sleep_label = null
 
-	# Enter state setup
+	# Enter state setup and play corresponding animation
 	if new_state == PetState.DRAGGED:
 		rotation_degrees = 5.0
 		_current_surface = null
+		_play_anim("idle")
 	elif new_state == PetState.FALLING:
 		# When entering FALLING from drag, clear surface (will detect new one)
 		if old_state == PetState.DRAGGED:
 			_current_surface = null
+		_play_anim("fall")
 	elif new_state == PetState.IDLE:
 		_idle_timer = randf_range(1.0, 5.0)
+		_play_anim("idle")
+	elif new_state == PetState.WALKING:
+		_play_anim("walk")
+	elif new_state == PetState.INTERACTING:
+		_play_anim("interact")
 
 
 func _input(event: InputEvent) -> void:
@@ -361,9 +451,9 @@ func _input(event: InputEvent) -> void:
 
 
 func _is_point_on_pet(point: Vector2) -> bool:
-	if not texture:
+	if not sprite_frames:
 		return false
-	var tex_size: Vector2 = texture.get_size() * scale.abs()
+	var tex_size: Vector2 = get_sprite_size() * scale.abs()
 	var half: Vector2 = tex_size / 2.0
 	var rect := Rect2(global_position - half, tex_size)
 	return rect.has_point(point)
@@ -381,7 +471,7 @@ func _toggle_menu() -> void:
 			_velocity = Vector2.ZERO
 			_change_state(PetState.IDLE)
 		menu_open = true
-		var tex_size: Vector2 = texture.get_size() * scale.abs()
+		var tex_size: Vector2 = get_sprite_size() * scale.abs()
 		var menu_pos := Vector2(global_position.x + tex_size.x / 2.0 + 10, global_position.y - tex_size.y / 2.0)
 		menu.show_menu(menu_pos)
 
@@ -397,6 +487,11 @@ func _on_interaction_performed(_interaction_name: String) -> void:
 	_interaction_timer = 0.3
 	_change_state(PetState.INTERACTING)
 	_play_bounce()
+
+
+func _play_anim(anim_name: String) -> void:
+	if sprite_frames and sprite_frames.has_animation(anim_name):
+		play(anim_name)
 
 
 func _play_bounce() -> void:
