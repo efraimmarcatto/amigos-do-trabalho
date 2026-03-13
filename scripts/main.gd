@@ -60,7 +60,11 @@ func _ready() -> void:
 	slide_menu.edit_layout_requested.connect(_on_edit_layout_requested)
 	slide_menu.menu_opened.connect(_on_menu_opened)
 	slide_menu.menu_closed.connect(_on_menu_closed)
+	slide_menu.on_before_close = _handle_menu_close
 	shop_panel.furniture_purchased.connect(_on_furniture_purchased)
+
+	# Set up shop panel adjacent to menu
+	shop_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 
 	# Share furniture nodes dict and floor_y with pet
 	pet_sprite._furniture_nodes = _furniture_nodes
@@ -149,8 +153,23 @@ func _on_menu_closed() -> void:
 	coin_hud.animate_down()
 
 
+func _handle_menu_close() -> void:
+	## Intercepts menu close: if shop is open, close shop first, then close menu.
+	if shop_panel.is_shop_open():
+		shop_panel.close_shop()
+		get_tree().create_timer(shop_panel.get_close_duration()).timeout.connect(
+			slide_menu.close_menu
+		)
+	else:
+		slide_menu.close_menu()
+
+
 func _on_shop_button_pressed() -> void:
-	shop_panel.open_shop()
+	if shop_panel.is_shop_open():
+		shop_panel.close_shop()
+		return
+	# Delay shop open slightly for a chained animation feel
+	get_tree().create_timer(0.1).timeout.connect(shop_panel.open_shop)
 
 
 func _on_furniture_purchased(furniture_id: String) -> void:
@@ -162,7 +181,7 @@ func _enter_placement_mode(furniture_id: String) -> void:
 	_placement_furniture_id = furniture_id
 
 	# Close the shop
-	shop_panel.visible = false
+	shop_panel.close_shop()
 
 	# Create a semi-transparent preview sprite
 	var fdata = shop_panel.get_furniture_data(furniture_id)
@@ -282,6 +301,9 @@ func _default_furniture_position(furniture_id: String) -> Vector2:
 
 
 func _on_edit_layout_requested() -> void:
+	# Close shop if open before entering/exiting edit mode
+	if shop_panel.is_shop_open():
+		shop_panel.close_shop()
 	if _edit_mode:
 		_exit_edit_mode()
 	else:
@@ -384,8 +406,8 @@ func _update_passthrough() -> void:
 		if panel_rect.size.x > 0:
 			rects.append(panel_rect)
 
-	# Include shop panel when visible
-	if shop_panel and shop_panel.visible:
+	# Include shop panel when open
+	if shop_panel and shop_panel.is_shop_open():
 		rects.append(shop_panel.get_global_rect())
 
 	# Include all spawned furniture

@@ -23,6 +23,8 @@ signal menu_closed
 
 var _is_open: bool = false
 var _tween: Tween
+## Optional callable invoked instead of close_menu() when set.
+var on_before_close: Callable
 
 @onready var _toggle_button: Button = $ToggleButton
 @onready var _panel: PanelContainer = $MenuPanel
@@ -58,9 +60,13 @@ func setup(floor_y_val: float) -> void:
 	_panel.visible = true  # Always visible but positioned off-screen when closed
 
 
-func _get_panel_open_x() -> float:
+func get_panel_open_x() -> float:
 	var screen_w := float(DisplayServer.screen_get_size().x)
 	return screen_w - panel_width - 10.0
+
+
+func get_panel_y() -> float:
+	return _panel.position.y
 
 
 func _get_panel_closed_x() -> float:
@@ -70,16 +76,23 @@ func _get_panel_closed_x() -> float:
 
 func _on_toggle() -> void:
 	if _is_open:
-		close_menu()
+		_request_close()
 	else:
 		open_menu()
+
+
+func _request_close() -> void:
+	if on_before_close.is_valid():
+		on_before_close.call()
+	else:
+		close_menu()
 
 
 func open_menu() -> void:
 	if _is_open:
 		return
 	_is_open = true
-	_animate_panel(_get_panel_open_x())
+	_animate_panel(get_panel_open_x())
 	menu_opened.emit()
 
 
@@ -118,7 +131,6 @@ func get_panel_rect() -> Rect2:
 
 func _on_shop() -> void:
 	shop_requested.emit()
-	close_menu()
 
 
 func _on_edit_layout() -> void:
@@ -134,4 +146,4 @@ func _unhandled_input(event: InputEvent) -> void:
 		var in_panel := _panel.get_global_rect().has_point(event.position)
 		var in_button := Rect2(_toggle_button.global_position, _toggle_button.size).has_point(event.position)
 		if not in_panel and not in_button:
-			close_menu()
+			_request_close()

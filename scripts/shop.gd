@@ -3,12 +3,23 @@ extends PanelContainer
 ## Furniture shop UI — browse and buy furniture with coins.
 ## Loads all FurnitureData resources from res://furniture/data/ at startup.
 ## Tracks owned furniture IDs and persists them via main.gd save system.
+## Panel slides in/out adjacent to the slide menu with tween animations.
 
 signal furniture_purchased(furniture_id: String)
+signal shop_closed
+
+const ANIM_DURATION: float = 0.3
+const SHOP_WIDTH: float = 280.0
+const SHOP_HEIGHT: float = 300.0
+const GAP: float = 5.0
 
 var _coin_system: Node
 var _catalog: Array[FurnitureData] = []
 var _owned: Array[String] = []
+var _is_open: bool = false
+var _open_x: float = 0.0
+var _closed_x: float = 0.0
+var _shop_tween: Tween
 
 @onready var _vbox: VBoxContainer = $VBox
 @onready var _title: Label = $VBox/Title
@@ -18,12 +29,58 @@ var _owned: Array[String] = []
 
 func _ready() -> void:
 	_coin_system = get_parent().get_node("CoinSystem")
-	_close_button.pressed.connect(func(): visible = false)
+	_close_button.pressed.connect(close_shop)
 	if _coin_system:
 		_coin_system.coins_changed.connect(_on_coins_changed)
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_load_catalog()
+
+
+func setup(menu_open_x: float, menu_panel_y: float) -> void:
+	## Position the shop panel to slide in adjacent to the menu.
+	var screen_w := float(DisplayServer.screen_get_size().x)
+	custom_minimum_size = Vector2(SHOP_WIDTH, SHOP_HEIGHT)
+	size = Vector2(SHOP_WIDTH, SHOP_HEIGHT)
+	_open_x = menu_open_x - SHOP_WIDTH - GAP
+	_closed_x = screen_w
+	position = Vector2(_closed_x, menu_panel_y)
+
+
+func open_shop() -> void:
+	if _is_open:
+		return
+	_is_open = true
+	_rebuild_items()
+	visible = true
+	_animate_x(_open_x)
+
+
+func close_shop() -> void:
+	if not _is_open:
+		return
+	_is_open = false
+	_animate_x(_closed_x, true)
+	shop_closed.emit()
+
+
+func is_shop_open() -> bool:
+	return _is_open
+
+
+func get_close_duration() -> float:
+	return ANIM_DURATION
+
+
+func _animate_x(target_x: float, hide_after: bool = false) -> void:
+	if _shop_tween and _shop_tween.is_running():
+		_shop_tween.kill()
+	_shop_tween = create_tween()
+	_shop_tween.tween_property(self, "position:x", target_x, ANIM_DURATION) \
+		.set_ease(Tween.EASE_OUT) \
+		.set_trans(Tween.TRANS_CUBIC)
+	if hide_after:
+		_shop_tween.tween_callback(func(): visible = false)
 
 
 func _load_catalog() -> void:
@@ -41,11 +98,6 @@ func _load_catalog() -> void:
 	dir.list_dir_end()
 	# Sort by cost ascending
 	_catalog.sort_custom(func(a: FurnitureData, b: FurnitureData): return a.coin_cost < b.coin_cost)
-
-
-func open_shop() -> void:
-	_rebuild_items()
-	visible = true
 
 
 func get_owned() -> Array[String]:
@@ -126,12 +178,3 @@ func _on_buy(item: FurnitureData) -> void:
 func _on_coins_changed(_new_total: int) -> void:
 	if visible:
 		_rebuild_items()
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not visible:
-		return
-	if event is InputEventMouseButton and event.pressed:
-		# Close shop when clicking outside it
-		if not get_global_rect().has_point(event.position):
-			visible = false
