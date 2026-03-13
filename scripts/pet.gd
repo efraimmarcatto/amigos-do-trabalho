@@ -38,6 +38,11 @@ var _walk_target_x: float = 0.0
 var _furniture_nodes: Dictionary = {}  # Set by main.gd — keyed by furniture_id
 var _current_surface: Furniture = null  # null = screen floor
 
+# Interaction tracking
+var _interacting_furniture: Furniture = null
+var _interaction_timer: float = 0.0
+var _sleep_label: Label = null
+
 # Color tints for each mood
 const COLOR_HAPPY := Color(0.5, 1.0, 0.5, 1.0)   # Green tint
 const COLOR_NEUTRAL := Color(1.0, 1.0, 1.0, 1.0)  # Normal
@@ -154,6 +159,11 @@ func _process_walking(_delta: float) -> void:
 					_change_state(PetState.IDLE)
 					return
 
+	# Check for interactive furniture overlap while walking
+	_try_furniture_interaction()
+	if current_state == PetState.INTERACTING:
+		return
+
 	# Check if reached target
 	if (dir > 0.0 and position.x >= _walk_target_x) or (dir < 0.0 and position.x <= _walk_target_x):
 		position.x = _walk_target_x
@@ -212,9 +222,68 @@ func _process_dragged(_delta: float) -> void:
 	position = get_global_mouse_position()
 
 
-func _process_interacting(_delta: float) -> void:
-	# Placeholder — furniture interaction added in US-011
-	pass
+func _process_interacting(delta: float) -> void:
+	_interaction_timer -= delta
+	if _interaction_timer <= 0.0:
+		# Clean up sleep visual if active
+		if _sleep_label:
+			_sleep_label.queue_free()
+			_sleep_label = null
+		_interacting_furniture = null
+		_change_state(PetState.IDLE)
+
+
+func _try_furniture_interaction() -> void:
+	# Check if pet overlaps any interactive furniture's Area2D
+	var pet_half_w := (texture.get_size().x * scale.abs().x) / 2.0
+	var pet_half_h := (texture.get_size().y * scale.abs().y) / 2.0
+	var pet_rect := Rect2(position.x - pet_half_w, position.y - pet_half_h, pet_half_w * 2.0, pet_half_h * 2.0)
+
+	for fid in _furniture_nodes:
+		var fnode: Furniture = _furniture_nodes[fid]
+		if not fnode or not fnode.data or not fnode.data.texture:
+			continue
+		if not fnode.can_interact():
+			continue
+		# Check overlap
+		var f_half_w := fnode.data.texture.get_size().x / 2.0
+		var f_half_h := fnode.data.texture.get_size().y / 2.0
+		var f_rect := Rect2(fnode.global_position.x - f_half_w, fnode.global_position.y - f_half_h, f_half_w * 2.0, f_half_h * 2.0)
+		if pet_rect.intersects(f_rect):
+			_start_interaction(fnode)
+			return
+
+
+func _start_interaction(fnode: Furniture) -> void:
+	_interacting_furniture = fnode
+	fnode.mark_interacted()
+
+	# Award coins
+	var coin_system := get_parent().get_node("CoinSystem")
+	if coin_system and fnode.data.interaction_coin_bonus > 0:
+		coin_system.add_coins(fnode.data.interaction_coin_bonus)
+
+	match fnode.data.interaction_type:
+		"sleep":
+			_interaction_timer = randf_range(2.0, 3.0)
+			# Show Zzz label
+			_sleep_label = Label.new()
+			_sleep_label.text = "Zzz"
+			_sleep_label.add_theme_font_size_override("font_size", 24)
+			_sleep_label.position = Vector2(10, -40)
+			add_child(_sleep_label)
+			# Sleeping tint
+			modulate = Color(0.7, 0.7, 1.0, 1.0)
+		"eat":
+			_interaction_timer = 0.3  # Short — bounce duration
+			_play_bounce()
+		"play":
+			_interaction_timer = 0.3
+			_play_bounce()
+		_:
+			_interaction_timer = 0.5
+
+	_change_state(PetState.INTERACTING)
 
 
 func _change_state(new_state: PetState) -> void:
@@ -226,6 +295,12 @@ func _change_state(new_state: PetState) -> void:
 		rotation_degrees = 0.0
 	if old_state == PetState.WALKING:
 		scale.x = absf(_base_scale.x)
+	if old_state == PetState.INTERACTING:
+		# Restore mood-based color
+		_update_visual(_current_mood)
+		if _sleep_label:
+			_sleep_label.queue_free()
+			_sleep_label = null
 
 	# Enter state setup
 	if new_state == PetState.DRAGGED:

@@ -12,6 +12,9 @@ signal pet_interacted(furniture: Furniture)
 @onready var area: Area2D = $Area2D
 @onready var collision_shape: CollisionShape2D = $Area2D/CollisionShape2D
 
+# Cooldown tracking (resets on app restart — not persisted)
+var _last_interaction_time: float = -9999.0
+
 
 func _ready() -> void:
 	if data and data.texture:
@@ -21,6 +24,20 @@ func _ready() -> void:
 		var shape := RectangleShape2D.new()
 		shape.size = tex_size
 		collision_shape.shape = shape
+
+
+## Returns true if interaction is available (has interaction_type and cooldown elapsed).
+func can_interact() -> bool:
+	if not data or data.interaction_type == "":
+		return false
+	var elapsed := Time.get_ticks_msec() / 1000.0 - _last_interaction_time
+	return elapsed >= data.interaction_cooldown
+
+
+## Marks the furniture as just interacted (starts cooldown).
+func mark_interacted() -> void:
+	_last_interaction_time = Time.get_ticks_msec() / 1000.0
+	pet_interacted.emit(self)
 
 
 ## Returns the global Y coordinate of the walkable surface (top of sprite + offset).
