@@ -19,6 +19,9 @@ Started: Thu Mar 12 21:45:43 PDT 2026
 - FurnitureData is a Resource with class_name — globally available, .tres files live in furniture/data/
 - .tres resource files use [gd_resource script_class="FurnitureData"] format; load_steps = ext_resources + 1
 - Shop (scripts/shop.gd) exposes get_owned()/set_owned() for persistence and furniture_purchased signal for spawning
+- pet.gd _furniture_nodes is a shared Dictionary reference set by main.gd — new furniture spawns are automatically visible to pet
+- _current_surface tracks which Furniture the pet is standing on (null = screen floor) — used in IDLE, WALKING, FALLING
+- Furniture surface detection in FALLING uses prev_y/position.y crossing check to avoid tunneling through surfaces
 
 ---
 
@@ -139,4 +142,38 @@ Started: Thu Mar 12 21:45:43 PDT 2026
   - furniture_purchased signal emitted on buy — US-009 can connect to this for spawning furniture
   - Shop items rebuilt dynamically on open and on coins_changed — no stale state
   - _unhandled_input used for click-outside-to-close so shop button clicks aren't intercepted
+---
+
+## 2026-03-12 - US-009
+- Implemented furniture placement: owned furniture spawned into main scene from save data
+- Added _furniture_nodes dict (keyed by furniture_id) and _furniture_positions dict for persistence
+- Preloaded FURNITURE_SCENE, added _spawn_furniture() and _default_furniture_position() helpers
+- Default positions staggered 200px apart from left side, skipping pet area (810-1110px)
+- Connected shop_panel.furniture_purchased signal to spawn furniture on purchase
+- Extended save_data.json with furniture_positions dictionary ({id: {x, y}})
+- Updated _update_passthrough() to include all furniture sprite rects
+- Files changed: scripts/main.gd
+- **Learnings for future iterations:**
+  - Furniture nodes are added as children of Main (Control), so they're accessible via _furniture_nodes dict
+  - _spawn_furniture() sets data before add_child — this ensures Furniture._ready() has data available
+  - furniture_positions is loaded before owned_furniture in _load_state() so positions are available when spawning
+  - Default positions avoid pet starting area (x=960 ± 150px) — adjust if pet start position changes
+  - US-010 will need to access _furniture_nodes to find walkable surfaces for pet landing
+---
+
+## 2026-03-13 - US-010
+- Implemented pet landing on and walking along walkable furniture surfaces
+- Added _furniture_nodes (shared dict from main.gd) and _current_surface tracking to pet.gd
+- _process_falling() scans walkable furniture surfaces below pet, lands on highest one crossed
+- _process_walking() constrains pet to current surface edges: can_fall_off_edge=true → falls, false → turns around
+- _process_idle() picks walk targets within current surface bounds (furniture edges or screen)
+- Non-walkable furniture treated as walls on screen floor (blocks walking)
+- main.gd passes _furniture_nodes dict reference to pet in _ready()
+- Files changed: scripts/pet.gd, scripts/main.gd
+- **Learnings for future iterations:**
+  - Dictionary is a reference type in GDScript — assigning main's dict to pet shares the same object, auto-updates
+  - Surface landing uses prev_y/position.y crossing detection to prevent tunneling at high velocities
+  - _current_surface is cleared on DRAGGED enter and on walking off a can_fall_off_edge surface
+  - Non-walkable furniture wall detection only runs when pet is on screen floor (not on a furniture surface)
+  - US-011 will need _current_surface and _furniture_nodes for interaction detection
 ---

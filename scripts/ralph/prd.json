@@ -151,7 +151,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "This loads the furniture scene (US-007) and positions instances based on save data. Positions are fixed after placement — no drag-to-reposition (non-goal)."
     },
     {
@@ -168,7 +168,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "This integrates furniture awareness into the pet's FALLING and WALKING states from US-004 and US-005. Surface detection: compare pet bottom Y against each walkable furniture's get_surface_y() within get_left_x()..get_right_x() range."
     },
     {
