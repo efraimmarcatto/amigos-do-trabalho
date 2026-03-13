@@ -60,6 +60,10 @@ func is_owned(furniture_id: String) -> bool:
 	return _owned.has(furniture_id)
 
 
+func remove_owned(furniture_id: String) -> void:
+	_owned.erase(furniture_id)
+
+
 func get_furniture_data(furniture_id: String) -> FurnitureData:
 	for item in _catalog:
 		if item.id == furniture_id:

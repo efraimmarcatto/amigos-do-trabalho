@@ -22,6 +22,11 @@ var _furniture_positions: Dictionary = {}
 # Floor Y coordinate — top of taskbar (bottom of usable screen rect)
 var floor_y: float = 0.0
 
+# Placement mode state
+var _placement_mode: bool = false
+var _placement_furniture_id: String = ""
+var _placement_preview: Sprite2D = null
+
 func _ready() -> void:
 	# Make the viewport background transparent
 	get_viewport().transparent_bg = true
@@ -133,7 +138,71 @@ func _on_shop_button_pressed() -> void:
 
 
 func _on_furniture_purchased(furniture_id: String) -> void:
-	_spawn_furniture(furniture_id)
+	_enter_placement_mode(furniture_id)
+
+
+func _enter_placement_mode(furniture_id: String) -> void:
+	_placement_mode = true
+	_placement_furniture_id = furniture_id
+
+	# Close the shop
+	shop_panel.visible = false
+
+	# Create a semi-transparent preview sprite
+	var fdata = shop_panel.get_furniture_data(furniture_id)
+	if fdata and fdata.texture:
+		_placement_preview = Sprite2D.new()
+		_placement_preview.texture = fdata.texture
+		_placement_preview.modulate = Color(1.0, 1.0, 1.0, 0.5)
+		add_child(_placement_preview)
+		# Position at mouse, constrained to floor
+		var tex_h := fdata.texture.get_size().y
+		_placement_preview.global_position = Vector2(
+			get_global_mouse_position().x,
+			floor_y - tex_h / 2.0
+		)
+
+	# Disable passthrough so full window captures input
+	get_window().mouse_passthrough_polygon = PackedVector2Array()
+
+
+func _exit_placement_mode(confirmed: bool) -> void:
+	if not _placement_mode:
+		return
+	_placement_mode = false
+
+	if confirmed and _placement_preview:
+		# Spawn furniture at the preview position
+		_spawn_furniture_at(_placement_furniture_id, _placement_preview.global_position)
+	else:
+		# Cancelled — refund the coins
+		var fdata = shop_panel.get_furniture_data(_placement_furniture_id)
+		if fdata:
+			coin_system.add_coins(fdata.coin_cost)
+			# Remove from owned list
+			shop_panel.remove_owned(_placement_furniture_id)
+
+	# Clean up preview
+	if _placement_preview:
+		_placement_preview.queue_free()
+		_placement_preview = null
+	_placement_furniture_id = ""
+
+
+func _spawn_furniture_at(furniture_id: String, pos: Vector2) -> void:
+	if _furniture_nodes.has(furniture_id):
+		return
+	var fdata = shop_panel.get_furniture_data(furniture_id)
+	if not fdata:
+		return
+
+	var node: Furniture = FURNITURE_SCENE.instantiate()
+	node.data = fdata
+	add_child(node)
+	_furniture_nodes[furniture_id] = node
+	node.global_position = pos
+	_furniture_positions[furniture_id] = {"x": pos.x, "y": pos.y}
+	_save_state()
 
 
 func _spawn_furniture(furniture_id: String) -> void:
@@ -260,6 +329,41 @@ func _update_passthrough() -> void:
 	get_window().mouse_passthrough_polygon = polygon
 
 
+func _input(event: InputEvent) -> void:
+	if not _placement_mode:
+		return
+
+	if event is InputEventMouseMotion and _placement_preview:
+		# Move preview to mouse X, constrained to floor Y and screen bounds
+		var fdata = shop_panel.get_furniture_data(_placement_furniture_id)
+		if fdata and fdata.texture:
+			var tex_w := fdata.texture.get_size().x
+			var tex_h := fdata.texture.get_size().y
+			var screen_w := float(DisplayServer.screen_get_size().x)
+			var x := clampf(event.position.x, tex_w / 2.0, screen_w - tex_w / 2.0)
+			_placement_preview.global_position = Vector2(x, floor_y - tex_h / 2.0)
+		get_viewport().set_input_as_handled()
+
+	elif event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			# Confirm placement
+			_exit_placement_mode(true)
+			get_viewport().set_input_as_handled()
+		elif event.button_index == MOUSE_BUTTON_RIGHT:
+			# Cancel placement
+			_exit_placement_mode(false)
+			get_viewport().set_input_as_handled()
+
+	elif event is InputEventKey and event.pressed:
+		if event.keycode == KEY_ESCAPE:
+			# Cancel placement
+			_exit_placement_mode(false)
+			get_viewport().set_input_as_handled()
+
+
 func _process(_delta: float) -> void:
+	if _placement_mode:
+		# During placement, passthrough is already disabled; skip normal update
+		return
 	# Update passthrough in case pet moves or menu visibility changes
 	_update_passthrough()
