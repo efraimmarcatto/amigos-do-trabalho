@@ -72,7 +72,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-022 for inventory_system. Remove the _owned array and related logic from shop.gd. The shop no longer tracks ownership — it just sells items that go into inventory."
     },
     {
