@@ -38,6 +38,9 @@ var _walk_target_x: float = 0.0
 var _furniture_nodes: Dictionary = {}  # Set by main.gd — keyed by furniture_id
 var _current_surface: Furniture = null  # null = screen floor
 
+# Floor Y coordinate — set by main.gd (top of taskbar / bottom of usable rect)
+var floor_y: float = 0.0
+
 # Interaction tracking
 var _interacting_furniture: Furniture = null
 var _interaction_timer: float = 0.0
@@ -208,11 +211,10 @@ func _process_falling(delta: float) -> void:
 		_change_state(PetState.IDLE)
 		return
 
-	# Land on screen bottom
-	var screen_h := float(DisplayServer.screen_get_size().y)
-	var floor_y := screen_h - half_h
-	if position.y >= floor_y:
-		position.y = floor_y
+	# Land on floor (top of taskbar)
+	var land_floor_y := floor_y - half_h
+	if position.y >= land_floor_y:
+		position.y = land_floor_y
 		_velocity = Vector2.ZERO
 		_current_surface = null
 		_change_state(PetState.IDLE)

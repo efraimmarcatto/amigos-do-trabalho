@@ -19,6 +19,8 @@ const FURNITURE_SCENE := preload("res://scenes/furniture.tscn")
 var _furniture_nodes: Dictionary = {}
 # Saved positions keyed by furniture_id (as {x, y} dicts)
 var _furniture_positions: Dictionary = {}
+# Floor Y coordinate — top of taskbar (bottom of usable screen rect)
+var floor_y: float = 0.0
 
 func _ready() -> void:
 	# Make the viewport background transparent
@@ -29,6 +31,9 @@ func _ready() -> void:
 	var win := get_window()
 	win.position = Vector2i.ZERO
 	win.size = screen_size
+
+	# Compute floor Y from usable screen rect (excludes taskbar)
+	floor_y = _compute_floor_y()
 
 	# Start global input hooks for keyboard/mouse tracking
 	GlobalInput.start_hooks()
@@ -43,8 +48,17 @@ func _ready() -> void:
 	shop_button.pressed.connect(_on_shop_button_pressed)
 	shop_panel.furniture_purchased.connect(_on_furniture_purchased)
 
-	# Share furniture nodes dict with pet for surface detection
+	# Share furniture nodes dict and floor_y with pet
 	pet_sprite._furniture_nodes = _furniture_nodes
+	pet_sprite.floor_y = floor_y
+
+	# Position pet at floor level
+	var pet_half_h := (pet_sprite.texture.get_size().y * pet_sprite.scale.abs().y) / 2.0
+	pet_sprite.position.y = floor_y - pet_half_h
+
+	# Position coin label just above the floor
+	coin_label.offset_top = floor_y + 2.0
+	coin_label.offset_bottom = floor_y + 22.0
 
 	# Load saved state (also spawns furniture)
 	_load_state()
@@ -142,11 +156,20 @@ func _spawn_furniture(furniture_id: String) -> void:
 		_furniture_positions[furniture_id] = {"x": node.global_position.x, "y": node.global_position.y}
 
 
+func _compute_floor_y() -> float:
+	# Use usable screen rect to find taskbar boundary.
+	# The usable rect excludes OS-reserved areas like taskbars.
+	var usable := DisplayServer.screen_get_usable_rect()
+	var uy := float(usable.position.y + usable.size.y)
+	# Fallback: if usable rect returns zero/invalid, use full screen height
+	if uy <= 0.0:
+		uy = float(DisplayServer.screen_get_size().y)
+	return uy
+
+
 func _default_furniture_position(furniture_id: String) -> Vector2:
 	# Stagger furniture along the screen bottom, avoiding the pet's starting position
-	var screen_size := DisplayServer.screen_get_size()
-	var screen_w := float(screen_size.x)
-	var screen_h := float(screen_size.y)
+	var screen_w := float(DisplayServer.screen_get_size().x)
 
 	# Pet starts at x=960, so place furniture away from center
 	# Count existing furniture to stagger positions
@@ -162,12 +185,12 @@ func _default_furniture_position(furniture_id: String) -> Vector2:
 	# Clamp to screen bounds
 	x = clampf(x, 100.0, screen_w - 100.0)
 
-	# Place at screen bottom, accounting for furniture texture height
+	# Place at floor level, accounting for furniture texture height
 	var fdata = shop_panel.get_furniture_data(furniture_id)
 	var tex_h := 128.0  # fallback
 	if fdata and fdata.texture:
 		tex_h = fdata.texture.get_size().y
-	var y := screen_h - tex_h / 2.0
+	var y := floor_y - tex_h / 2.0
 
 	return Vector2(x, y)
 
