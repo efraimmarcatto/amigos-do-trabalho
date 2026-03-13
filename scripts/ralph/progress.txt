@@ -18,6 +18,7 @@ Started: Thu Mar 12 21:45:43 PDT 2026
 - _idle_timer in pet.gd controls wait between walks (1-5s random); _walk_target_x is the horizontal destination
 - FurnitureData is a Resource with class_name — globally available, .tres files live in furniture/data/
 - .tres resource files use [gd_resource script_class="FurnitureData"] format; load_steps = ext_resources + 1
+- Shop (scripts/shop.gd) exposes get_owned()/set_owned() for persistence and furniture_purchased signal for spawning
 
 ---
 
@@ -124,4 +125,18 @@ Started: Thu Mar 12 21:45:43 PDT 2026
   - get_surface_y() returns top of sprite + walk_surface_y_offset — used by US-010 for pet landing
   - The pet_interacted signal is declared but not yet emitted — US-011 will connect Area2D body_entered to trigger it
   - Scene uses @onready for child nodes — data must be set before _ready() or texture/shape won't initialize
+---
+
+## 2026-03-12 - US-008
+- Created scripts/shop.gd — PanelContainer that loads all FurnitureData .tres from res://furniture/data/, displays catalog with icon/name/cost, handles buy/owned state
+- Added ShopButton (top-left corner) and ShopPanel nodes to scenes/main.tscn
+- Updated main.gd: added shop_button/shop_panel @onready refs, connected shop button, save/load owned_furniture array in save_data.json, included shop button and panel in passthrough polygon
+- Shop closes via Close button or clicking outside the panel (_unhandled_input)
+- Files changed: scripts/shop.gd (new), scripts/main.gd, scenes/main.tscn
+- **Learnings for future iterations:**
+  - Shop catalog loaded via DirAccess.open("res://furniture/data/") + list_dir_begin() pattern
+  - shop_panel.get_owned() / set_owned() are the API for main.gd save/load integration
+  - furniture_purchased signal emitted on buy — US-009 can connect to this for spawning furniture
+  - Shop items rebuilt dynamically on open and on coins_changed — no stale state
+  - _unhandled_input used for click-outside-to-close so shop button clicks aren't intercepted
 ---

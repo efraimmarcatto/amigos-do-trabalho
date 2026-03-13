@@ -135,7 +135,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Extend save_data.json schema to include owned_furniture array. Load FurnitureData resources from res://furniture/data/ at runtime into a registry dictionary."
     },
     {
