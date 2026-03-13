@@ -65,7 +65,7 @@ func _ready() -> void:
 	pet_sprite.floor_y = floor_y
 
 	# Position pet at floor level
-	var pet_half_h := (pet_sprite.get_sprite_size().y * pet_sprite.scale.abs().y) / 2.0
+	var pet_half_h = (pet_sprite.get_sprite_size().y * pet_sprite.scale.abs().y) / 2.0
 	pet_sprite.position.y = floor_y - pet_half_h
 
 	# Position coin label just above the floor

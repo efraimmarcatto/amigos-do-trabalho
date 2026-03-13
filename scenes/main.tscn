@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dkrliu7mhixev" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Texture2D" uid="uid://3kqr8fwd6ogi" path="res://icon.svg" id="2_icon"]
+[ext_resource type="SpriteFrames" uid="uid://cycsjda3go0wd" path="res://pet/data/ozzy.tres" id="2_tipki"]
 [ext_resource type="Script" uid="uid://dpvfgdkx7o4i0" path="res://scripts/coin_system.gd" id="3_coin"]
 [ext_resource type="Script" uid="uid://cs3du000k83pc" path="res://scripts/pet.gd" id="4_pet"]
 [ext_resource type="Script" uid="uid://buwscas5p16ym" path="res://scripts/interaction_menu.gd" id="5_menu"]
@@ -19,7 +20,11 @@ script = ExtResource("1_main")
 
 [node name="PetSprite" type="AnimatedSprite2D" parent="." unique_id=1104589341]
 position = Vector2(960, 1016)
-scale = Vector2(0.5, 0.5)
+scale = Vector2(2, 2)
+sprite_frames = ExtResource("2_tipki")
+animation = &"dragged"
+autoplay = "idle"
+frame = 3
 script = ExtResource("4_pet")
 sprite_sheet = ExtResource("2_icon")
 

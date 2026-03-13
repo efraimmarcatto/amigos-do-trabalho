@@ -100,7 +100,7 @@ const COLOR_SAD := Color(0.6, 0.6, 0.8, 1.0)      # Blue/gray tint
 
 func _ready() -> void:
 	_base_scale = scale
-	_setup_animations()
+	#_setup_animations()
 	# Connect to CoinSystem signal — CoinSystem is a sibling node
 	var coin_system := get_parent().get_node("CoinSystem")
 	if coin_system:
@@ -110,7 +110,7 @@ func _ready() -> void:
 	if menu:
 		menu.interaction_performed.connect(_on_interaction_performed)
 		menu.visibility_changed.connect(_on_menu_visibility_changed.bind(menu))
-	_update_visual(_current_mood)
+	#_update_visual(_current_mood)
 	_idle_timer = randf_range(1.0, 5.0)
 	play("idle")
 
@@ -540,7 +540,7 @@ func _change_state(new_state: PetState) -> void:
 		scale.x = absf(_base_scale.x)
 	if old_state == PetState.INTERACTING:
 		# Restore mood-based color
-		_update_visual(_current_mood)
+		#_update_visual(_current_mood)
 		if _sleep_label:
 			_sleep_label.queue_free()
 			_sleep_label = null
@@ -656,7 +656,7 @@ func _on_coins_changed(new_total: int) -> void:
 	var new_mood := _get_mood_for_coins(new_total)
 	if new_mood != _current_mood:
 		_current_mood = new_mood
-		_update_visual(_current_mood)
+		#_update_visual(_current_mood)
 
 
 func _get_mood_for_coins(coins: int) -> PetMood:
