@@ -10,6 +10,7 @@ Started: Fri Mar 13 14:59:40 PDT 2026
 - Adjacent panels (shop, inventory, settings) use `setup(menu_open_x, menu_panel_y)` for positioning relative to the slide menu
 - Use `on_before_close: Callable` on slide_menu to intercept close and sequence panel close animations
 - Panel open/close uses tween on `position:x` with `_animate_x()` pattern — hidden off-screen at `screen_w`, visible at computed `_open_x`
+- When adding new adjacent panels, update these locations in main.gd: `_handle_menu_close()`, `_update_passthrough()`, `_on_edit_layout_requested()`, `_enter_placement_mode()`
 - coin_hud.gd builds its UI programmatically in `_build_ui()` (no child nodes in .tscn)
 - The CoinSystem emits `coins_changed(new_total: int)` — connect to this for coin display updates
 - InventorySystem follows the same pattern as CoinSystem: extends Node, emits `inventory_changed(furniture_id, new_count)` signal
@@ -84,4 +85,26 @@ Started: Fri Mar 13 14:59:40 PDT 2026
   - `_on_buy()` now takes `(item: FurnitureData, quantity: int)` — quantity captured at rebuild time via `.bind()`
   - Placement mode cancel returns to inventory (not coin refund) — future US-026 will formalize this
   - Furniture spawning on load now uses `_furniture_positions` keys as source of truth for placed furniture
+---
+
+## 2026-03-13 - US-024
+- Created inventory_panel.gd following the shop.gd adjacent panel pattern
+- Inventory panel displays items with icon, name, quantity, Place and Discard buttons
+- Place button: removes 1 from inventory, closes panel, enters placement mode via `place_requested` signal
+- Discard button: shows ConfirmationDialog with refund amount (coin_cost × discard_refund_ratio), credits coins on confirm
+- Items with 0 quantity hidden; empty inventory shows "No items in inventory" message
+- Inventory panel rebuilds on `inventory_changed` signal when open
+- Added InventoryButton to slide menu between Shop and Edit Layout
+- Added `inventory_requested` signal to slide_menu.gd
+- Mutual exclusivity: opening Shop closes Inventory and vice versa
+- Menu close interceptor handles inventory panel (close panel first, then menu)
+- Inventory panel included in passthrough polygon when visible
+- Increased slide menu panel_height from 160 to 195 to fit new Inventory button
+- Files changed: scripts/inventory_panel.gd (new), scripts/slide_menu.gd, scripts/main.gd, scenes/main.tscn
+- **Learnings for future iterations:**
+  - inventory_panel.gd uses `get_furniture_data()` via ResourceLoader.exists + load, not from a cached catalog — works but loads on demand
+  - `shop_panel.get_furniture_data()` also works for inventory items since the shop loads all .tres files at startup
+  - ConfirmationDialog needs `confirmed` and `canceled` signal connections in `_ready()`
+  - When adding new adjacent panels, update `_handle_menu_close()`, `_update_passthrough()`, `_on_edit_layout_requested()`, and `_enter_placement_mode()` in main.gd
+  - Panel height on slide_menu needs to grow when adding new buttons — update the `panel_height` export var
 ---

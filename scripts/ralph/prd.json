@@ -92,7 +92,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-022 (inventory system) and US-023 (shop sends to inventory). Place action reuses existing placement mode in main.gd but sourced from inventory instead of shop. Discard needs a simple confirmation popup (ConfirmationDialog or custom panel)."
     },
     {
