@@ -27,6 +27,11 @@ var _placement_mode: bool = false
 var _placement_furniture_id: String = ""
 var _placement_preview: Sprite2D = null
 
+# Edit mode state
+var _edit_mode: bool = false
+var _edit_dragging_id: String = ""
+var _edit_drag_offset_x: float = 0.0
+
 func _ready() -> void:
 	# Make the viewport background transparent
 	get_viewport().transparent_bg = true
@@ -52,6 +57,7 @@ func _ready() -> void:
 	# Set up slide menu and connect signals
 	slide_menu.setup(floor_y)
 	slide_menu.shop_requested.connect(_on_shop_button_pressed)
+	slide_menu.edit_layout_requested.connect(_on_edit_layout_requested)
 	shop_panel.furniture_purchased.connect(_on_furniture_purchased)
 
 	# Share furniture nodes dict and floor_y with pet
@@ -265,6 +271,78 @@ func _default_furniture_position(furniture_id: String) -> Vector2:
 	return Vector2(x, y)
 
 
+func _on_edit_layout_requested() -> void:
+	if _edit_mode:
+		_exit_edit_mode()
+	else:
+		_enter_edit_mode()
+
+
+func _enter_edit_mode() -> void:
+	_edit_mode = true
+	# Pause pet
+	pet_sprite.paused = true
+	if pet_sprite.current_state == pet_sprite.PetState.WALKING:
+		pet_sprite._change_state(pet_sprite.PetState.IDLE)
+	# Highlight all furniture
+	for fid in _furniture_nodes:
+		var fnode: Furniture = _furniture_nodes[fid]
+		fnode.modulate = Color(1.2, 1.2, 0.8, 1.0)
+	# Disable passthrough to capture all input
+	get_window().mouse_passthrough_polygon = PackedVector2Array()
+
+
+func _exit_edit_mode() -> void:
+	if not _edit_mode:
+		return
+	_edit_mode = false
+	_edit_dragging_id = ""
+	# Resume pet
+	pet_sprite.paused = false
+	# Remove furniture highlights
+	for fid in _furniture_nodes:
+		var fnode: Furniture = _furniture_nodes[fid]
+		fnode.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	# Save positions
+	_save_state()
+
+
+func _get_furniture_at_point(point: Vector2) -> String:
+	## Returns the furniture_id of the furniture piece at the given point, or "".
+	for fid in _furniture_nodes:
+		var fnode: Furniture = _furniture_nodes[fid]
+		if not fnode or not fnode.data or not fnode.data.texture:
+			continue
+		var tex_size := fnode.data.texture.get_size()
+		var half := tex_size / 2.0
+		var rect := Rect2(fnode.global_position - half, tex_size)
+		if rect.has_point(point):
+			return fid
+	return ""
+
+
+func _is_overlap_with_other(furniture_id: String, x_pos: float) -> bool:
+	## Check if placing furniture at x_pos would overlap another furniture piece.
+	var fnode: Furniture = _furniture_nodes[furniture_id]
+	if not fnode or not fnode.data or not fnode.data.texture:
+		return false
+	var half_w := fnode.data.texture.get_size().x / 2.0
+	var new_left := x_pos - half_w
+	var new_right := x_pos + half_w
+	for other_id in _furniture_nodes:
+		if other_id == furniture_id:
+			continue
+		var other: Furniture = _furniture_nodes[other_id]
+		if not other or not other.data or not other.data.texture:
+			continue
+		var o_half_w := other.data.texture.get_size().x / 2.0
+		var o_left := other.global_position.x - o_half_w
+		var o_right := other.global_position.x + o_half_w
+		if new_right > o_left and new_left < o_right:
+			return true
+	return false
+
+
 func _update_passthrough() -> void:
 	# Godot's mouse_passthrough_polygon: if set, only the area INSIDE the polygon
 	# receives mouse events; everything outside is passed through.
@@ -330,6 +408,11 @@ func _update_passthrough() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Edit mode input handling
+	if _edit_mode:
+		_handle_edit_input(event)
+		return
+
 	if not _placement_mode:
 		return
 
@@ -361,9 +444,41 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
+func _handle_edit_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			# Start dragging a furniture piece
+			var fid := _get_furniture_at_point(event.position)
+			if fid != "":
+				_edit_dragging_id = fid
+				var fnode: Furniture = _furniture_nodes[fid]
+				_edit_drag_offset_x = fnode.global_position.x - event.position.x
+				get_viewport().set_input_as_handled()
+		else:
+			# Release drag
+			if _edit_dragging_id != "":
+				_edit_dragging_id = ""
+				get_viewport().set_input_as_handled()
+
+	elif event is InputEventMouseMotion and _edit_dragging_id != "":
+		var fnode: Furniture = _furniture_nodes[_edit_dragging_id]
+		if fnode and fnode.data and fnode.data.texture:
+			var half_w := fnode.data.texture.get_size().x / 2.0
+			var screen_w := float(DisplayServer.screen_get_size().x)
+			var new_x := clampf(event.position.x + _edit_drag_offset_x, half_w, screen_w - half_w)
+			# Check overlap with other furniture
+			if not _is_overlap_with_other(_edit_dragging_id, new_x):
+				fnode.global_position.x = new_x
+		get_viewport().set_input_as_handled()
+
+	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		_exit_edit_mode()
+		get_viewport().set_input_as_handled()
+
+
 func _process(_delta: float) -> void:
-	if _placement_mode:
-		# During placement, passthrough is already disabled; skip normal update
+	if _placement_mode or _edit_mode:
+		# During placement or edit mode, passthrough is already disabled; skip normal update
 		return
 	# Update passthrough in case pet moves or menu visibility changes
 	_update_passthrough()

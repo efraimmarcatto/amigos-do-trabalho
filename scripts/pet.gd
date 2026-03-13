@@ -46,6 +46,9 @@ var _interacting_furniture: Furniture = null
 var _interaction_timer: float = 0.0
 var _sleep_label: Label = null
 
+# External pause flag — when true, pet stays IDLE and skips all state processing
+var paused: bool = false
+
 # Color tints for each mood
 const COLOR_HAPPY := Color(0.5, 1.0, 0.5, 1.0)   # Green tint
 const COLOR_NEUTRAL := Color(1.0, 1.0, 1.0, 1.0)  # Normal
@@ -67,6 +70,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if paused:
+		return
 	match current_state:
 		PetState.IDLE:
 			_process_idle(delta)
