@@ -110,7 +110,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-022 (inventory system). The remove button can be a small Button node added as a child of the furniture scene dynamically when edit mode starts, removed when edit mode ends. Pet falling: check if pet's current surface furniture was removed and force FALLING state."
     },
     {

@@ -16,6 +16,8 @@ Started: Fri Mar 13 14:59:40 PDT 2026
 - InventorySystem follows the same pattern as CoinSystem: extends Node, emits `inventory_changed(furniture_id, new_count)` signal
 - JSON parses numbers as float — always handle both `is float` and `is int` when loading numeric values from save_data.json
 - Inventory stored as `Dictionary[String, int]` mapping furniture_id to quantity; items with 0 count are erased from the dictionary
+- Dynamic Button nodes in Node2D: position is relative to parent; `_input` must NOT call `set_input_as_handled()` for clicks on dynamically added Buttons
+- To remove placed furniture: erase from `_furniture_nodes`, `_furniture_positions`, `queue_free()` the node, and check `pet_sprite._current_surface` for FALLING
 
 ---
 
@@ -107,4 +109,21 @@ Started: Fri Mar 13 14:59:40 PDT 2026
   - ConfirmationDialog needs `confirmed` and `canceled` signal connections in `_ready()`
   - When adding new adjacent panels, update `_handle_menu_close()`, `_update_passthrough()`, `_on_edit_layout_requested()`, and `_enter_placement_mode()` in main.gd
   - Panel height on slide_menu needs to grow when adding new buttons — update the `panel_height` export var
+---
+
+## 2026-03-13 - US-025
+- Added dynamic "X" remove buttons above each furniture piece during edit mode
+- Remove button styled with red background, positioned above furniture sprite
+- Clicking remove: removes furniture from scene, erases from _furniture_nodes/_furniture_positions, adds to inventory
+- Pet enters FALLING state if standing on removed furniture (checks _current_surface)
+- Edit Layout button text changes to "Save Edit" during edit mode via new `set_edit_button_text()` on slide_menu
+- Escape exits edit mode (existing behavior preserved)
+- `_is_click_on_remove_button()` helper prevents _handle_edit_input from intercepting remove button clicks
+- Edit mode already disables passthrough (empty polygon), so remove buttons are clickable
+- Files changed: scripts/main.gd, scripts/slide_menu.gd
+- **Learnings for future iterations:**
+  - Button nodes added as children of Node2D work for click detection — position is relative to parent's global position
+  - `_input` runs before GUI in Godot — must return without `set_input_as_handled()` to let Button.pressed fire
+  - When dynamically adding/removing UI during edit mode, use `queue_free()` and `get_node_or_null()` pattern for safe cleanup
+  - `slide_menu.set_edit_button_text()` can be used to dynamically update any button label on the slide menu
 ---
