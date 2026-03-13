@@ -52,7 +52,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "PanelContainer anchored bottom-right. Use Tween to animate position.x. Toggle button sits outside panel, always visible. This replaces the old standalone shop button."
     },
     {

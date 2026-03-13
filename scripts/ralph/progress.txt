@@ -8,6 +8,8 @@ Started: Fri Mar 13 09:16:18 PDT 2026
 - No Godot binary is available in this dev environment — manual typecheck verification needed
 - Furniture system: FurnitureData resources in `/workspace/resources/furniture/`, Furniture scene at `/workspace/scenes/furniture.tscn`
 - Floor Y is computed from `DisplayServer.screen_get_usable_rect()` in main.gd and shared to pet via `pet_sprite.floor_y` — all ground-level logic must use `floor_y` not `screen_get_size().y`
+- Slide menu in `scripts/slide_menu.gd` exposes `get_toggle_rect()` and `get_panel_rect()` for passthrough polygon inclusion — future UI panels should follow this pattern
+- When replacing UI elements, update both the `.tscn` node tree AND the `@onready` references in the parent script
 ---
 
 ## 2026-03-13 - US-012
@@ -32,4 +34,21 @@ Started: Fri Mar 13 09:16:18 PDT 2026
   - `floor_y` is shared from main.gd to pet.gd as a public var — future stories should use this instead of raw screen height
   - Pet starting position in the .tscn is overridden at runtime by main.gd `_ready()`, so the scene value doesn't matter
   - Coin label offset_top/offset_bottom are set dynamically — future UI elements near the floor should follow this pattern
+---
+
+## 2026-03-13 - US-014
+- Implemented collapsible slide-out menu replacing the standalone shop button
+- Created `scripts/slide_menu.gd` with Tween-animated panel slide, toggle button at bottom-right
+- Menu contains: Shop button, Edit Layout button, separator, and settings placeholder
+- Toggle button always visible at bottom-right above taskbar; panel slides left on open
+- Clicking outside menu or toggle button again closes it
+- Passthrough polygon updated to include toggle button (always) and panel (when open)
+- Old standalone ShopButton node removed from main.tscn
+- Files changed: `scripts/slide_menu.gd` (new), `scripts/main.gd`, `scenes/main.tscn`
+- **Learnings for future iterations:**
+  - Slide menu uses `setup(floor_y)` to position itself — must be called after `_compute_floor_y()`
+  - `get_toggle_rect()` / `get_panel_rect()` pattern is useful for passthrough — any new UI element that needs passthrough inclusion should expose similar helpers
+  - Tween animation: `create_tween()` on the node, kill existing tween before starting new one to avoid conflicts
+  - `mouse_filter = MOUSE_FILTER_IGNORE` on the parent Control lets child buttons still receive input while the Control itself doesn't block clicks
+  - Manual browser verification needed — no Godot binary available
 ---
