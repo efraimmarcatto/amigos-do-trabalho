@@ -11,6 +11,8 @@ const SAVE_PATH := "user://save_data.json"
 @onready var coin_system: Node = $CoinSystem
 @onready var coin_label: Label = $CoinLabel
 @onready var interaction_menu: PanelContainer = $InteractionMenu
+@onready var shop_button: Button = $ShopButton
+@onready var shop_panel: PanelContainer = $ShopPanel
 
 func _ready() -> void:
 	# Make the viewport background transparent
@@ -31,6 +33,9 @@ func _ready() -> void:
 	# Connect coin system to update the label
 	coin_system.coins_changed.connect(_on_coins_changed)
 
+	# Connect shop button
+	shop_button.pressed.connect(_on_shop_button_pressed)
+
 	# Load saved state
 	_load_state()
 
@@ -46,6 +51,7 @@ func _save_state() -> void:
 	var data := {
 		"coins": coin_system.get_coins(),
 		"pet_mood": pet_sprite._current_mood,
+		"owned_furniture": shop_panel.get_owned(),
 	}
 	var json_string := JSON.stringify(data)
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -71,10 +77,20 @@ func _load_state() -> void:
 		coin_system.set_coins(int(data["coins"]))
 	elif data.has("coins") and data["coins"] is int:
 		coin_system.set_coins(data["coins"])
+	if data.has("owned_furniture") and data["owned_furniture"] is Array:
+		var owned: Array[String] = []
+		for item in data["owned_furniture"]:
+			if item is String:
+				owned.append(item)
+		shop_panel.set_owned(owned)
 
 
 func _on_coins_changed(new_total: int) -> void:
 	coin_label.text = "Coins: " + str(new_total)
+
+
+func _on_shop_button_pressed() -> void:
+	shop_panel.open_shop()
 
 
 func _update_passthrough() -> void:
@@ -98,6 +114,14 @@ func _update_passthrough() -> void:
 	# Include interaction menu when visible
 	if interaction_menu and interaction_menu.visible:
 		rects.append(interaction_menu.get_global_rect())
+
+	# Include shop button
+	if shop_button and shop_button.visible:
+		rects.append(shop_button.get_global_rect())
+
+	# Include shop panel when visible
+	if shop_panel and shop_panel.visible:
+		rects.append(shop_panel.get_global_rect())
 
 	if rects.is_empty():
 		return
