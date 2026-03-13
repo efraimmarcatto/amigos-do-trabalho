@@ -53,7 +53,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "This is the data layer only — no UI yet. The inventory system should be a separate node/script (inventory_system.gd) similar to coin_system.gd, emitting signals like inventory_changed(furniture_id, new_count) for UI binding."
     },
     {

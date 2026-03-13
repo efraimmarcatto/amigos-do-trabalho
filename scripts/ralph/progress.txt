@@ -12,6 +12,9 @@ Started: Fri Mar 13 14:59:40 PDT 2026
 - Panel open/close uses tween on `position:x` with `_animate_x()` pattern — hidden off-screen at `screen_w`, visible at computed `_open_x`
 - coin_hud.gd builds its UI programmatically in `_build_ui()` (no child nodes in .tscn)
 - The CoinSystem emits `coins_changed(new_total: int)` — connect to this for coin display updates
+- InventorySystem follows the same pattern as CoinSystem: extends Node, emits `inventory_changed(furniture_id, new_count)` signal
+- JSON parses numbers as float — always handle both `is float` and `is int` when loading numeric values from save_data.json
+- Inventory stored as `Dictionary[String, int]` mapping furniture_id to quantity; items with 0 count are erased from the dictionary
 
 ---
 
@@ -48,4 +51,19 @@ Started: Fri Mar 13 14:59:40 PDT 2026
   - When adding new adjacent panels (inventory, settings), follow the same pattern: `setup(menu_open_x, menu_panel_y)`, `_animate_x()`, `is_*_open()`, close interceptor coordination
   - Close interceptor uses `get_tree().create_timer(duration).timeout.connect()` for sequenced animations — watch for edge cases with rapid toggling
   - `close_shop()` is idempotent (checks `_is_open`) — safe to call multiple times
+---
+
+## 2026-03-13 - US-022
+- Added `discard_refund_ratio: float` export var to FurnitureData (default 0.5)
+- Updated all .tres files: table (0.5), sofa (0.5), food_bowl (0.4), toy (0.4), bookshelf (0.6)
+- Created inventory_system.gd following CoinSystem pattern: extends Node, signal-driven
+- Functions: add_to_inventory(), remove_from_inventory(), get_inventory_count(), get_all_inventory(), set_inventory(), get_inventory_for_save()
+- Added InventorySystem node to main.tscn (sibling of CoinSystem)
+- Wired into main.gd save/load: inventory persisted under "inventory" key in save_data.json
+- Files changed: scripts/furniture_data.gd, scripts/inventory_system.gd (new), scripts/main.gd, scenes/main.tscn, furniture/data/*.tres (all 5)
+- **Learnings for future iterations:**
+  - inventory_system.gd is referenced as `$InventorySystem` in main.gd — keep node name in sync
+  - `remove_from_inventory()` returns bool (like `spend_coins()`) — use for validation before actions
+  - Inventory erases keys at 0 count to keep save data clean
+  - The shop still uses `_owned` array — future stories (US-023/024) will transition to inventory-based ownership
 ---
