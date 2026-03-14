@@ -42,3 +42,15 @@ Started: Sat Mar 14 2026
   - The placement preview in main.gd is a standalone Sprite2D (not a Furniture instance), so it needs display_scale applied separately
   - No Godot CLI is available for typecheck — manual code review is the only verification method
 ---
+
+## 2026-03-14 - US-033
+- Added "Exit" button to slide menu below SettingsButton in main.tscn
+- Wired _exit_button in slide_menu.gd with `get_tree().quit()` on pressed
+- Added EXIT_BUTTON translation key (en: "Exit", pt: "Sair") in translations.csv
+- Updated `_update_all_ui_text()` in settings_panel.gd to refresh ExitButton text
+- Increased panel_height from 260 to 300 to accommodate the new button
+- Files changed: slide_menu.gd, main.tscn, translations.csv, settings_panel.gd
+- **Learnings for future iterations:**
+  - Adding a new menu button requires: .tscn node, @onready var, signal connect in _ready(), handler method, translation key, and _update_all_ui_text() entry
+  - The panel_height export var on slide_menu controls the menu panel size — adjust when adding/removing buttons
+---

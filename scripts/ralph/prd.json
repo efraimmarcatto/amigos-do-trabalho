@@ -34,7 +34,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Add the button in slide_menu.gd after SettingsButton. Connect its pressed signal to get_tree().quit(). The panel_height export var on slide_menu controls the menu size — adjust so there's no excess space below Exit."
     },
     {
