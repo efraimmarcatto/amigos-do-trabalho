@@ -37,6 +37,7 @@ enum PetMood { SAD, NEUTRAL, HAPPY }
 @export var jump_row: int = 0
 @export var fall_row: int = 0
 @export var interact_row: int = 0
+@export var dragged_row: int = 0
 
 ## Probability (0.0–1.0) of jumping onto nearby jumpable furniture per idle cycle
 @export var jump_probability: float = 0.3
@@ -54,6 +55,7 @@ enum PetMood { SAD, NEUTRAL, HAPPY }
 @export var jump_frames: int = 0
 @export var fall_frames: int = 0
 @export var interact_frames: int = 0
+@export var dragged_frames: int = 0
 
 var current_state: PetState = PetState.IDLE
 var _current_mood: PetMood = PetMood.NEUTRAL
@@ -138,6 +140,7 @@ func _setup_animations() -> void:
 		"jump": {"row": jump_row, "count": jump_frames, "loop": false},
 		"fall": {"row": fall_row, "count": fall_frames, "loop": false},
 		"interact": {"row": interact_row, "count": interact_frames, "loop": true},
+		"dragged": {"row": dragged_row, "count": dragged_frames, "loop": true},
 	}
 
 	for anim_name in anim_defs:
@@ -557,7 +560,10 @@ func _change_state(new_state: PetState) -> void:
 	if new_state == PetState.DRAGGED:
 		rotation_degrees = 5.0
 		_current_surface = null
-		_play_anim("idle")
+		if sprite_frames and sprite_frames.has_animation("dragged"):
+			_play_anim("dragged")
+		else:
+			_play_anim("idle")
 	elif new_state == PetState.FALLING:
 		# When entering FALLING from drag, clear surface (will detect new one)
 		if old_state == PetState.DRAGGED:
