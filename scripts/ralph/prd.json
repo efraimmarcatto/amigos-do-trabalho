@@ -68,7 +68,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Currently furniture is added as a child of the main Control node via add_child(). Change to _furniture_container.add_child(). The FurnitureContainer should be a Node2D (not Control) since furniture nodes are Node2D. Set z_index on both the container and the pet sprite. Check _furniture_nodes dict operations still work since they reference the node directly, not via parent."
     },
     {

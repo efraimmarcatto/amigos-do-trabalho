@@ -7,6 +7,7 @@ Started: Sat Mar 14 10:22:42 PDT 2026
 - slide_menu.gd declares `menu_opened` and `menu_closed` signals but they are not currently connected in main.gd
 - When removing unused code, grep all `.gd` files to confirm no remaining references before committing
 - Furniture display_scale is accessed as `fnode.data.display_scale` (a Vector2 on FurnitureData)
+- All furniture is spawned as children of `_furniture_container` (Node2D, z_index=0), pet sprite has z_index=1
 
 ---
 
@@ -22,4 +23,15 @@ Started: Sat Mar 14 10:22:42 PDT 2026
   - coin_hud.gd has a `_get_rect()` method used by main.gd's `_update_passthrough()` for click-through polygon
   - The `toggle_w` parameter in `setup()` is declared but unused — left as-is to minimize scope
   - slide_menu signals (`menu_opened`/`menu_closed`) are part of slide_menu's API but currently have no consumers
+---
+
+## 2026-03-14 - US-035
+- Added `_furniture_container` (Node2D) created programmatically in `_ready()` with `z_index = 0`
+- Set `pet_sprite.z_index = 1` so pet always renders in front of furniture
+- Changed both `_spawn_furniture()` and `_spawn_furniture_at()` to add furniture as children of `_furniture_container` instead of the main Control node
+- Files changed: `scripts/main.gd`
+- **Learnings for future iterations:**
+  - `_furniture_nodes` dict references nodes directly, so changing the parent node doesn't break any dict operations
+  - `global_position` works correctly regardless of parent hierarchy since Node2D computes it from the scene root
+  - The FurnitureContainer must be Node2D (not Control) since Furniture extends Node2D
 ---
