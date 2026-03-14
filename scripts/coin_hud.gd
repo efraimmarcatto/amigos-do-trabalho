@@ -115,6 +115,6 @@ func animate_down() -> void:
 		.set_trans(Tween.TRANS_CUBIC)
 
 
-func get_rect() -> Rect2:
+func _get_rect() -> Rect2:
 	## Returns the global rect of the coin HUD for passthrough polygon.
 	return Rect2(global_position, size)

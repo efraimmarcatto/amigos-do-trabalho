@@ -1,18 +1,17 @@
-[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="FurnitureData" format=3 uid="uid://dly7v0tb8qll4"]
 
-[ext_resource type="Script" path="res://scripts/furniture_data.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://icon.svg" id="2_texture"]
+[ext_resource type="Script" uid="uid://cs01pwuerwdb3" path="res://scripts/furniture_data.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://do2kxbeegx1hp" path="res://assets/Top-Down_Retro_Interior/TopDownHouse_FurnitureState1.png" id="2_pujfr"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_f3042"]
+atlas = ExtResource("2_pujfr")
+region = Rect2(33, 64, 46, 47)
 
 [resource]
 script = ExtResource("1_script")
 id = "bookshelf"
 display_name = "Bookshelf"
-texture = ExtResource("2_texture")
+texture = SubResource("AtlasTexture_f3042")
 coin_cost = 150
-walkable = false
-walk_surface_y_offset = 0
 can_fall_off_edge = false
-interaction_type = ""
-interaction_coin_bonus = 0
-interaction_cooldown = 0.0
 discard_refund_ratio = 0.6

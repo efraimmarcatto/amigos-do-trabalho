@@ -11,8 +11,8 @@
 [ext_resource type="Script" uid="uid://bfgwabfrbqboc" path="res://scripts/coin_hud.gd" id="8_coin_hud"]
 [ext_resource type="Script" uid="uid://dprlm267y1b6r" path="res://scripts/inventory_system.gd" id="9_inventory"]
 [ext_resource type="Script" uid="uid://elcwav4wt0tg" path="res://scripts/inventory_panel.gd" id="10_inv_panel"]
-[ext_resource type="Script" path="res://scripts/settings_panel.gd" id="11_settings_panel"]
-[ext_resource type="Script" path="res://scripts/pet_selection_panel.gd" id="12_pet_panel"]
+[ext_resource type="Script" uid="uid://dhjk5tifpht32" path="res://scripts/settings_panel.gd" id="11_settings_panel"]
+[ext_resource type="Script" uid="uid://doi8dbowi14tq" path="res://scripts/pet_selection_panel.gd" id="12_pet_panel"]
 
 [node name="Main" type="Control" unique_id=222507356]
 layout_mode = 3
@@ -103,14 +103,14 @@ text = "Inventory"
 layout_mode = 2
 text = "Edit Layout"
 
-[node name="PetButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
+[node name="PetButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=139138969]
 layout_mode = 2
 text = "Select Pet"
 
 [node name="Separator" type="HSeparator" parent="SlideMenu/MenuPanel/VBox" unique_id=1705390882]
 layout_mode = 2
 
-[node name="SettingsButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
+[node name="SettingsButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=1835984327]
 layout_mode = 2
 text = "Settings"
 
@@ -178,7 +178,7 @@ size_flags_vertical = 3
 title = "Confirm Discard"
 size = Vector2i(300, 100)
 
-[node name="SettingsPanel" type="PanelContainer" parent="."]
+[node name="SettingsPanel" type="PanelContainer" parent="." unique_id=1371832605]
 visible = false
 layout_mode = 0
 offset_left = 10.0
@@ -187,33 +187,33 @@ offset_right = 350.0
 offset_bottom = 400.0
 script = ExtResource("11_settings_panel")
 
-[node name="VBox" type="VBoxContainer" parent="SettingsPanel"]
+[node name="VBox" type="VBoxContainer" parent="SettingsPanel" unique_id=1754607590]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="SettingsPanel/VBox"]
+[node name="Title" type="Label" parent="SettingsPanel/VBox" unique_id=222915586]
 layout_mode = 2
 text = "Settings"
 horizontal_alignment = 1
 
-[node name="CloseButton" type="Button" parent="SettingsPanel/VBox"]
+[node name="CloseButton" type="Button" parent="SettingsPanel/VBox" unique_id=851703004]
 layout_mode = 2
 text = "Close"
 
-[node name="LanguageLabel" type="Label" parent="SettingsPanel/VBox"]
+[node name="LanguageLabel" type="Label" parent="SettingsPanel/VBox" unique_id=956782997]
 layout_mode = 2
 text = "Language"
 
-[node name="LanguageDropdown" type="OptionButton" parent="SettingsPanel/VBox"]
+[node name="LanguageDropdown" type="OptionButton" parent="SettingsPanel/VBox" unique_id=1867478886]
 layout_mode = 2
 
-[node name="MonitorLabel" type="Label" parent="SettingsPanel/VBox"]
+[node name="MonitorLabel" type="Label" parent="SettingsPanel/VBox" unique_id=2116354895]
 layout_mode = 2
 text = "Monitor"
 
-[node name="MonitorDropdown" type="OptionButton" parent="SettingsPanel/VBox"]
+[node name="MonitorDropdown" type="OptionButton" parent="SettingsPanel/VBox" unique_id=413967208]
 layout_mode = 2
 
-[node name="PetSelectionPanel" type="PanelContainer" parent="."]
+[node name="PetSelectionPanel" type="PanelContainer" parent="." unique_id=1352778634]
 visible = false
 layout_mode = 0
 offset_left = 10.0
@@ -222,23 +222,23 @@ offset_right = 350.0
 offset_bottom = 400.0
 script = ExtResource("12_pet_panel")
 
-[node name="VBox" type="VBoxContainer" parent="PetSelectionPanel"]
+[node name="VBox" type="VBoxContainer" parent="PetSelectionPanel" unique_id=999651126]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="PetSelectionPanel/VBox"]
+[node name="Title" type="Label" parent="PetSelectionPanel/VBox" unique_id=983554574]
 layout_mode = 2
 text = "Select Pet"
 horizontal_alignment = 1
 
-[node name="CloseButton" type="Button" parent="PetSelectionPanel/VBox"]
+[node name="CloseButton" type="Button" parent="PetSelectionPanel/VBox" unique_id=1924048903]
 layout_mode = 2
 text = "Close"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="PetSelectionPanel/VBox"]
+[node name="ScrollContainer" type="ScrollContainer" parent="PetSelectionPanel/VBox" unique_id=562164359]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Grid" type="GridContainer" parent="PetSelectionPanel/VBox/ScrollContainer"]
+[node name="Grid" type="GridContainer" parent="PetSelectionPanel/VBox/ScrollContainer" unique_id=717372417]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3

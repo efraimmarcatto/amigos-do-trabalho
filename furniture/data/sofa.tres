@@ -1,19 +1,20 @@
-[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="FurnitureData" format=3 uid="uid://b5ytdkxtrekf1"]
 
-[ext_resource type="Script" path="res://scripts/furniture_data.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://icon.svg" id="2_texture"]
+[ext_resource type="Script" uid="uid://cs01pwuerwdb3" path="res://scripts/furniture_data.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://do2kxbeegx1hp" path="res://assets/Top-Down_Retro_Interior/TopDownHouse_FurnitureState1.png" id="2_bq4xv"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_oboyu"]
+atlas = ExtResource("2_bq4xv")
+region = Rect2(144, 160, 32, 32)
 
 [resource]
 script = ExtResource("1_script")
 id = "sofa"
 display_name = "Sofa"
-texture = ExtResource("2_texture")
+texture = SubResource("AtlasTexture_oboyu")
 coin_cost = 100
 walkable = true
-walk_surface_y_offset = 0
-can_fall_off_edge = true
 jumpable = true
 interaction_type = "sleep"
 interaction_coin_bonus = 5
 interaction_cooldown = 30.0
-discard_refund_ratio = 0.5

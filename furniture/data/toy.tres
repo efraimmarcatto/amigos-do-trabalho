@@ -1,16 +1,18 @@
-[gd_resource type="Resource" script_class="FurnitureData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="FurnitureData" format=3 uid="uid://cs5ielm3jlcrg"]
 
-[ext_resource type="Script" path="res://scripts/furniture_data.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://icon.svg" id="2_texture"]
+[ext_resource type="Script" uid="uid://cs01pwuerwdb3" path="res://scripts/furniture_data.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://bkt43cqhfr3r3" path="res://assets/Top-Down_Retro_Interior/TopDownHouse_SmallItems.png" id="2_2wsgc"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_adkp5"]
+atlas = ExtResource("2_2wsgc")
+region = Rect2(66, 6, 11, 9)
 
 [resource]
 script = ExtResource("1_script")
 id = "toy"
 display_name = "Toy"
-texture = ExtResource("2_texture")
+texture = SubResource("AtlasTexture_adkp5")
 coin_cost = 75
-walkable = false
-walk_surface_y_offset = 0
 can_fall_off_edge = false
 interaction_type = "play"
 interaction_coin_bonus = 8

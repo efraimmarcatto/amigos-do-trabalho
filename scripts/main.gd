@@ -175,7 +175,7 @@ func _load_state() -> void:
 			monitor_idx = int(data["monitor"])
 		elif data["monitor"] is int:
 			monitor_idx = data["monitor"]
-		if monitor_idx > 0 and monitor_idx < DisplayServer.screen_get_count():
+		if monitor_idx > 0 and monitor_idx < DisplayServer.get_screen_count():
 			settings_panel.apply_monitor(monitor_idx)
 	# Spawn furniture from saved positions (backward compat: also check owned_furniture)
 	var furniture_to_spawn: Array[String] = []
@@ -200,12 +200,12 @@ func _on_mood_bubble_changed(_is_visible: bool) -> void:
 
 
 func _on_menu_opened() -> void:
-	coin_hud.animate_up()
-
+	#coin_hud.animate_up()
+	pass
 
 func _on_menu_closed() -> void:
-	coin_hud.animate_down()
-
+	#coin_hud.animate_down()
+	pass
 
 func _handle_menu_close() -> void:
 	## Intercepts menu close: if a panel is open, close it first, then close menu.
@@ -316,8 +316,8 @@ func _on_monitor_changed(_monitor_index: int) -> void:
 	win.size = screen_size
 
 	# Reposition pet — clamp to new screen bounds
-	var pet_half_h := (pet_sprite.get_sprite_size().y * pet_sprite.scale.abs().y) / 2.0
-	var pet_half_w := (pet_sprite.get_sprite_size().x * pet_sprite.scale.abs().x) / 2.0
+	var pet_half_h = (pet_sprite.get_sprite_size().y * pet_sprite.scale.abs().y) / 2.0
+	var pet_half_w = (pet_sprite.get_sprite_size().x * pet_sprite.scale.abs().x) / 2.0
 	pet_sprite.position.y = floor_y - pet_half_h
 	pet_sprite.position.x = clampf(pet_sprite.position.x, pet_half_w, float(screen_size.x) - pet_half_w)
 
@@ -339,7 +339,7 @@ func _on_monitor_changed(_monitor_index: int) -> void:
 	inventory_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 	settings_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 	pet_selection_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
-	var toggle_rect := slide_menu.get_toggle_rect()
+	var toggle_rect = slide_menu.get_toggle_rect()
 	coin_hud.setup(floor_y, toggle_rect.position.x, toggle_rect.size.x, slide_menu.panel_height)
 
 	# Re-open settings panel since user was just in it
@@ -662,7 +662,7 @@ func _update_passthrough() -> void:
 
 	# Include mood speech bubble when visible
 	if pet_sprite:
-		var bubble_rect := pet_sprite.get_bubble_rect()
+		var bubble_rect = pet_sprite.get_bubble_rect()
 		if bubble_rect.size.x > 0:
 			rects.append(bubble_rect)
 

@@ -165,7 +165,7 @@ func get_current_monitor() -> int:
 
 func apply_monitor(monitor_index: int) -> void:
 	## Apply a monitor selection, moving the window and emitting signal.
-	var count := DisplayServer.screen_get_count()
+	var count := DisplayServer.get_screen_count()
 	if monitor_index < 0 or monitor_index >= count:
 		monitor_index = 0
 	DisplayServer.window_set_current_screen(monitor_index)
@@ -175,7 +175,7 @@ func apply_monitor(monitor_index: int) -> void:
 
 func _populate_monitors() -> void:
 	_monitor_dropdown.clear()
-	var count := DisplayServer.screen_get_count()
+	var count := DisplayServer.get_screen_count()
 	for i in range(count):
 		var screen_size := DisplayServer.screen_get_size(i)
 		var label := "Monitor %d — %dx%d" % [i + 1, screen_size.x, screen_size.y]
@@ -193,7 +193,7 @@ func _select_current_monitor() -> void:
 
 
 func _on_monitor_selected(index: int) -> void:
-	if index < 0 or index >= DisplayServer.screen_get_count():
+	if index < 0 or index >= DisplayServer.get_screen_count():
 		return
 	apply_monitor(index)
 
