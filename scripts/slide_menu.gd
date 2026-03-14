@@ -167,7 +167,6 @@ func _on_exit() -> void:
 
 func _on_edit_layout() -> void:
 	edit_layout_requested.emit()
-	close_menu()
 
 
 func _unhandled_input(event: InputEvent) -> void:

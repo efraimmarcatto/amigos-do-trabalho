@@ -15,4 +15,4 @@ texture = SubResource("AtlasTexture_f3042")
 coin_cost = 150
 can_fall_off_edge = false
 discard_refund_ratio = 0.6
-display_scale = Vector2(2, 2)
+display_scale = Vector2(4, 4)

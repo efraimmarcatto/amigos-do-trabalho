@@ -29,3 +29,5 @@ extends Resource
 @export var discard_refund_ratio: float = 0.5
 ## Display scale applied to the sprite and collision shape
 @export var display_scale: Vector2 = Vector2(1, 1)
+## Whether this item can be placed on top of other walkable furniture
+@export var stackable: bool = false

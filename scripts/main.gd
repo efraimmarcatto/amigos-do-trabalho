@@ -380,10 +380,14 @@ func _enter_placement_mode(furniture_id: String) -> void:
 		add_child(_placement_preview)
 		# Position at mouse, constrained to floor
 		var tex_h = fdata.texture.get_size().y * fdata.display_scale.y
-		_placement_preview.global_position = Vector2(
-			get_global_mouse_position().x,
-			floor_y - tex_h / 2.0
-		)
+		var mouse_x := get_global_mouse_position().x
+		var y := floor_y - tex_h / 2.0
+		# Stackable items snap to walkable furniture surfaces
+		if fdata.stackable:
+			var base := _get_walkable_furniture_at_x(mouse_x)
+			if base:
+				y = base.get_surface_y() - tex_h / 2.0
+		_placement_preview.global_position = Vector2(mouse_x, y)
 
 	# Create chest/inventory button for storing item during placement
 	_placement_chest_btn = Button.new()
@@ -612,10 +616,21 @@ func _remove_remove_button(fnode: Furniture) -> void:
 
 func _on_remove_furniture(furniture_id: String) -> void:
 	## Removes furniture from the scene during edit mode and adds it to inventory.
+	## Also removes any stackable items sitting on top of this furniture.
 	if not _edit_mode:
 		return
 	if not _furniture_nodes.has(furniture_id):
 		return
+
+	# First, remove any stacked items on top of this furniture
+	var stacked := _get_stacked_furniture_ids(furniture_id)
+	for sid in stacked:
+		var snode: Furniture = _furniture_nodes[sid]
+		_remove_remove_button(snode)
+		snode.queue_free()
+		_furniture_nodes.erase(sid)
+		_furniture_positions.erase(sid)
+		inventory_system.add_to_inventory(sid)
 
 	var fnode: Furniture = _furniture_nodes[furniture_id]
 
@@ -631,6 +646,50 @@ func _on_remove_furniture(furniture_id: String) -> void:
 
 	# Add back to inventory
 	inventory_system.add_to_inventory(furniture_id)
+
+
+func _get_stacked_furniture_ids(base_id: String) -> Array[String]:
+	## Returns IDs of stackable furniture items sitting on top of the given base furniture.
+	var result: Array[String] = []
+	if not _furniture_nodes.has(base_id):
+		return result
+	var base: Furniture = _furniture_nodes[base_id]
+	if not base or not base.data or not base.data.texture:
+		return result
+	var base_left := base.get_left_x()
+	var base_right := base.get_right_x()
+	var base_surface := base.get_surface_y()
+	for fid in _furniture_nodes:
+		if fid == base_id:
+			continue
+		var fnode: Furniture = _furniture_nodes[fid]
+		if not fnode or not fnode.data or not fnode.data.stackable:
+			continue
+		# Check if this stackable item's center X is within the base's X bounds
+		# and its bottom is near the base's surface
+		var fx := fnode.global_position.x
+		if fx >= base_left and fx <= base_right:
+			var ftex_h := 0.0
+			if fnode.data.texture:
+				ftex_h = fnode.data.texture.get_size().y * fnode.data.display_scale.y
+			var fnode_bottom := fnode.global_position.y + ftex_h / 2.0
+			# Allow some tolerance (within 8px of the surface)
+			if absf(fnode_bottom - base_surface) < 8.0:
+				result.append(fid)
+	return result
+
+
+func _get_walkable_furniture_at_x(x: float) -> Furniture:
+	## Returns the walkable furniture piece whose X bounds contain the given x, or null.
+	for fid in _furniture_nodes:
+		var fnode: Furniture = _furniture_nodes[fid]
+		if not fnode or not fnode.data or not fnode.data.texture:
+			continue
+		if not fnode.data.walkable:
+			continue
+		if x >= fnode.get_left_x() and x <= fnode.get_right_x():
+			return fnode
+	return null
 
 
 func _get_furniture_at_point(point: Vector2) -> String:
@@ -768,7 +827,13 @@ func _input(event: InputEvent) -> void:
 			var tex_h = fdata.texture.get_size().y * fdata.display_scale.y
 			var screen_w := float(DisplayServer.screen_get_size().x)
 			var x := clampf(event.position.x, tex_w / 2.0, screen_w - tex_w / 2.0)
-			_placement_preview.global_position = Vector2(x, floor_y - tex_h / 2.0)
+			var y := floor_y - tex_h / 2.0
+			# Stackable items snap to walkable furniture surfaces
+			if fdata.stackable:
+				var base := _get_walkable_furniture_at_x(x)
+				if base:
+					y = base.get_surface_y() - tex_h / 2.0
+			_placement_preview.global_position = Vector2(x, y)
 		get_viewport().set_input_as_handled()
 
 	elif event is InputEventMouseButton and event.pressed:
@@ -853,7 +918,15 @@ func _handle_edit_input(event: InputEvent) -> void:
 			var new_x := clampf(event.position.x + _edit_drag_offset_x, half_w, screen_w - half_w)
 			# Check overlap with other furniture
 			if not _is_overlap_with_other(_edit_dragging_id, new_x):
+				# Get stacked items before moving base (so X bounds still match)
+				var stacked := _get_stacked_furniture_ids(_edit_dragging_id)
+				var old_x := fnode.global_position.x
+				var dx := new_x - old_x
 				fnode.global_position.x = new_x
+				# Move stacked items along with the base furniture
+				for sid in stacked:
+					var snode: Furniture = _furniture_nodes[sid]
+					snode.global_position.x += dx
 		get_viewport().set_input_as_handled()
 
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
