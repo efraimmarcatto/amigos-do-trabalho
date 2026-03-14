@@ -92,15 +92,26 @@ var menu_open: bool = false
 var _jump_prep_timer: float = 0.0
 var _jump_target_furniture: Furniture = null
 
-# Color tints for each mood
-const COLOR_HAPPY := Color(0.5, 1.0, 0.5, 1.0)   # Green tint
-const COLOR_NEUTRAL := Color(1.0, 1.0, 1.0, 1.0)  # Normal
-const COLOR_SAD := Color(0.6, 0.6, 0.8, 1.0)      # Blue/gray tint
+# Speech bubble for mood display
+var _bubble_panel: PanelContainer = null
+var _bubble_icon: TextureRect = null
+var _bubble_fade_tween: Tween = null
+var _sad_reminder_timer: Timer = null
+
+# Mood images (placeholder colored circles)
+var _mood_textures: Dictionary = {}
+
+signal mood_bubble_visible_changed(is_visible: bool)
 
 
 func _ready() -> void:
 	_base_scale = scale
+	# Ensure modulate is always white (no color tinting)
+	modulate = Color(1, 1, 1, 1)
 	#_setup_animations()
+	_build_mood_textures()
+	_build_speech_bubble()
+	_setup_sad_reminder_timer()
 	# Connect to CoinSystem signal — CoinSystem is a sibling node
 	var coin_system := get_parent().get_node("CoinSystem")
 	if coin_system:
@@ -110,7 +121,6 @@ func _ready() -> void:
 	if menu:
 		menu.interaction_performed.connect(_on_interaction_performed)
 		menu.visibility_changed.connect(_on_menu_visibility_changed.bind(menu))
-	#_update_visual(_current_mood)
 	_idle_timer = randf_range(1.0, 5.0)
 	play("idle")
 
@@ -515,8 +525,6 @@ func _start_interaction(fnode: Furniture) -> void:
 			_sleep_label.add_theme_font_size_override("font_size", 24)
 			_sleep_label.position = Vector2(10, -40)
 			add_child(_sleep_label)
-			# Sleeping tint
-			modulate = Color(0.7, 0.7, 1.0, 1.0)
 		"eat":
 			_interaction_timer = 0.3  # Short — bounce duration
 			_play_bounce()
@@ -527,6 +535,8 @@ func _start_interaction(fnode: Furniture) -> void:
 			_interaction_timer = 0.5
 
 	_change_state(PetState.INTERACTING)
+	# Show mood bubble after furniture interaction
+	_show_mood_bubble()
 
 
 func _change_state(new_state: PetState) -> void:
@@ -539,8 +549,6 @@ func _change_state(new_state: PetState) -> void:
 	if old_state == PetState.WALKING:
 		scale.x = absf(_base_scale.x)
 	if old_state == PetState.INTERACTING:
-		# Restore mood-based color
-		#_update_visual(_current_mood)
 		if _sleep_label:
 			_sleep_label.queue_free()
 			_sleep_label = null
@@ -638,6 +646,8 @@ func _on_interaction_performed(_interaction_name: String) -> void:
 	_interaction_timer = 0.3
 	_change_state(PetState.INTERACTING)
 	_play_bounce()
+	# Show mood bubble after interaction
+	_show_mood_bubble()
 
 
 func _play_anim(anim_name: String) -> void:
@@ -656,7 +666,12 @@ func _on_coins_changed(new_total: int) -> void:
 	var new_mood := _get_mood_for_coins(new_total)
 	if new_mood != _current_mood:
 		_current_mood = new_mood
-		#_update_visual(_current_mood)
+		_show_mood_bubble()
+		# Manage SAD reminder timer
+		if new_mood == PetMood.SAD:
+			_start_sad_reminder()
+		else:
+			_stop_sad_reminder()
 
 
 func _get_mood_for_coins(coins: int) -> PetMood:
@@ -668,11 +683,127 @@ func _get_mood_for_coins(coins: int) -> PetMood:
 		return PetMood.SAD
 
 
-func _update_visual(mood: PetMood) -> void:
-	match mood:
-		PetMood.HAPPY:
-			modulate = COLOR_HAPPY
-		PetMood.NEUTRAL:
-			modulate = COLOR_NEUTRAL
-		PetMood.SAD:
-			modulate = COLOR_SAD
+func _build_mood_textures() -> void:
+	## Create placeholder mood icon textures (colored circles).
+	var colors := {
+		PetMood.HAPPY: Color(0.3, 0.9, 0.3, 1.0),    # Green happy face
+		PetMood.NEUTRAL: Color(0.9, 0.9, 0.3, 1.0),   # Yellow neutral face
+		PetMood.SAD: Color(0.4, 0.5, 0.9, 1.0),        # Blue sad face
+	}
+	for mood in colors:
+		var img := Image.create(24, 24, false, Image.FORMAT_RGBA8)
+		var center := Vector2(12, 12)
+		var radius := 10.0
+		var col: Color = colors[mood]
+		for x in range(24):
+			for y in range(24):
+				var dist := Vector2(x, y).distance_to(center)
+				if dist <= radius:
+					img.set_pixel(x, y, col)
+				else:
+					img.set_pixel(x, y, Color(0, 0, 0, 0))
+		var tex := ImageTexture.create_from_image(img)
+		_mood_textures[mood] = tex
+
+
+func _build_speech_bubble() -> void:
+	## Build speech bubble UI as child of pet sprite.
+	_bubble_panel = PanelContainer.new()
+	_bubble_panel.visible = false
+	_bubble_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# Style: white background with rounded corners
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1, 1, 1, 0.95)
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	style.content_margin_left = 6
+	style.content_margin_right = 6
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+	_bubble_panel.add_theme_stylebox_override("panel", style)
+
+	_bubble_icon = TextureRect.new()
+	_bubble_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_bubble_icon.custom_minimum_size = Vector2(24, 24)
+	_bubble_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bubble_panel.add_child(_bubble_icon)
+
+	add_child(_bubble_panel)
+	_update_bubble_position()
+
+
+func _update_bubble_position() -> void:
+	## Position bubble above pet's head.
+	if not _bubble_panel:
+		return
+	var sprite_size := get_sprite_size()
+	# Position above the sprite (negative Y since sprite is centered)
+	_bubble_panel.position = Vector2(-18, -sprite_size.y / 2.0 - 44)
+
+
+func _setup_sad_reminder_timer() -> void:
+	_sad_reminder_timer = Timer.new()
+	_sad_reminder_timer.one_shot = true
+	_sad_reminder_timer.timeout.connect(_on_sad_reminder_timeout)
+	add_child(_sad_reminder_timer)
+
+
+func _start_sad_reminder() -> void:
+	if _sad_reminder_timer:
+		_sad_reminder_timer.wait_time = randf_range(15.0, 45.0)
+		_sad_reminder_timer.start()
+
+
+func _stop_sad_reminder() -> void:
+	if _sad_reminder_timer:
+		_sad_reminder_timer.stop()
+
+
+func _on_sad_reminder_timeout() -> void:
+	if _current_mood == PetMood.SAD:
+		_show_mood_bubble()
+		_start_sad_reminder()
+
+
+func _show_mood_bubble() -> void:
+	## Show the speech bubble with the current mood icon.
+	if not _bubble_panel or not _bubble_icon:
+		return
+	if _current_mood in _mood_textures:
+		_bubble_icon.texture = _mood_textures[_current_mood]
+
+	_update_bubble_position()
+
+	# Cancel any existing fade tween
+	if _bubble_fade_tween and _bubble_fade_tween.is_valid():
+		_bubble_fade_tween.kill()
+
+	# Show bubble at full opacity
+	_bubble_panel.modulate = Color(1, 1, 1, 1)
+	_bubble_panel.visible = true
+	mood_bubble_visible_changed.emit(true)
+
+	# Auto-hide after 3-5 seconds with fade
+	var display_time := randf_range(3.0, 5.0)
+	_bubble_fade_tween = create_tween()
+	_bubble_fade_tween.tween_interval(display_time)
+	_bubble_fade_tween.tween_property(_bubble_panel, "modulate:a", 0.0, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	_bubble_fade_tween.tween_callback(_hide_mood_bubble)
+
+
+func _hide_mood_bubble() -> void:
+	if _bubble_panel:
+		_bubble_panel.visible = false
+		mood_bubble_visible_changed.emit(false)
+
+
+func get_bubble_rect() -> Rect2:
+	## Returns the global rect of the speech bubble for passthrough polygon.
+	if _bubble_panel and _bubble_panel.visible:
+		var bubble_size := _bubble_panel.size
+		var bubble_global_pos := global_position + _bubble_panel.position
+		return Rect2(bubble_global_pos, bubble_size)
+	return Rect2()

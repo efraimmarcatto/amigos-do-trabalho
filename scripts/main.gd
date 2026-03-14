@@ -87,6 +87,9 @@ func _ready() -> void:
 	pet_selection_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 	pet_selection_panel.pet_selected.connect(_on_pet_selected)
 
+	# Connect pet mood bubble visibility to update passthrough
+	pet_sprite.mood_bubble_visible_changed.connect(_on_mood_bubble_changed)
+
 	# Share furniture nodes dict and floor_y with pet
 	pet_sprite._furniture_nodes = _furniture_nodes
 	pet_sprite.floor_y = floor_y
@@ -190,6 +193,10 @@ func _load_state() -> void:
 
 func _on_coins_changed(new_total: int) -> void:
 	coin_hud.update_coins(new_total)
+
+
+func _on_mood_bubble_changed(_is_visible: bool) -> void:
+	_update_passthrough()
 
 
 func _on_menu_opened() -> void:
@@ -652,6 +659,12 @@ func _update_passthrough() -> void:
 		var tex_size: Vector2 = pet_sprite.get_sprite_size() * pet_sprite.scale
 		var half_size: Vector2 = tex_size / 2.0
 		rects.append(Rect2(pet_pos - half_size, tex_size))
+
+	# Include mood speech bubble when visible
+	if pet_sprite:
+		var bubble_rect := pet_sprite.get_bubble_rect()
+		if bubble_rect.size.x > 0:
+			rects.append(bubble_rect)
 
 	# Include coin HUD rect
 	if coin_hud and coin_hud.visible:

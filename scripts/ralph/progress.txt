@@ -212,3 +212,23 @@ Started: Fri Mar 13 14:59:40 PDT 2026
   - When adding a new panel, update 7 locations in main.gd: @onready, setup(), signal connect, _handle_menu_close(), _update_passthrough(), _on_edit_layout_requested(), _enter_placement_mode(), and all mutual exclusivity handlers
   - GridContainer with columns=3 inside ScrollContainer provides a scalable grid layout for any number of items
 ---
+
+## 2026-03-14 - US-030
+- Replaced pet mood color tinting system with speech bubble mood display
+- Speech bubble: PanelContainer with TextureRect child, built programmatically in pet.gd (_build_speech_bubble)
+- Placeholder mood icons: colored circles (green=happy, yellow=neutral, blue=sad) created via Image.create + set_pixel
+- Bubble appears on mood changes (coin threshold crossings) and after interactions (feed, play, sleep, furniture interactions)
+- SAD mood: recurring reminder bubble at 15-45s random intervals via Timer node
+- Non-SAD moods: bubble only on change/interaction, no recurring
+- Auto-hide after 3-5s with fade-out tween (modulate alpha 1.0 → 0.0, EASE_OUT, TRANS_CUBIC)
+- Removed ALL modulate color changes: COLOR_HAPPY/COLOR_NEUTRAL/COLOR_SAD constants, _update_visual(), sleeping tint
+- Pet sprite modulate stays at Color(1,1,1,1) at all times
+- Bubble rect included in passthrough polygon via get_bubble_rect() and mood_bubble_visible_changed signal
+- Files changed: scripts/pet.gd, scripts/main.gd, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - Speech bubble is a PanelContainer child of AnimatedSprite2D — position is relative to sprite center
+  - _build_mood_textures() creates ImageTexture from Image.create() — useful pattern for placeholder icons
+  - mood_bubble_visible_changed signal triggers _update_passthrough() in main.gd to keep click-through in sync
+  - Timer node with one_shot=true + random wait_time for recurring reminders with variable intervals
+  - When removing modulate color changes, also check _start_interaction() for interaction-specific tints (e.g., sleeping blue tint)
+---

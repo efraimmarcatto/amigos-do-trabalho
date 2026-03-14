@@ -211,7 +211,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "The current mood system in pet.gd applies modulate tints — these must be completely removed. The speech bubble replaces all visual mood feedback. Use a Timer node for the random SAD reminder interval. The bubble should use Tween for fade animations."
     },
     {
