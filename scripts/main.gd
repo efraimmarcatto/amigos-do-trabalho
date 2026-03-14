@@ -68,8 +68,6 @@ func _ready() -> void:
 	slide_menu.edit_layout_requested.connect(_on_edit_layout_requested)
 	slide_menu.settings_requested.connect(_on_settings_button_pressed)
 	slide_menu.pet_selection_requested.connect(_on_pet_selection_button_pressed)
-	slide_menu.menu_opened.connect(_on_menu_opened)
-	slide_menu.menu_closed.connect(_on_menu_closed)
 	slide_menu.on_before_close = _handle_menu_close
 
 	# Set up shop panel adjacent to menu
@@ -100,7 +98,7 @@ func _ready() -> void:
 
 	# Set up coin HUD to the left of the toggle button
 	var toggle_rect = slide_menu.get_toggle_rect()
-	coin_hud.setup(floor_y, toggle_rect.position.x, toggle_rect.size.x, slide_menu.panel_height)
+	coin_hud.setup(floor_y, toggle_rect.position.x, toggle_rect.size.x)
 
 	# Load saved state (also spawns furniture)
 	_load_state()
@@ -198,14 +196,6 @@ func _on_coins_changed(new_total: int) -> void:
 func _on_mood_bubble_changed(_is_visible: bool) -> void:
 	_update_passthrough()
 
-
-func _on_menu_opened() -> void:
-	#coin_hud.animate_up()
-	pass
-
-func _on_menu_closed() -> void:
-	#coin_hud.animate_down()
-	pass
 
 func _handle_menu_close() -> void:
 	## Intercepts menu close: if a panel is open, close it first, then close menu.
@@ -340,7 +330,7 @@ func _on_monitor_changed(_monitor_index: int) -> void:
 	settings_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 	pet_selection_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 	var toggle_rect = slide_menu.get_toggle_rect()
-	coin_hud.setup(floor_y, toggle_rect.position.x, toggle_rect.size.x, slide_menu.panel_height)
+	coin_hud.setup(floor_y, toggle_rect.position.x, toggle_rect.size.x)
 
 	# Re-open settings panel since user was just in it
 	settings_panel.open_panel()

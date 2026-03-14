@@ -5,10 +5,8 @@ extends PanelContainer
 
 var _label: Label
 var _count_tween: Tween
-var _pos_tween: Tween
 var _displayed_value: int = 0
 var _base_position: Vector2 = Vector2.ZERO
-var _menu_panel_height: float = 160.0
 
 const ANIM_DURATION: float = 0.3
 const ICON_SIZE: int = 16
@@ -63,9 +61,8 @@ func _build_ui() -> void:
 	hbox.add_child(_label)
 
 
-func setup(floor_y: float, toggle_x: float, toggle_w: float, menu_panel_h: float) -> void:
+func setup(floor_y: float, toggle_x: float, toggle_w: float) -> void:
 	## Position the HUD to the left of the toggle button.
-	_menu_panel_height = menu_panel_h
 	# Force a layout pass so size is computed
 	await get_tree().process_frame
 	var hud_w := size.x
@@ -92,27 +89,6 @@ func update_coins(new_total: int) -> void:
 
 func _set_label_value(value: float) -> void:
 	_label.text = str(int(value))
-
-
-func animate_up() -> void:
-	## Move coin HUD upward when menu opens.
-	var target := Vector2(_base_position.x, _base_position.y - _menu_panel_height - 10.0)
-	if _pos_tween and _pos_tween.is_running():
-		_pos_tween.kill()
-	_pos_tween = create_tween()
-	_pos_tween.tween_property(self, "position", target, ANIM_DURATION) \
-		.set_ease(Tween.EASE_OUT) \
-		.set_trans(Tween.TRANS_CUBIC)
-
-
-func animate_down() -> void:
-	## Move coin HUD back to original position when menu closes.
-	if _pos_tween and _pos_tween.is_running():
-		_pos_tween.kill()
-	_pos_tween = create_tween()
-	_pos_tween.tween_property(self, "position", _base_position, ANIM_DURATION) \
-		.set_ease(Tween.EASE_OUT) \
-		.set_trans(Tween.TRANS_CUBIC)
 
 
 func _get_rect() -> Rect2:
