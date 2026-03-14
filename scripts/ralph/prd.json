@@ -189,7 +189,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "The pet.gd currently builds SpriteFrames from a sprite_sheet texture via _setup_animations(). When swapping pets, load the .tres SpriteFrames directly and assign to sprite_frames property, bypassing _setup_animations(). May need to refactor pet.gd to support both modes (sprite sheet setup vs pre-built SpriteFrames)."
     },
     {

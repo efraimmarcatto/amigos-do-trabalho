@@ -12,6 +12,7 @@
 [ext_resource type="Script" uid="uid://dprlm267y1b6r" path="res://scripts/inventory_system.gd" id="9_inventory"]
 [ext_resource type="Script" uid="uid://elcwav4wt0tg" path="res://scripts/inventory_panel.gd" id="10_inv_panel"]
 [ext_resource type="Script" path="res://scripts/settings_panel.gd" id="11_settings_panel"]
+[ext_resource type="Script" path="res://scripts/pet_selection_panel.gd" id="12_pet_panel"]
 
 [node name="Main" type="Control" unique_id=222507356]
 layout_mode = 3
@@ -101,6 +102,10 @@ text = "Inventory"
 [node name="EditLayoutButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=1970582982]
 layout_mode = 2
 text = "Edit Layout"
+
+[node name="PetButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Select Pet"
 
 [node name="Separator" type="HSeparator" parent="SlideMenu/MenuPanel/VBox" unique_id=1705390882]
 layout_mode = 2
@@ -207,3 +212,34 @@ text = "Monitor"
 
 [node name="MonitorDropdown" type="OptionButton" parent="SettingsPanel/VBox"]
 layout_mode = 2
+
+[node name="PetSelectionPanel" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 350.0
+offset_bottom = 400.0
+script = ExtResource("12_pet_panel")
+
+[node name="VBox" type="VBoxContainer" parent="PetSelectionPanel"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PetSelectionPanel/VBox"]
+layout_mode = 2
+text = "Select Pet"
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="PetSelectionPanel/VBox"]
+layout_mode = 2
+text = "Close"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="PetSelectionPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Grid" type="GridContainer" parent="PetSelectionPanel/VBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 3

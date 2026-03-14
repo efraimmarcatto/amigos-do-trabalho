@@ -237,6 +237,9 @@ func _update_all_ui_text() -> void:
 				var settings_btn := vbox.get_node_or_null("SettingsButton")
 				if settings_btn:
 					settings_btn.text = tr("SETTINGS_BUTTON")
+				var pet_btn := vbox.get_node_or_null("PetButton")
+				if pet_btn:
+					pet_btn.text = tr("SELECT_PET_BUTTON")
 
 	# Shop panel
 	var shop := main_node.get_node_or_null("ShopPanel")
@@ -257,6 +260,16 @@ func _update_all_ui_text() -> void:
 		var inv_close := inv.get_node_or_null("VBox/CloseButton")
 		if inv_close:
 			inv_close.text = tr("CLOSE")
+
+	# Pet selection panel
+	var pet_panel := main_node.get_node_or_null("PetSelectionPanel")
+	if pet_panel:
+		var pet_title := pet_panel.get_node_or_null("VBox/Title")
+		if pet_title:
+			pet_title.text = tr("SELECT_PET_TITLE")
+		var pet_close := pet_panel.get_node_or_null("VBox/CloseButton")
+		if pet_close:
+			pet_close.text = tr("CLOSE")
 
 	# Interaction menu
 	var imenu := main_node.get_node_or_null("InteractionMenu")

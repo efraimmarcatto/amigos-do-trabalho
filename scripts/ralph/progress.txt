@@ -186,3 +186,29 @@ Started: Fri Mar 13 14:59:40 PDT 2026
   - When repositioning all UI after monitor change, call setup() on each panel/menu in the same order as _ready() to maintain consistent layout
   - Monitor dropdown should be repopulated on panel open since display configuration can change at runtime
 ---
+
+## 2026-03-14 - US-029
+- Created pet_selection_panel.gd following the adjacent panel pattern (shop, inventory, settings)
+- Pet selection panel with scrollable GridContainer (3 columns) showing available pets
+- Pets discovered dynamically by scanning res://pet/data/ for .tres SpriteFrames files using DirAccess
+- Each pet shows preview sprite (first frame of idle animation) and capitalized name
+- Currently selected pet highlighted with blue border/background
+- Selecting a pet swaps pet_sprite.sprite_frames and plays idle animation
+- Added "Select Pet" button to slide menu between Edit Layout and Separator
+- Added pet_selection_requested signal to slide_menu.gd
+- Mutual exclusivity: opening pet selection closes Shop, Inventory, and Settings panels (and vice versa)
+- Menu close interceptor handles pet selection panel (close panel first, then menu)
+- Pet selection panel included in passthrough polygon, closed on edit/placement mode entry
+- Selected pet persisted in save_data.json under 'selected_pet' key (filename without extension)
+- Default to "ozzy" if no selection saved or saved pet file missing (apply_pet fallback)
+- Panel repositioned on monitor change via setup() call
+- Added translation keys: SELECT_PET_BUTTON, SELECT_PET_TITLE, NO_PETS_FOUND
+- Updated _update_all_ui_text() in settings_panel.gd for pet selection panel and PetButton
+- Increased slide menu panel_height from 225 to 260 to fit new Select Pet button
+- Files changed: scripts/pet_selection_panel.gd (new), scripts/slide_menu.gd, scripts/main.gd, scripts/settings_panel.gd, scenes/main.tscn, translations/translations.csv, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - Pet SpriteFrames are pre-built .tres files loaded via ResourceLoader — no need for _setup_animations() when swapping pets
+  - DirAccess.open() + list_dir_begin() pattern for runtime file discovery works in both editor and export
+  - When adding a new panel, update 7 locations in main.gd: @onready, setup(), signal connect, _handle_menu_close(), _update_passthrough(), _on_edit_layout_requested(), _enter_placement_mode(), and all mutual exclusivity handlers
+  - GridContainer with columns=3 inside ScrollContainer provides a scalable grid layout for any number of items
+---

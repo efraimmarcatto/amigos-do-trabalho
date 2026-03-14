@@ -21,3 +21,6 @@ COINS_SUFFIX,coins,moedas
 TO_INVENTORY,📦 To Inventory,📦 Ao Inventário
 CONFIRM_DISCARD_TITLE,Confirm Discard,Confirmar Descarte
 MONITOR_LABEL,Monitor,Monitor
+SELECT_PET_BUTTON,Select Pet,Selecionar Pet
+SELECT_PET_TITLE,Select Pet,Selecionar Pet
+NO_PETS_FOUND,No pets found,Nenhum pet encontrado

@@ -17,6 +17,7 @@ const FURNITURE_SCENE := preload("res://scenes/furniture.tscn")
 @onready var inventory_panel: PanelContainer = $InventoryPanel
 @onready var inventory_system: Node = $InventorySystem
 @onready var settings_panel: PanelContainer = $SettingsPanel
+@onready var pet_selection_panel: PanelContainer = $PetSelectionPanel
 
 # Spawned furniture instances keyed by furniture_id
 var _furniture_nodes: Dictionary = {}
@@ -66,6 +67,7 @@ func _ready() -> void:
 	slide_menu.inventory_requested.connect(_on_inventory_button_pressed)
 	slide_menu.edit_layout_requested.connect(_on_edit_layout_requested)
 	slide_menu.settings_requested.connect(_on_settings_button_pressed)
+	slide_menu.pet_selection_requested.connect(_on_pet_selection_button_pressed)
 	slide_menu.menu_opened.connect(_on_menu_opened)
 	slide_menu.menu_closed.connect(_on_menu_closed)
 	slide_menu.on_before_close = _handle_menu_close
@@ -80,6 +82,10 @@ func _ready() -> void:
 	# Set up settings panel adjacent to menu
 	settings_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 	settings_panel.monitor_changed.connect(_on_monitor_changed)
+
+	# Set up pet selection panel adjacent to menu
+	pet_selection_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
+	pet_selection_panel.pet_selected.connect(_on_pet_selected)
 
 	# Share furniture nodes dict and floor_y with pet
 	pet_sprite._furniture_nodes = _furniture_nodes
@@ -117,6 +123,7 @@ func _save_state() -> void:
 		"inventory": inventory_system.get_inventory_for_save(),
 		"language": settings_panel.get_current_locale(),
 		"monitor": settings_panel.get_current_monitor(),
+		"selected_pet": pet_selection_panel.get_current_pet(),
 	}
 	var json_string := JSON.stringify(data)
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -157,6 +164,8 @@ func _load_state() -> void:
 		inventory_system.set_inventory(inv_data)
 	if data.has("language") and data["language"] is String:
 		settings_panel.apply_language(data["language"])
+	if data.has("selected_pet") and data["selected_pet"] is String:
+		pet_selection_panel.apply_pet(data["selected_pet"])
 	if data.has("monitor"):
 		var monitor_idx := 0
 		if data["monitor"] is float:
@@ -208,6 +217,11 @@ func _handle_menu_close() -> void:
 		get_tree().create_timer(settings_panel.get_close_duration()).timeout.connect(
 			slide_menu.close_menu
 		)
+	elif pet_selection_panel.is_panel_open():
+		pet_selection_panel.close_panel()
+		get_tree().create_timer(pet_selection_panel.get_close_duration()).timeout.connect(
+			slide_menu.close_menu
+		)
 	else:
 		slide_menu.close_menu()
 
@@ -218,6 +232,8 @@ func _on_shop_button_pressed() -> void:
 		inventory_panel.close_panel()
 	if settings_panel.is_panel_open():
 		settings_panel.close_panel()
+	if pet_selection_panel.is_panel_open():
+		pet_selection_panel.close_panel()
 	if shop_panel.is_shop_open():
 		shop_panel.close_shop()
 		return
@@ -231,6 +247,8 @@ func _on_inventory_button_pressed() -> void:
 		shop_panel.close_shop()
 	if settings_panel.is_panel_open():
 		settings_panel.close_panel()
+	if pet_selection_panel.is_panel_open():
+		pet_selection_panel.close_panel()
 	if inventory_panel.is_panel_open():
 		inventory_panel.close_panel()
 		return
@@ -244,11 +262,35 @@ func _on_settings_button_pressed() -> void:
 		shop_panel.close_shop()
 	if inventory_panel.is_panel_open():
 		inventory_panel.close_panel()
+	if pet_selection_panel.is_panel_open():
+		pet_selection_panel.close_panel()
 	if settings_panel.is_panel_open():
 		settings_panel.close_panel()
 		return
 	# Delay settings open slightly for a chained animation feel
 	get_tree().create_timer(0.1).timeout.connect(settings_panel.open_panel)
+
+
+func _on_pet_selection_button_pressed() -> void:
+	# Close other panels if open (mutual exclusivity)
+	if shop_panel.is_shop_open():
+		shop_panel.close_shop()
+	if inventory_panel.is_panel_open():
+		inventory_panel.close_panel()
+	if settings_panel.is_panel_open():
+		settings_panel.close_panel()
+	if pet_selection_panel.is_panel_open():
+		pet_selection_panel.close_panel()
+		return
+	# Delay open slightly for a chained animation feel
+	get_tree().create_timer(0.1).timeout.connect(pet_selection_panel.open_panel)
+
+
+func _on_pet_selected(_pet_name: String, new_sprite_frames: SpriteFrames) -> void:
+	## Swap the pet's sprite_frames when a new pet is selected.
+	pet_sprite.sprite_frames = new_sprite_frames
+	pet_sprite.play("idle")
+	_save_state()
 
 
 func _on_monitor_changed(_monitor_index: int) -> void:
@@ -289,6 +331,7 @@ func _on_monitor_changed(_monitor_index: int) -> void:
 	shop_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 	inventory_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 	settings_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
+	pet_selection_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 	var toggle_rect := slide_menu.get_toggle_rect()
 	coin_hud.setup(floor_y, toggle_rect.position.x, toggle_rect.size.x, slide_menu.panel_height)
 
@@ -310,6 +353,7 @@ func _enter_placement_mode(furniture_id: String) -> void:
 	shop_panel.close_shop()
 	inventory_panel.close_panel()
 	settings_panel.close_panel()
+	pet_selection_panel.close_panel()
 
 	# Create a semi-transparent preview sprite
 	var fdata = shop_panel.get_furniture_data(furniture_id)
@@ -462,6 +506,8 @@ func _on_edit_layout_requested() -> void:
 		inventory_panel.close_panel()
 	if settings_panel.is_panel_open():
 		settings_panel.close_panel()
+	if pet_selection_panel.is_panel_open():
+		pet_selection_panel.close_panel()
 	if _edit_mode:
 		_exit_edit_mode()
 	else:
@@ -635,6 +681,10 @@ func _update_passthrough() -> void:
 	# Include settings panel when open
 	if settings_panel and settings_panel.is_panel_open():
 		rects.append(settings_panel.get_global_rect())
+
+	# Include pet selection panel when open
+	if pet_selection_panel and pet_selection_panel.is_panel_open():
+		rects.append(pet_selection_panel.get_global_rect())
 
 	# Include all spawned furniture
 	for fid in _furniture_nodes:
