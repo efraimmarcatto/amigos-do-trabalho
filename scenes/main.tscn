@@ -174,10 +174,11 @@ text = "Close"
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Items" type="VBoxContainer" parent="InventoryPanel/VBox/ScrollContainer" unique_id=1366408448]
+[node name="Items" type="GridContainer" parent="InventoryPanel/VBox/ScrollContainer" unique_id=1366408448]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+columns = 3
 
 [node name="ConfirmDialog" type="ConfirmationDialog" parent="InventoryPanel" unique_id=1884183393]
 title = "Confirm Discard"

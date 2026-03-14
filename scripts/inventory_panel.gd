@@ -2,6 +2,7 @@ extends PanelContainer
 
 ## Inventory panel UI — view stored furniture, place items, and discard for partial refund.
 ## Panel slides in/out adjacent to the slide menu with tween animations.
+## Items displayed as a responsive icon grid with quantity badges and hover tooltips.
 
 signal inventory_closed
 signal place_requested(furniture_id: String)
@@ -10,6 +11,8 @@ const ANIM_DURATION: float = 0.3
 const PANEL_WIDTH: float = 280.0
 const PANEL_HEIGHT: float = 300.0
 const GAP: float = 5.0
+const ICON_CELL_SIZE: float = 64.0
+const ICON_SIZE: float = 48.0
 
 var _coin_system: Node
 var _inventory_system: Node
@@ -18,11 +21,13 @@ var _open_x: float = 0.0
 var _closed_x: float = 0.0
 var _panel_tween: Tween
 var _confirm_furniture_id: String = ""
+var _action_popup: PanelContainer
+var _selected_item_id: String = ""
 
 @onready var _vbox: VBoxContainer = $VBox
 @onready var _title: Label = $VBox/Title
 @onready var _close_button: Button = $VBox/CloseButton
-@onready var _items_container: VBoxContainer = $VBox/ScrollContainer/Items
+@onready var _items_container: GridContainer = $VBox/ScrollContainer/Items
 @onready var _confirm_dialog: ConfirmationDialog = $ConfirmDialog
 
 
@@ -39,6 +44,8 @@ func _ready() -> void:
 	_confirm_dialog.confirmed.connect(_on_discard_confirmed)
 	_confirm_dialog.canceled.connect(func(): _confirm_furniture_id = "")
 
+	_create_action_popup()
+
 
 func setup(menu_open_x: float, menu_panel_y: float) -> void:
 	## Position the inventory panel to slide in adjacent to the menu.
@@ -54,7 +61,9 @@ func open_panel() -> void:
 	if _is_open:
 		return
 	_is_open = true
+	_update_columns()
 	_rebuild_items()
+	_hide_action_popup()
 	visible = true
 	_animate_x(_open_x)
 
@@ -63,6 +72,7 @@ func close_panel() -> void:
 	if not _is_open:
 		return
 	_is_open = false
+	_hide_action_popup()
 	_animate_x(_closed_x, true)
 	inventory_closed.emit()
 
@@ -96,6 +106,13 @@ func _animate_x(target_x: float, hide_after: bool = false) -> void:
 		_panel_tween.tween_callback(func(): visible = false)
 
 
+func _update_columns() -> void:
+	## Set grid columns based on available width.
+	var available_w := PANEL_WIDTH - 20.0  # account for panel margins
+	var cols := maxi(1, int(available_w / (ICON_CELL_SIZE + 4.0)))
+	_items_container.columns = cols
+
+
 func _rebuild_items() -> void:
 	# Clear existing items
 	for child in _items_container.get_children():
@@ -121,48 +138,131 @@ func _rebuild_items() -> void:
 		if not fdata:
 			continue
 
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-
-		# Icon
-		var icon := TextureRect.new()
-		icon.texture = fdata.texture
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.custom_minimum_size = Vector2(32, 32)
-		icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH
-		row.add_child(icon)
-
-		# Name + quantity
-		var name_label := Label.new()
-		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_label.text = fdata.display_name + " x" + str(count)
-		row.add_child(name_label)
-
-		# Place button
-		var place_btn := Button.new()
-		place_btn.text = "Place"
-		place_btn.pressed.connect(_on_place.bind(furniture_id))
-		row.add_child(place_btn)
-
-		# Discard button
-		var discard_btn := Button.new()
-		discard_btn.text = "Discard"
-		discard_btn.pressed.connect(_on_discard_request.bind(furniture_id))
-		row.add_child(discard_btn)
-
-		_items_container.add_child(row)
-
-		# Separator
-		var sep := HSeparator.new()
-		_items_container.add_child(sep)
+		var cell := _create_grid_cell(fdata, count)
+		_items_container.add_child(cell)
 
 
-func _on_place(furniture_id: String) -> void:
+func _create_grid_cell(item: FurnitureData, count: int) -> Control:
+	## Create a single grid cell with icon and quantity badge.
+	var cell := VBoxContainer.new()
+	cell.custom_minimum_size = Vector2(ICON_CELL_SIZE, ICON_CELL_SIZE + 16.0)
+	cell.alignment = BoxContainer.ALIGNMENT_CENTER
+	cell.tooltip_text = item.display_name
+	cell.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	# Icon button — clickable with quantity badge overlay
+	var icon_btn := Button.new()
+	icon_btn.custom_minimum_size = Vector2(ICON_CELL_SIZE, ICON_CELL_SIZE)
+	icon_btn.tooltip_text = item.display_name
+	icon_btn.pressed.connect(_on_item_clicked.bind(item.id))
+
+	var icon := TextureRect.new()
+	icon.texture = item.texture
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
+	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	icon_btn.add_child(icon)
+
+	# Quantity badge in top-right corner
+	var badge := Label.new()
+	badge.text = "x" + str(count)
+	badge.add_theme_font_size_override("font_size", 10)
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	badge.offset_left = -30.0
+	badge.offset_top = 2.0
+	icon_btn.add_child(badge)
+
+	cell.add_child(icon_btn)
+
+	return cell
+
+
+func _create_action_popup() -> void:
+	## Create a reusable action popup with Place and Discard buttons (hidden by default).
+	_action_popup = PanelContainer.new()
+	_action_popup.visible = false
+	_action_popup.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+
+	# Item name
+	var name_label := Label.new()
+	name_label.name = "ItemName"
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(name_label)
+
+	# Place button
+	var place_btn := Button.new()
+	place_btn.name = "PlaceBtn"
+	place_btn.text = "Place"
+	place_btn.pressed.connect(_on_popup_place)
+	vbox.add_child(place_btn)
+
+	# Discard button
+	var discard_btn := Button.new()
+	discard_btn.name = "DiscardBtn"
+	discard_btn.text = "Discard"
+	discard_btn.pressed.connect(_on_popup_discard)
+	vbox.add_child(discard_btn)
+
+	# Cancel button
+	var cancel_btn := Button.new()
+	cancel_btn.name = "CancelBtn"
+	cancel_btn.text = "Cancel"
+	cancel_btn.pressed.connect(_hide_action_popup)
+	vbox.add_child(cancel_btn)
+
+	_action_popup.add_child(vbox)
+	add_child(_action_popup)
+
+
+func _on_item_clicked(furniture_id: String) -> void:
+	_selected_item_id = furniture_id
+	var fdata := get_furniture_data(furniture_id)
+	if not fdata:
+		return
+	_update_action_popup(fdata)
+	_action_popup.visible = true
+	# Position popup centered in panel
+	_action_popup.position = Vector2(
+		(size.x - _action_popup.size.x) / 2.0,
+		(size.y - _action_popup.size.y) / 2.0
+	)
+
+
+func _update_action_popup(item: FurnitureData) -> void:
+	var vbox := _action_popup.get_child(0)
+	var name_label: Label = vbox.get_node("ItemName")
+	name_label.text = item.display_name
+
+
+func _hide_action_popup() -> void:
+	_action_popup.visible = false
+	_selected_item_id = ""
+
+
+func _on_popup_place() -> void:
+	if _selected_item_id == "":
+		return
+	var furniture_id := _selected_item_id
+	_hide_action_popup()
 	if not _inventory_system:
 		return
 	if _inventory_system.remove_from_inventory(furniture_id):
 		close_panel()
 		place_requested.emit(furniture_id)
+
+
+func _on_popup_discard() -> void:
+	if _selected_item_id == "":
+		return
+	_hide_action_popup()
+	_on_discard_request(_selected_item_id)
 
 
 func _on_discard_request(furniture_id: String) -> void:
