@@ -277,8 +277,8 @@ func _process_walking(_delta: float) -> void:
 			# Check if pet collides horizontally with this non-walkable furniture
 			var f_left := fnode.get_left_x()
 			var f_right := fnode.get_right_x()
-			var f_top := fnode.global_position.y - fnode.data.texture.get_size().y / 2.0
-			var f_bottom := fnode.global_position.y + fnode.data.texture.get_size().y / 2.0
+			var f_top := fnode.global_position.y - fnode.data.texture.get_size().y * fnode.data.display_scale.y / 2.0
+			var f_bottom := fnode.global_position.y + fnode.data.texture.get_size().y * fnode.data.display_scale.y / 2.0
 			# Only block if pet overlaps vertically with the furniture
 			if pet_bottom > f_top and position.y - pet_half_h < f_bottom:
 				if dir > 0.0 and position.x + half_w > f_left and position.x < f_left:
@@ -465,7 +465,7 @@ func _try_jump_onto_furniture() -> void:
 			continue
 		# Check distance from pet to furniture center
 		var dist := absf(position.x - fnode.global_position.x)
-		if dist <= jump_range + fnode.data.texture.get_size().x / 2.0:
+		if dist <= jump_range + fnode.data.texture.get_size().x * fnode.data.display_scale.x / 2.0:
 			if randf() < jump_probability:
 				_jump_target_furniture = fnode
 				_jump_prep_timer = jump_prep_duration
@@ -502,8 +502,8 @@ func _try_furniture_interaction() -> void:
 		if not fnode.can_interact():
 			continue
 		# Check overlap
-		var f_half_w := fnode.data.texture.get_size().x / 2.0
-		var f_half_h := fnode.data.texture.get_size().y / 2.0
+		var f_half_w := fnode.data.texture.get_size().x * fnode.data.display_scale.x / 2.0
+		var f_half_h := fnode.data.texture.get_size().y * fnode.data.display_scale.y / 2.0
 		var f_rect := Rect2(fnode.global_position.x - f_half_w, fnode.global_position.y - f_half_h, f_half_w * 2.0, f_half_h * 2.0)
 		if pet_rect.intersects(f_rect):
 			_start_interaction(fnode)

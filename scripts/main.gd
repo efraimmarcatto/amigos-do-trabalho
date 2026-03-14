@@ -326,7 +326,7 @@ func _on_monitor_changed(_monitor_index: int) -> void:
 		var fnode: Furniture = _furniture_nodes[fid]
 		if not fnode or not fnode.data or not fnode.data.texture:
 			continue
-		var tex_size := fnode.data.texture.get_size()
+		var tex_size := fnode.data.texture.get_size() * fnode.data.display_scale
 		var half_w := tex_size.x / 2.0
 		var new_x := clampf(fnode.global_position.x, half_w, float(screen_size.x) - half_w)
 		var new_y := floor_y - tex_size.y / 2.0
@@ -367,10 +367,11 @@ func _enter_placement_mode(furniture_id: String) -> void:
 	if fdata and fdata.texture:
 		_placement_preview = Sprite2D.new()
 		_placement_preview.texture = fdata.texture
+		_placement_preview.scale = fdata.display_scale
 		_placement_preview.modulate = Color(1.0, 1.0, 1.0, 0.5)
 		add_child(_placement_preview)
 		# Position at mouse, constrained to floor
-		var tex_h = fdata.texture.get_size().y
+		var tex_h = fdata.texture.get_size().y * fdata.display_scale.y
 		_placement_preview.global_position = Vector2(
 			get_global_mouse_position().x,
 			floor_y - tex_h / 2.0
@@ -499,7 +500,7 @@ func _default_furniture_position(furniture_id: String) -> Vector2:
 	var fdata = shop_panel.get_furniture_data(furniture_id)
 	var tex_h := 128.0  # fallback
 	if fdata and fdata.texture:
-		tex_h = fdata.texture.get_size().y
+		tex_h = fdata.texture.get_size().y * fdata.display_scale.y
 	var y := floor_y - tex_h / 2.0
 
 	return Vector2(x, y)
@@ -565,7 +566,7 @@ func _add_remove_button(furniture_id: String, fnode: Furniture) -> void:
 	# Position above the furniture sprite (centered horizontally)
 	var tex_h := 0.0
 	if fnode.data and fnode.data.texture:
-		tex_h = fnode.data.texture.get_size().y
+		tex_h = fnode.data.texture.get_size().y * fnode.data.display_scale.y
 	btn.position = Vector2(-14.0, -(tex_h / 2.0) - 32.0)
 	btn.pressed.connect(_on_remove_furniture.bind(furniture_id))
 	# Style the button with a red-ish background
@@ -616,7 +617,7 @@ func _get_furniture_at_point(point: Vector2) -> String:
 		var fnode: Furniture = _furniture_nodes[fid]
 		if not fnode or not fnode.data or not fnode.data.texture:
 			continue
-		var tex_size := fnode.data.texture.get_size()
+		var tex_size := fnode.data.texture.get_size() * fnode.data.display_scale
 		var half := tex_size / 2.0
 		var rect := Rect2(fnode.global_position - half, tex_size)
 		if rect.has_point(point):
@@ -629,7 +630,7 @@ func _is_overlap_with_other(furniture_id: String, x_pos: float) -> bool:
 	var fnode: Furniture = _furniture_nodes[furniture_id]
 	if not fnode or not fnode.data or not fnode.data.texture:
 		return false
-	var half_w := fnode.data.texture.get_size().x / 2.0
+	var half_w := fnode.data.texture.get_size().x * fnode.data.display_scale.x / 2.0
 	var new_left := x_pos - half_w
 	var new_right := x_pos + half_w
 	for other_id in _furniture_nodes:
@@ -638,7 +639,7 @@ func _is_overlap_with_other(furniture_id: String, x_pos: float) -> bool:
 		var other: Furniture = _furniture_nodes[other_id]
 		if not other or not other.data or not other.data.texture:
 			continue
-		var o_half_w := other.data.texture.get_size().x / 2.0
+		var o_half_w := other.data.texture.get_size().x * other.data.display_scale.x / 2.0
 		var o_left := other.global_position.x - o_half_w
 		var o_right := other.global_position.x + o_half_w
 		if new_right > o_left and new_left < o_right:
@@ -704,7 +705,7 @@ func _update_passthrough() -> void:
 		var fnode: Furniture = _furniture_nodes[fid]
 		if fnode and fnode.data and fnode.data.texture:
 			var fpos: Vector2 = fnode.global_position
-			var ftex_size: Vector2 = fnode.data.texture.get_size()
+			var ftex_size: Vector2 = fnode.data.texture.get_size() * fnode.data.display_scale
 			var fhalf: Vector2 = ftex_size / 2.0
 			rects.append(Rect2(fpos - fhalf, ftex_size))
 
@@ -741,8 +742,8 @@ func _input(event: InputEvent) -> void:
 		# Move preview to mouse X, constrained to floor Y and screen bounds
 		var fdata = shop_panel.get_furniture_data(_placement_furniture_id)
 		if fdata and fdata.texture:
-			var tex_w = fdata.texture.get_size().x
-			var tex_h = fdata.texture.get_size().y
+			var tex_w = fdata.texture.get_size().x * fdata.display_scale.x
+			var tex_h = fdata.texture.get_size().y * fdata.display_scale.y
 			var screen_w := float(DisplayServer.screen_get_size().x)
 			var x := clampf(event.position.x, tex_w / 2.0, screen_w - tex_w / 2.0)
 			_placement_preview.global_position = Vector2(x, floor_y - tex_h / 2.0)
@@ -802,7 +803,7 @@ func _handle_edit_input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion and _edit_dragging_id != "":
 		var fnode: Furniture = _furniture_nodes[_edit_dragging_id]
 		if fnode and fnode.data and fnode.data.texture:
-			var half_w := fnode.data.texture.get_size().x / 2.0
+			var half_w := fnode.data.texture.get_size().x * fnode.data.display_scale.x / 2.0
 			var screen_w := float(DisplayServer.screen_get_size().x)
 			var new_x := clampf(event.position.x + _edit_drag_offset_x, half_w, screen_w - half_w)
 			# Check overlap with other furniture

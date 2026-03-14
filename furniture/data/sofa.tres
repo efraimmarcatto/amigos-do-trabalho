@@ -18,3 +18,4 @@ jumpable = true
 interaction_type = "sleep"
 interaction_coin_bonus = 5
 interaction_cooldown = 30.0
+display_scale = Vector2(2, 2)

@@ -19,8 +19,10 @@ var _last_interaction_time: float = -9999.0
 func _ready() -> void:
 	if data and data.texture:
 		sprite.texture = data.texture
-		# Size the collision shape to match the texture
-		var tex_size := data.texture.get_size()
+		# Apply display scale to the sprite
+		sprite.scale = data.display_scale
+		# Size the collision shape to match the scaled texture
+		var tex_size := data.texture.get_size() * data.display_scale
 		var shape := RectangleShape2D.new()
 		shape.size = tex_size
 		collision_shape.shape = shape
@@ -44,7 +46,7 @@ func mark_interacted() -> void:
 func get_surface_y() -> float:
 	if not data or not data.texture:
 		return global_position.y
-	var half_h := data.texture.get_size().y / 2.0
+	var half_h := data.texture.get_size().y * data.display_scale.y / 2.0
 	return global_position.y - half_h + data.walk_surface_y_offset
 
 
@@ -52,11 +54,11 @@ func get_surface_y() -> float:
 func get_left_x() -> float:
 	if not data or not data.texture:
 		return global_position.x
-	return global_position.x - data.texture.get_size().x / 2.0
+	return global_position.x - data.texture.get_size().x * data.display_scale.x / 2.0
 
 
 ## Returns the global X coordinate of the right edge of the furniture.
 func get_right_x() -> float:
 	if not data or not data.texture:
 		return global_position.x
-	return global_position.x + data.texture.get_size().x / 2.0
+	return global_position.x + data.texture.get_size().x * data.display_scale.x / 2.0
