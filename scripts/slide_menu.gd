@@ -19,7 +19,7 @@ signal menu_closed
 @export var panel_width: float = 180.0
 
 ## Height of the menu panel in pixels.
-@export var panel_height: float = 260.0
+@export var panel_height: float = 300.0
 
 ## Size of the toggle button.
 @export var button_size: Vector2 = Vector2(40, 40)
@@ -36,6 +36,7 @@ var on_before_close: Callable
 @onready var _edit_button: Button = $MenuPanel/VBox/EditLayoutButton
 @onready var _settings_button: Button = $MenuPanel/VBox/SettingsButton
 @onready var _pet_button: Button = $MenuPanel/VBox/PetButton
+@onready var _exit_button: Button = $MenuPanel/VBox/ExitButton
 
 
 func _ready() -> void:
@@ -45,6 +46,7 @@ func _ready() -> void:
 	_edit_button.pressed.connect(_on_edit_layout)
 	_settings_button.pressed.connect(_on_settings)
 	_pet_button.pressed.connect(_on_pet_selection)
+	_exit_button.pressed.connect(_on_exit)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
@@ -157,6 +159,10 @@ func _on_settings() -> void:
 
 func _on_pet_selection() -> void:
 	pet_selection_requested.emit()
+
+
+func _on_exit() -> void:
+	get_tree().quit()
 
 
 func _on_edit_layout() -> void:

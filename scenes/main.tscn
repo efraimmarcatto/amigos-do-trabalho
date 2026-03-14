@@ -114,6 +114,10 @@ layout_mode = 2
 layout_mode = 2
 text = "Settings"
 
+[node name="ExitButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Exit"
+
 [node name="ShopPanel" type="PanelContainer" parent="." unique_id=759142325]
 visible = false
 layout_mode = 0

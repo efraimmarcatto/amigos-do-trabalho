@@ -240,6 +240,9 @@ func _update_all_ui_text() -> void:
 				var pet_btn := vbox.get_node_or_null("PetButton")
 				if pet_btn:
 					pet_btn.text = tr("SELECT_PET_BUTTON")
+				var exit_btn := vbox.get_node_or_null("ExitButton")
+				if exit_btn:
+					exit_btn.text = tr("EXIT_BUTTON")
 
 	# Shop panel
 	var shop := main_node.get_node_or_null("ShopPanel")
