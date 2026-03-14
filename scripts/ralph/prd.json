@@ -154,7 +154,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Placement mode in main.gd constrains Y to floor_y. For stackable items, also check if mouse X is within any walkable furniture's X bounds, and if so, use that furniture's surface_y as the Y constraint. For edit mode drag/remove of stacked items, track parent-child relationships or use position overlap detection."
     },
     {

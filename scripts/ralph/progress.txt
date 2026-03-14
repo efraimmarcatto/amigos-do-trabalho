@@ -15,6 +15,8 @@ Started: Sat Mar 14 10:22:42 PDT 2026
 - Inventory action popup uses named child nodes (ItemName, PlaceBtn, DiscardBtn, CancelBtn) accessed via `get_node()`
 - Inventory and Shop panels share the same grid cell pattern: VBoxContainer with Button (icon + overlay) inside
 - ConfirmationDialog positioning: use `.position = Vector2i(x, y)` + `.popup()` instead of `.popup_centered()` for custom placement
+- Stackable items use `_get_stacked_furniture_ids(base_id)` to find items on top — checks X bounds and Y proximity (8px tolerance)
+- `_get_walkable_furniture_at_x(x)` returns the walkable Furniture node whose X bounds contain a given x coordinate
 
 ---
 
@@ -95,4 +97,21 @@ Started: Sat Mar 14 10:22:42 PDT 2026
   - ConfirmationDialog inherits Window — use `.position` (Vector2i) and `.popup()` instead of `.popup_centered()` for custom positioning
   - `global_position` on the inventory panel gives the screen-space position needed for dialog placement
   - `DisplayServer.screen_get_size()` returns screen dimensions for clamping
+---
+
+## 2026-03-14 - US-040
+- Added `stackable: bool` export var to FurnitureData with default false
+- Updated placement mode: stackable items snap Y to walkable furniture surface when mouse is within that furniture's X bounds
+- Added `_get_walkable_furniture_at_x()` helper to find walkable furniture by X coordinate
+- Added `_get_stacked_furniture_ids()` helper to find stackable items on top of a base furniture (by X bounds + Y proximity)
+- Edit mode drag: stacked items move with base furniture (dx applied to all stacked items)
+- Edit mode remove: stacked items are returned to inventory when base is removed
+- Marked toy and food_bowl .tres files as `stackable = true`
+- Also committed leftover display_scale adjustments (bookshelf/sofa → Vector2(4,4)) and slide_menu edit mode fix
+- Files changed: `scripts/furniture_data.gd`, `scripts/main.gd`, `furniture/data/toy.tres`, `furniture/data/food_bowl.tres`, `furniture/data/bookshelf.tres`, `furniture/data/sofa.tres`, `scripts/slide_menu.gd`
+- **Learnings for future iterations:**
+  - When getting stacked items before moving the base, fetch IDs first to avoid X-bound mismatch
+  - The 8px Y tolerance in `_get_stacked_furniture_ids` accounts for floating-point position drift
+  - `_is_overlap_with_other` only checks the dragged piece, not stacked items — stacked items ride along freely
+  - Non-stackable items remain floor-only; the placement Y calculation branches on `fdata.stackable`
 ---
