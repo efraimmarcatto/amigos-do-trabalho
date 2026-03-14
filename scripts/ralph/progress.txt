@@ -18,6 +18,9 @@ Started: Fri Mar 13 14:59:40 PDT 2026
 - Inventory stored as `Dictionary[String, int]` mapping furniture_id to quantity; items with 0 count are erased from the dictionary
 - Dynamic Button nodes in Node2D: position is relative to parent; `_input` must NOT call `set_input_as_handled()` for clicks on dynamically added Buttons
 - To remove placed furniture: erase from `_furniture_nodes`, `_furniture_positions`, `queue_free()` the node, and check `pet_sprite._current_surface` for FALLING
+- Translations loaded at runtime from CSV via `_load_translations()` in settings_panel.gd — no editor import step needed
+- When adding new panels, also add mutual exclusivity closes in `_on_shop_button_pressed()`, `_on_inventory_button_pressed()`, and any new panel button handler
+- Use `tr("KEY")` for translatable UI strings; `_update_all_ui_text()` in settings_panel.gd refreshes all panels on language change
 
 ---
 
@@ -140,4 +143,25 @@ Started: Fri Mar 13 14:59:40 PDT 2026
   - During placement mode, passthrough is fully disabled — no need to add buttons to passthrough polygon
   - Use `get_global_rect().has_point()` in `_input` to avoid intercepting clicks meant for dynamically added Buttons
   - The `_placement_chest_btn` variable follows the same pattern as `_placement_preview` — create in enter, queue_free in exit
+---
+
+## 2026-03-14 - US-027
+- Created settings_panel.gd following the adjacent panel pattern (shop, inventory)
+- Settings panel with language dropdown (English, Português) using OptionButton
+- Translation system: CSV file at res://translations/translations.csv loaded at runtime via FileAccess.get_csv_line()
+- Translations registered with TranslationServer.add_translation() — no editor import step required
+- Language change calls TranslationServer.set_locale() and refreshes all UI text via _update_all_ui_text()
+- Replaced SettingsPlaceholder label with SettingsButton in slide menu
+- Added settings_requested signal to slide_menu.gd
+- Mutual exclusivity: opening Settings closes Shop and Inventory panels, and vice versa
+- Settings panel included in passthrough polygon, menu close interceptor, edit/placement panel closes
+- Language persisted in save_data.json under 'language' key, loaded and applied on startup
+- Increased slide menu panel_height from 195 to 225 to fit new Settings button
+- Edit Layout/Save Edit button text now uses tr() keys for translation support
+- Files changed: scripts/settings_panel.gd (new), scripts/slide_menu.gd, scripts/main.gd, scenes/main.tscn, translations/translations.csv (new)
+- **Learnings for future iterations:**
+  - Godot 4 CSV translation import requires editor — for headless environments, load CSV at runtime with FileAccess and create Translation resources manually
+  - `TranslationServer.get_locale()` may return full locale like "en_US" — use `.substr(0, 2)` for 2-letter code
+  - `_update_all_ui_text()` walks the scene tree to update all labels — when adding new UI panels, add their text refresh there
+  - The edit button "Save Edit" state must be checked during language change to avoid resetting it to "Edit Layout"
 ---
