@@ -20,6 +20,7 @@ Started: Fri Mar 13 14:59:40 PDT 2026
 - To remove placed furniture: erase from `_furniture_nodes`, `_furniture_positions`, `queue_free()` the node, and check `pet_sprite._current_surface` for FALLING
 - Translations loaded at runtime from CSV via `_load_translations()` in settings_panel.gd — no editor import step needed
 - When adding new panels, also add mutual exclusivity closes in `_on_shop_button_pressed()`, `_on_inventory_button_pressed()`, and any new panel button handler
+- Pet animations use convention names: idle, walk, jump_prep, jump, fall, interact, dragged — always check `has_animation()` before playing for graceful fallback
 - Use `tr("KEY")` for translatable UI strings; `_update_all_ui_text()` in settings_panel.gd refreshes all panels on language change
 - After monitor change, call `await get_tree().process_frame` before reading new screen dimensions, then reposition everything via setup() calls
 
@@ -231,4 +232,17 @@ Started: Fri Mar 13 14:59:40 PDT 2026
   - mood_bubble_visible_changed signal triggers _update_passthrough() in main.gd to keep click-through in sync
   - Timer node with one_shot=true + random wait_time for recurring reminders with variable intervals
   - When removing modulate color changes, also check _start_interaction() for interaction-specific tints (e.g., sleeping blue tint)
+---
+
+## 2026-03-14 - US-031
+- Added `dragged_row` and `dragged_frames` export vars to pet.gd for configurable dragged animation row
+- Added "dragged" animation definition to `_setup_animations()` with loop=true
+- Changed `_change_state(PetState.DRAGGED)` to play "dragged" animation instead of "idle"
+- Fallback: if SpriteFrames doesn't have "dragged" animation, falls back to "idle"
+- Ozzy's .tres already has a distinct "dragged" animation defined — no changes needed there
+- Files changed: scripts/pet.gd
+- **Learnings for future iterations:**
+  - Pre-built .tres SpriteFrames (like ozzy.tres) already contain named animations — `_play_anim()` / `has_animation()` works directly
+  - The `_setup_animations()` method is only used when building from sprite sheets, not when loading .tres files
+  - Always check `sprite_frames.has_animation()` before playing non-standard animations for graceful fallback
 ---

@@ -230,7 +230,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "The animation is named 'dragged' (not 'held'). Currently dragged reuses idle frames — this story makes it a distinct animation from its own sprite sheet row. Update _setup_animations() to build 'dragged' from a configurable dragged_row export var. The _change_state() DRAGGED case already plays 'dragged', so the main work is making the animation visually distinct."
     }
   ]
