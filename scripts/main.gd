@@ -37,6 +37,8 @@ var _placement_preview: Sprite2D = null
 var _edit_mode: bool = false
 var _edit_dragging_id: String = ""
 var _edit_drag_offset_x: float = 0.0
+# Tracks placement initiated from within edit mode
+var _edit_mode_placement: bool = false
 
 # Chest button shown during placement mode
 var _placement_chest_btn: Button = null
@@ -356,6 +358,11 @@ func _on_inventory_place_requested(furniture_id: String) -> void:
 func _enter_placement_mode(furniture_id: String) -> void:
 	_placement_mode = true
 	_placement_furniture_id = furniture_id
+	_edit_mode_placement = _edit_mode
+
+	# If entering placement from edit mode, exit edit mode temporarily
+	if _edit_mode_placement:
+		_exit_edit_mode()
 
 	# Close any open panels
 	shop_panel.close_shop()
@@ -407,6 +414,8 @@ func _exit_placement_mode(confirmed: bool) -> void:
 	if not _placement_mode:
 		return
 	_placement_mode = false
+	var was_edit_placement := _edit_mode_placement
+	_edit_mode_placement = false
 
 	if confirmed and _placement_preview:
 		# Spawn furniture at the preview position
@@ -424,6 +433,13 @@ func _exit_placement_mode(confirmed: bool) -> void:
 		_placement_chest_btn.queue_free()
 		_placement_chest_btn = null
 	_placement_furniture_id = ""
+
+	# Re-enter edit mode if placement was initiated from edit mode
+	if was_edit_placement:
+		_enter_edit_mode()
+		# Re-open the menu so player can continue editing
+		if not slide_menu.is_open():
+			slide_menu.open_menu()
 
 
 func _on_placement_chest_pressed() -> void:
@@ -508,16 +524,16 @@ func _default_furniture_position(furniture_id: String) -> Vector2:
 
 
 func _on_edit_layout_requested() -> void:
-	# Close panels if open before entering/exiting edit mode
+	# Close non-inventory panels before entering/exiting edit mode
 	if shop_panel.is_shop_open():
 		shop_panel.close_shop()
-	if inventory_panel.is_panel_open():
-		inventory_panel.close_panel()
 	if settings_panel.is_panel_open():
 		settings_panel.close_panel()
 	if pet_selection_panel.is_panel_open():
 		pet_selection_panel.close_panel()
 	if _edit_mode:
+		if inventory_panel.is_panel_open():
+			inventory_panel.close_panel()
 		_exit_edit_mode()
 	else:
 		_enter_edit_mode()
@@ -554,6 +570,11 @@ func _exit_edit_mode() -> void:
 		_remove_remove_button(fnode)
 	# Restore edit button label
 	slide_menu.set_edit_button_text(tr("EDIT_LAYOUT_BUTTON"))
+	# Close menu and panels that were open during edit mode
+	if inventory_panel.is_panel_open():
+		inventory_panel.close_panel()
+	if slide_menu.is_open():
+		slide_menu.close_menu()
 	# Save positions
 	_save_state()
 
@@ -568,7 +589,7 @@ func _add_remove_button(furniture_id: String, fnode: Furniture) -> void:
 	var tex_h := 0.0
 	if fnode.data and fnode.data.texture:
 		tex_h = fnode.data.texture.get_size().y * fnode.data.display_scale.y
-	btn.position = Vector2(-14.0, -(tex_h / 2.0) - 32.0)
+	btn.position = Vector2(-14.0, -(tex_h / 2.0) - 64.0)
 	btn.pressed.connect(_on_remove_furniture.bind(furniture_id))
 	# Style the button with a red-ish background
 	var style := StyleBoxFlat.new()
@@ -782,11 +803,32 @@ func _is_click_on_remove_button(point: Vector2) -> bool:
 	return false
 
 
+func _is_click_on_menu_or_panels(point: Vector2) -> bool:
+	## Returns true if the point is within the slide menu or any open panel.
+	if slide_menu:
+		var toggle_rect = slide_menu.get_toggle_rect()
+		if toggle_rect.has_point(point):
+			return true
+		var panel_rect = slide_menu.get_panel_rect()
+		if panel_rect.size.x > 0 and panel_rect.has_point(point):
+			return true
+	if inventory_panel and inventory_panel.is_panel_open():
+		if inventory_panel.get_global_rect().has_point(point):
+			return true
+	if shop_panel and shop_panel.is_shop_open():
+		if shop_panel.get_global_rect().has_point(point):
+			return true
+	return false
+
+
 func _handle_edit_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			# Don't intercept clicks on remove buttons — let Button handle them
 			if _is_click_on_remove_button(event.position):
+				return
+			# Don't intercept clicks on menu or panels — let UI handle them
+			if _is_click_on_menu_or_panels(event.position):
 				return
 			# Start dragging a furniture piece
 			var fid := _get_furniture_at_point(event.position)
@@ -794,12 +836,14 @@ func _handle_edit_input(event: InputEvent) -> void:
 				_edit_dragging_id = fid
 				var fnode: Furniture = _furniture_nodes[fid]
 				_edit_drag_offset_x = fnode.global_position.x - event.position.x
-				get_viewport().set_input_as_handled()
+			# Consume all left clicks in edit mode to prevent menu auto-close
+			get_viewport().set_input_as_handled()
 		else:
 			# Release drag
 			if _edit_dragging_id != "":
 				_edit_dragging_id = ""
-				get_viewport().set_input_as_handled()
+			# Consume all left releases in edit mode to prevent menu auto-close
+			get_viewport().set_input_as_handled()
 
 	elif event is InputEventMouseMotion and _edit_dragging_id != "":
 		var fnode: Furniture = _furniture_nodes[_edit_dragging_id]
