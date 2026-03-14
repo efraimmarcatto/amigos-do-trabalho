@@ -7,6 +7,7 @@ extends Control
 signal shop_requested
 signal inventory_requested
 signal edit_layout_requested
+signal settings_requested
 signal menu_opened
 signal menu_closed
 
@@ -17,7 +18,7 @@ signal menu_closed
 @export var panel_width: float = 180.0
 
 ## Height of the menu panel in pixels.
-@export var panel_height: float = 195.0
+@export var panel_height: float = 225.0
 
 ## Size of the toggle button.
 @export var button_size: Vector2 = Vector2(40, 40)
@@ -32,6 +33,7 @@ var on_before_close: Callable
 @onready var _shop_button: Button = $MenuPanel/VBox/ShopButton
 @onready var _inventory_button: Button = $MenuPanel/VBox/InventoryButton
 @onready var _edit_button: Button = $MenuPanel/VBox/EditLayoutButton
+@onready var _settings_button: Button = $MenuPanel/VBox/SettingsButton
 
 
 func _ready() -> void:
@@ -39,6 +41,7 @@ func _ready() -> void:
 	_shop_button.pressed.connect(_on_shop)
 	_inventory_button.pressed.connect(_on_inventory)
 	_edit_button.pressed.connect(_on_edit_layout)
+	_settings_button.pressed.connect(_on_settings)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
@@ -143,6 +146,10 @@ func _on_inventory() -> void:
 func set_edit_button_text(text: String) -> void:
 	## Updates the edit layout button label (e.g., "Edit Layout" vs "Save Edit").
 	_edit_button.text = text
+
+
+func _on_settings() -> void:
+	settings_requested.emit()
 
 
 func _on_edit_layout() -> void:

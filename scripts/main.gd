@@ -16,6 +16,7 @@ const FURNITURE_SCENE := preload("res://scenes/furniture.tscn")
 @onready var shop_panel: PanelContainer = $ShopPanel
 @onready var inventory_panel: PanelContainer = $InventoryPanel
 @onready var inventory_system: Node = $InventorySystem
+@onready var settings_panel: PanelContainer = $SettingsPanel
 
 # Spawned furniture instances keyed by furniture_id
 var _furniture_nodes: Dictionary = {}
@@ -64,6 +65,7 @@ func _ready() -> void:
 	slide_menu.shop_requested.connect(_on_shop_button_pressed)
 	slide_menu.inventory_requested.connect(_on_inventory_button_pressed)
 	slide_menu.edit_layout_requested.connect(_on_edit_layout_requested)
+	slide_menu.settings_requested.connect(_on_settings_button_pressed)
 	slide_menu.menu_opened.connect(_on_menu_opened)
 	slide_menu.menu_closed.connect(_on_menu_closed)
 	slide_menu.on_before_close = _handle_menu_close
@@ -75,6 +77,9 @@ func _ready() -> void:
 	inventory_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
 	inventory_panel.place_requested.connect(_on_inventory_place_requested)
 
+	# Set up settings panel adjacent to menu
+	settings_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
+
 	# Share furniture nodes dict and floor_y with pet
 	pet_sprite._furniture_nodes = _furniture_nodes
 	pet_sprite.floor_y = floor_y
@@ -84,7 +89,7 @@ func _ready() -> void:
 	pet_sprite.position.y = floor_y - pet_half_h
 
 	# Set up coin HUD to the left of the toggle button
-	var toggle_rect := slide_menu.get_toggle_rect()
+	var toggle_rect = slide_menu.get_toggle_rect()
 	coin_hud.setup(floor_y, toggle_rect.position.x, toggle_rect.size.x, slide_menu.panel_height)
 
 	# Load saved state (also spawns furniture)
@@ -109,6 +114,7 @@ func _save_state() -> void:
 		"pet_mood": pet_sprite._current_mood,
 		"furniture_positions": _furniture_positions,
 		"inventory": inventory_system.get_inventory_for_save(),
+		"language": settings_panel.get_current_locale(),
 	}
 	var json_string := JSON.stringify(data)
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -147,6 +153,8 @@ func _load_state() -> void:
 			elif key is String and data["inventory"][key] is int:
 				inv_data[key] = data["inventory"][key]
 		inventory_system.set_inventory(inv_data)
+	if data.has("language") and data["language"] is String:
+		settings_panel.apply_language(data["language"])
 	# Spawn furniture from saved positions (backward compat: also check owned_furniture)
 	var furniture_to_spawn: Array[String] = []
 	for fid in _furniture_positions:
@@ -185,14 +193,21 @@ func _handle_menu_close() -> void:
 		get_tree().create_timer(inventory_panel.get_close_duration()).timeout.connect(
 			slide_menu.close_menu
 		)
+	elif settings_panel.is_panel_open():
+		settings_panel.close_panel()
+		get_tree().create_timer(settings_panel.get_close_duration()).timeout.connect(
+			slide_menu.close_menu
+		)
 	else:
 		slide_menu.close_menu()
 
 
 func _on_shop_button_pressed() -> void:
-	# Close inventory if open (mutual exclusivity)
+	# Close other panels if open (mutual exclusivity)
 	if inventory_panel.is_panel_open():
 		inventory_panel.close_panel()
+	if settings_panel.is_panel_open():
+		settings_panel.close_panel()
 	if shop_panel.is_shop_open():
 		shop_panel.close_shop()
 		return
@@ -201,14 +216,29 @@ func _on_shop_button_pressed() -> void:
 
 
 func _on_inventory_button_pressed() -> void:
-	# Close shop if open (mutual exclusivity)
+	# Close other panels if open (mutual exclusivity)
 	if shop_panel.is_shop_open():
 		shop_panel.close_shop()
+	if settings_panel.is_panel_open():
+		settings_panel.close_panel()
 	if inventory_panel.is_panel_open():
 		inventory_panel.close_panel()
 		return
 	# Delay inventory open slightly for a chained animation feel
 	get_tree().create_timer(0.1).timeout.connect(inventory_panel.open_panel)
+
+
+func _on_settings_button_pressed() -> void:
+	# Close other panels if open (mutual exclusivity)
+	if shop_panel.is_shop_open():
+		shop_panel.close_shop()
+	if inventory_panel.is_panel_open():
+		inventory_panel.close_panel()
+	if settings_panel.is_panel_open():
+		settings_panel.close_panel()
+		return
+	# Delay settings open slightly for a chained animation feel
+	get_tree().create_timer(0.1).timeout.connect(settings_panel.open_panel)
 
 
 func _on_inventory_place_requested(furniture_id: String) -> void:
@@ -222,6 +252,7 @@ func _enter_placement_mode(furniture_id: String) -> void:
 	# Close any open panels
 	shop_panel.close_shop()
 	inventory_panel.close_panel()
+	settings_panel.close_panel()
 
 	# Create a semi-transparent preview sprite
 	var fdata = shop_panel.get_furniture_data(furniture_id)
@@ -239,7 +270,7 @@ func _enter_placement_mode(furniture_id: String) -> void:
 
 	# Create chest/inventory button for storing item during placement
 	_placement_chest_btn = Button.new()
-	_placement_chest_btn.text = "📦 To Inventory"
+	_placement_chest_btn.text = tr("TO_INVENTORY")
 	_placement_chest_btn.size = Vector2(140, 36)
 	var screen_w := float(DisplayServer.screen_get_size().x)
 	_placement_chest_btn.position = Vector2(screen_w / 2.0 - 70.0, floor_y - 60.0)
@@ -372,6 +403,8 @@ func _on_edit_layout_requested() -> void:
 		shop_panel.close_shop()
 	if inventory_panel.is_panel_open():
 		inventory_panel.close_panel()
+	if settings_panel.is_panel_open():
+		settings_panel.close_panel()
 	if _edit_mode:
 		_exit_edit_mode()
 	else:
@@ -390,7 +423,7 @@ func _enter_edit_mode() -> void:
 		fnode.modulate = Color(1.2, 1.2, 0.8, 1.0)
 		_add_remove_button(fid, fnode)
 	# Update edit button label
-	slide_menu.set_edit_button_text("Save Edit")
+	slide_menu.set_edit_button_text(tr("SAVE_EDIT_BUTTON"))
 	# Disable passthrough to capture all input
 	get_window().mouse_passthrough_polygon = PackedVector2Array()
 
@@ -408,7 +441,7 @@ func _exit_edit_mode() -> void:
 		fnode.modulate = Color(1.0, 1.0, 1.0, 1.0)
 		_remove_remove_button(fnode)
 	# Restore edit button label
-	slide_menu.set_edit_button_text("Edit Layout")
+	slide_menu.set_edit_button_text(tr("EDIT_LAYOUT_BUTTON"))
 	# Save positions
 	_save_state()
 
@@ -541,6 +574,10 @@ func _update_passthrough() -> void:
 	# Include inventory panel when open
 	if inventory_panel and inventory_panel.is_panel_open():
 		rects.append(inventory_panel.get_global_rect())
+
+	# Include settings panel when open
+	if settings_panel and settings_panel.is_panel_open():
+		rects.append(settings_panel.get_global_rect())
 
 	# Include all spawned furniture
 	for fid in _furniture_nodes:

@@ -8,9 +8,10 @@
 [ext_resource type="Script" uid="uid://buwscas5p16ym" path="res://scripts/interaction_menu.gd" id="5_menu"]
 [ext_resource type="Script" uid="uid://bqf6tu0fytkmq" path="res://scripts/shop.gd" id="6_shop"]
 [ext_resource type="Script" uid="uid://bye0way64lndc" path="res://scripts/slide_menu.gd" id="7_slide_menu"]
-[ext_resource type="Script" path="res://scripts/coin_hud.gd" id="8_coin_hud"]
-[ext_resource type="Script" path="res://scripts/inventory_system.gd" id="9_inventory"]
-[ext_resource type="Script" path="res://scripts/inventory_panel.gd" id="10_inv_panel"]
+[ext_resource type="Script" uid="uid://bfgwabfrbqboc" path="res://scripts/coin_hud.gd" id="8_coin_hud"]
+[ext_resource type="Script" uid="uid://dprlm267y1b6r" path="res://scripts/inventory_system.gd" id="9_inventory"]
+[ext_resource type="Script" uid="uid://elcwav4wt0tg" path="res://scripts/inventory_panel.gd" id="10_inv_panel"]
+[ext_resource type="Script" path="res://scripts/settings_panel.gd" id="11_settings_panel"]
 
 [node name="Main" type="Control" unique_id=222507356]
 layout_mode = 3
@@ -34,10 +35,10 @@ sprite_sheet = ExtResource("2_icon")
 [node name="CoinSystem" type="Node" parent="." unique_id=757001182]
 script = ExtResource("3_coin")
 
-[node name="InventorySystem" type="Node" parent="."]
+[node name="InventorySystem" type="Node" parent="." unique_id=1087357402]
 script = ExtResource("9_inventory")
 
-[node name="CoinHud" type="PanelContainer" parent="."]
+[node name="CoinHud" type="PanelContainer" parent="." unique_id=1693477468]
 layout_mode = 0
 script = ExtResource("8_coin_hud")
 
@@ -93,7 +94,7 @@ horizontal_alignment = 1
 layout_mode = 2
 text = "Shop"
 
-[node name="InventoryButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
+[node name="InventoryButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=1573490699]
 layout_mode = 2
 text = "Inventory"
 
@@ -104,10 +105,9 @@ text = "Edit Layout"
 [node name="Separator" type="HSeparator" parent="SlideMenu/MenuPanel/VBox" unique_id=1705390882]
 layout_mode = 2
 
-[node name="SettingsPlaceholder" type="Label" parent="SlideMenu/MenuPanel/VBox" unique_id=1944742029]
+[node name="SettingsButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
 layout_mode = 2
-text = "Settings (coming soon)"
-horizontal_alignment = 1
+text = "Settings"
 
 [node name="ShopPanel" type="PanelContainer" parent="." unique_id=759142325]
 visible = false
@@ -139,7 +139,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="InventoryPanel" type="PanelContainer" parent="."]
+[node name="InventoryPanel" type="PanelContainer" parent="." unique_id=1219940549]
 visible = false
 layout_mode = 0
 offset_left = 10.0
@@ -148,27 +148,55 @@ offset_right = 350.0
 offset_bottom = 400.0
 script = ExtResource("10_inv_panel")
 
-[node name="VBox" type="VBoxContainer" parent="InventoryPanel"]
+[node name="VBox" type="VBoxContainer" parent="InventoryPanel" unique_id=1228246473]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="InventoryPanel/VBox"]
+[node name="Title" type="Label" parent="InventoryPanel/VBox" unique_id=450139010]
 layout_mode = 2
 text = "Inventory"
 horizontal_alignment = 1
 
-[node name="CloseButton" type="Button" parent="InventoryPanel/VBox"]
+[node name="CloseButton" type="Button" parent="InventoryPanel/VBox" unique_id=872446535]
 layout_mode = 2
 text = "Close"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="InventoryPanel/VBox"]
+[node name="ScrollContainer" type="ScrollContainer" parent="InventoryPanel/VBox" unique_id=1842349814]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Items" type="VBoxContainer" parent="InventoryPanel/VBox/ScrollContainer"]
+[node name="Items" type="VBoxContainer" parent="InventoryPanel/VBox/ScrollContainer" unique_id=1366408448]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="ConfirmDialog" type="ConfirmationDialog" parent="InventoryPanel"]
+[node name="ConfirmDialog" type="ConfirmationDialog" parent="InventoryPanel" unique_id=1884183393]
 title = "Confirm Discard"
 size = Vector2i(300, 100)
+
+[node name="SettingsPanel" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 350.0
+offset_bottom = 400.0
+script = ExtResource("11_settings_panel")
+
+[node name="VBox" type="VBoxContainer" parent="SettingsPanel"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="SettingsPanel/VBox"]
+layout_mode = 2
+text = "Settings"
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="SettingsPanel/VBox"]
+layout_mode = 2
+text = "Close"
+
+[node name="LanguageLabel" type="Label" parent="SettingsPanel/VBox"]
+layout_mode = 2
+text = "Language"
+
+[node name="LanguageDropdown" type="OptionButton" parent="SettingsPanel/VBox"]
+layout_mode = 2

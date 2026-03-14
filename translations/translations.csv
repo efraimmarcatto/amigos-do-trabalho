@@ -1,0 +1,22 @@
+keys,en,pt
+MENU_TITLE,Menu,Menu
+SHOP_BUTTON,Shop,Loja
+INVENTORY_BUTTON,Inventory,Inventário
+EDIT_LAYOUT_BUTTON,Edit Layout,Editar Layout
+SAVE_EDIT_BUTTON,Save Edit,Salvar Edição
+SETTINGS_BUTTON,Settings,Configurações
+SHOP_TITLE,Furniture Shop,Loja de Móveis
+INVENTORY_TITLE,Inventory,Inventário
+SETTINGS_TITLE,Settings,Configurações
+CLOSE,Close,Fechar
+PET_ACTIONS_TITLE,Pet Actions,Ações do Pet
+FEED_BUTTON,Feed,Alimentar
+PLAY_BUTTON,Play,Brincar
+LANGUAGE_LABEL,Language,Idioma
+NO_ITEMS_IN_INVENTORY,No items in inventory,Nenhum item no inventário
+PLACE_BUTTON,Place,Colocar
+DISCARD_BUTTON,Discard,Descartar
+BUY_BUTTON,Buy,Comprar
+COINS_SUFFIX,coins,moedas
+TO_INVENTORY,📦 To Inventory,📦 Ao Inventário
+CONFIRM_DISCARD_TITLE,Confirm Discard,Confirmar Descarte
