@@ -8,6 +8,8 @@ Started: Sat Mar 14 10:22:42 PDT 2026
 - When removing unused code, grep all `.gd` files to confirm no remaining references before committing
 - Furniture display_scale is accessed as `fnode.data.display_scale` (a Vector2 on FurnitureData)
 - All furniture is spawned as children of `_furniture_container` (Node2D, z_index=0), pet sprite has z_index=1
+- During edit mode, ALL left mouse clicks/releases must be consumed in `_handle_edit_input` to prevent slide_menu's `_unhandled_input` from auto-closing the menu
+- `_edit_mode_placement` flag in main.gd tracks placement initiated from edit mode — re-enters edit mode after placement
 
 ---
 
@@ -34,4 +36,17 @@ Started: Sat Mar 14 10:22:42 PDT 2026
   - `_furniture_nodes` dict references nodes directly, so changing the parent node doesn't break any dict operations
   - `global_position` works correctly regardless of parent hierarchy since Node2D computes it from the scene root
   - The FurnitureContainer must be Node2D (not Control) since Furniture extends Node2D
+---
+
+## 2026-03-14 - US-036
+- Consumed ALL left mouse click/release events in `_handle_edit_input` to prevent slide_menu's `_unhandled_input` from auto-closing the menu during edit mode
+- Increased remove button Y offset from -48.0 to -64.0 so it doesn't obstruct furniture view
+- Verified existing `_edit_mode_placement` flow already supports: entering placement from edit mode, re-entering edit mode after placement, and reopening the menu
+- Verified `_on_edit_layout_requested` already keeps inventory open when entering edit mode (only closes shop, settings, pet_selection)
+- Verified `_is_click_on_menu_or_panels` already passes through clicks on menu, inventory, and shop panels during edit mode
+- Files changed: `scripts/main.gd`
+- **Learnings for future iterations:**
+  - slide_menu's `_unhandled_input` closes menu on outside clicks — during edit mode, all clicks must be consumed in `_input` to prevent propagation
+  - The `_edit_mode_placement` flag + `_enter_edit_mode()`/`_exit_edit_mode()` pattern handles the full edit→place→edit flow
+  - `_is_click_on_menu_or_panels` is the gatekeeper for UI interactions during edit mode — add new panels there if needed
 ---

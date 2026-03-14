@@ -85,7 +85,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Currently _on_edit_layout_requested() in main.gd closes all panels before entering edit mode. Change this to keep the menu open. The inventory panel close can also be skipped. The remove button position is set when creating the Button in edit mode — increase the Y offset so it's further above the sprite. When placement finishes during edit mode, re-enter edit mode instead of returning to normal mode. May need a flag like _edit_mode_placement to track this."
     },
     {
