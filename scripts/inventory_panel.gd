@@ -272,7 +272,18 @@ func _on_discard_request(furniture_id: String) -> void:
 	_confirm_furniture_id = furniture_id
 	var refund := int(fdata.coin_cost * fdata.discard_refund_ratio)
 	_confirm_dialog.dialog_text = "Discard " + fdata.display_name + " for " + str(refund) + " coins?"
-	_confirm_dialog.popup_centered()
+	# Position dialog near inventory panel instead of screen center
+	var dialog_size := _confirm_dialog.size if _confirm_dialog.size != Vector2i.ZERO else Vector2i(200, 100)
+	var panel_global := global_position
+	var screen_size := DisplayServer.screen_get_size()
+	# Place to the left of the inventory panel, vertically centered with panel
+	var target_x := int(panel_global.x) - dialog_size.x - 10
+	var target_y := int(panel_global.y + size.y / 2.0 - float(dialog_size.y) / 2.0)
+	# Clamp to screen edges
+	target_x = clampi(target_x, 0, screen_size.x - dialog_size.x)
+	target_y = clampi(target_y, 0, screen_size.y - dialog_size.y)
+	_confirm_dialog.position = Vector2i(target_x, target_y)
+	_confirm_dialog.popup()
 
 
 func _on_discard_confirmed() -> void:
