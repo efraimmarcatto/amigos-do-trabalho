@@ -122,7 +122,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-037 for consistent visual style. Follow the same grid pattern from shop. The quantity badge can be a small Label positioned in the top-right corner of the cell with a dark background. Action interface on click: small popup with Place and Discard buttons, or selection + bottom action bar."
     },
     {

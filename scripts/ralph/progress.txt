@@ -12,6 +12,8 @@ Started: Sat Mar 14 10:22:42 PDT 2026
 - `_edit_mode_placement` flag in main.gd tracks placement initiated from edit mode — re-enters edit mode after placement
 - Shop and PetSelection panels use GridContainer for icon grids; columns set dynamically based on panel width
 - Shop buy popup uses named child nodes (ItemName, QtyLabel, CostLabel, BuyBtn, MinusBtn) accessed via `get_node()`
+- Inventory action popup uses named child nodes (ItemName, PlaceBtn, DiscardBtn, CancelBtn) accessed via `get_node()`
+- Inventory and Shop panels share the same grid cell pattern: VBoxContainer with Button (icon + overlay) inside
 
 ---
 
@@ -66,4 +68,19 @@ Started: Sat Mar 14 10:22:42 PDT 2026
   - Shop public API used by main.gd: `setup()`, `open_shop()`, `close_shop()`, `is_shop_open()`, `get_close_duration()`, `get_furniture_data()`, `get_global_rect()` — preserve these when refactoring
   - PetSelectionPanel already uses GridContainer pattern — follow the same approach for consistency
   - Buy popup is a PanelContainer child of ShopPanel, uses named nodes (ItemName, QtyLabel, etc.) for updates via `get_node()`
+---
+
+## 2026-03-14 - US-038
+- Replaced inventory vertical list layout with responsive icon grid using GridContainer (matching shop pattern from US-037)
+- Each grid cell shows furniture icon (48x48 in 64x64 cell) with quantity badge (e.g., "x3") in top-right corner
+- Hovering shows item name via tooltip_text
+- Clicking an icon opens an action popup with Place, Discard, and Cancel buttons
+- Place and Discard actions preserved: place removes from inventory and emits place_requested, discard shows confirmation dialog with refund
+- Changed Items node in main.tscn from VBoxContainer to GridContainer with columns=3
+- Grid columns calculated dynamically based on panel width
+- Files changed: `scripts/inventory_panel.gd`, `scenes/main.tscn`
+- **Learnings for future iterations:**
+  - Inventory public API used by main.gd: `setup()`, `open_panel()`, `close_panel()`, `is_panel_open()`, `get_close_duration()`, `get_furniture_data()`, `get_global_rect()`, `place_requested` signal — preserve these when refactoring
+  - The action popup pattern (PanelContainer child with named nodes) is shared between shop (buy popup) and inventory (action popup)
+  - Quantity badge is a Label child of the Button with anchors preset to TOP_RIGHT and negative left offset
 ---
