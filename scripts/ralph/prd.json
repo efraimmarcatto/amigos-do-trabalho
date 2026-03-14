@@ -137,7 +137,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "The discard confirmation is a ConfirmationDialog in inventory_panel.gd. ConfirmationDialog inherits from AcceptDialog which inherits from Window. Set its position using the popup's position property before showing it. Calculate position relative to the inventory panel's global position."
     },
     {

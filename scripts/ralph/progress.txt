@@ -14,6 +14,7 @@ Started: Sat Mar 14 10:22:42 PDT 2026
 - Shop buy popup uses named child nodes (ItemName, QtyLabel, CostLabel, BuyBtn, MinusBtn) accessed via `get_node()`
 - Inventory action popup uses named child nodes (ItemName, PlaceBtn, DiscardBtn, CancelBtn) accessed via `get_node()`
 - Inventory and Shop panels share the same grid cell pattern: VBoxContainer with Button (icon + overlay) inside
+- ConfirmationDialog positioning: use `.position = Vector2i(x, y)` + `.popup()` instead of `.popup_centered()` for custom placement
 
 ---
 
@@ -83,4 +84,15 @@ Started: Sat Mar 14 10:22:42 PDT 2026
   - Inventory public API used by main.gd: `setup()`, `open_panel()`, `close_panel()`, `is_panel_open()`, `get_close_duration()`, `get_furniture_data()`, `get_global_rect()`, `place_requested` signal — preserve these when refactoring
   - The action popup pattern (PanelContainer child with named nodes) is shared between shop (buy popup) and inventory (action popup)
   - Quantity badge is a Label child of the Button with anchors preset to TOP_RIGHT and negative left offset
+---
+
+## 2026-03-14 - US-039
+- Changed discard confirmation dialog from `popup_centered()` to calculated position near inventory panel
+- Dialog positioned to the left of the inventory panel, vertically centered with the panel
+- Added screen edge clamping to prevent off-screen overflow
+- Files changed: `scripts/inventory_panel.gd`
+- **Learnings for future iterations:**
+  - ConfirmationDialog inherits Window — use `.position` (Vector2i) and `.popup()` instead of `.popup_centered()` for custom positioning
+  - `global_position` on the inventory panel gives the screen-space position needed for dialog placement
+  - `DisplayServer.screen_get_size()` returns screen dimensions for clamping
 ---
