@@ -103,7 +103,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "The current shop.gd builds rows with HBoxContainer per item. Replace with a GridContainer inside a ScrollContainer. Each cell is a VBoxContainer with: TextureRect (icon), Label (price). Use tooltip_text on the cell for the name. For the buy interface, consider a small popup panel that appears when clicking an icon, with quantity controls and a Buy button. Alternatively, clicking could select the item and show buy controls at the bottom of the shop panel."
     },
     {
