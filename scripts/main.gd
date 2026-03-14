@@ -79,6 +79,7 @@ func _ready() -> void:
 
 	# Set up settings panel adjacent to menu
 	settings_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
+	settings_panel.monitor_changed.connect(_on_monitor_changed)
 
 	# Share furniture nodes dict and floor_y with pet
 	pet_sprite._furniture_nodes = _furniture_nodes
@@ -115,6 +116,7 @@ func _save_state() -> void:
 		"furniture_positions": _furniture_positions,
 		"inventory": inventory_system.get_inventory_for_save(),
 		"language": settings_panel.get_current_locale(),
+		"monitor": settings_panel.get_current_monitor(),
 	}
 	var json_string := JSON.stringify(data)
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -155,6 +157,14 @@ func _load_state() -> void:
 		inventory_system.set_inventory(inv_data)
 	if data.has("language") and data["language"] is String:
 		settings_panel.apply_language(data["language"])
+	if data.has("monitor"):
+		var monitor_idx := 0
+		if data["monitor"] is float:
+			monitor_idx = int(data["monitor"])
+		elif data["monitor"] is int:
+			monitor_idx = data["monitor"]
+		if monitor_idx > 0 and monitor_idx < DisplayServer.screen_get_count():
+			settings_panel.apply_monitor(monitor_idx)
 	# Spawn furniture from saved positions (backward compat: also check owned_furniture)
 	var furniture_to_spawn: Array[String] = []
 	for fid in _furniture_positions:
@@ -239,6 +249,53 @@ func _on_settings_button_pressed() -> void:
 		return
 	# Delay settings open slightly for a chained animation feel
 	get_tree().create_timer(0.1).timeout.connect(settings_panel.open_panel)
+
+
+func _on_monitor_changed(_monitor_index: int) -> void:
+	## After the window has been moved to a new monitor, recompute layout.
+	# Wait a frame for the window to settle on the new screen
+	await get_tree().process_frame
+
+	# Recompute floor_y for the new screen
+	floor_y = _compute_floor_y()
+	pet_sprite.floor_y = floor_y
+
+	# Resize window to cover the new screen
+	var screen_size := DisplayServer.screen_get_size()
+	var win := get_window()
+	win.position = DisplayServer.screen_get_position(DisplayServer.window_get_current_screen())
+	win.size = screen_size
+
+	# Reposition pet — clamp to new screen bounds
+	var pet_half_h := (pet_sprite.get_sprite_size().y * pet_sprite.scale.abs().y) / 2.0
+	var pet_half_w := (pet_sprite.get_sprite_size().x * pet_sprite.scale.abs().x) / 2.0
+	pet_sprite.position.y = floor_y - pet_half_h
+	pet_sprite.position.x = clampf(pet_sprite.position.x, pet_half_w, float(screen_size.x) - pet_half_w)
+
+	# Reposition all placed furniture — clamp to new screen bounds, set Y to floor
+	for fid in _furniture_nodes:
+		var fnode: Furniture = _furniture_nodes[fid]
+		if not fnode or not fnode.data or not fnode.data.texture:
+			continue
+		var tex_size := fnode.data.texture.get_size()
+		var half_w := tex_size.x / 2.0
+		var new_x := clampf(fnode.global_position.x, half_w, float(screen_size.x) - half_w)
+		var new_y := floor_y - tex_size.y / 2.0
+		fnode.global_position = Vector2(new_x, new_y)
+		_furniture_positions[fid] = {"x": new_x, "y": new_y}
+
+	# Reposition UI elements for new screen
+	slide_menu.setup(floor_y)
+	shop_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
+	inventory_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
+	settings_panel.setup(slide_menu.get_panel_open_x(), slide_menu.get_panel_y())
+	var toggle_rect := slide_menu.get_toggle_rect()
+	coin_hud.setup(floor_y, toggle_rect.position.x, toggle_rect.size.x, slide_menu.panel_height)
+
+	# Re-open settings panel since user was just in it
+	settings_panel.open_panel()
+
+	_save_state()
 
 
 func _on_inventory_place_requested(furniture_id: String) -> void:

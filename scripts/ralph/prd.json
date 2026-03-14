@@ -167,7 +167,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Depends on US-027 (settings panel exists). DisplayServer.window_set_current_screen() moves the window. After moving, must recompute floor_y and reposition everything. Consider that screen sizes differ between monitors."
     },
     {

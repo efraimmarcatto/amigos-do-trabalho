@@ -21,6 +21,7 @@ Started: Fri Mar 13 14:59:40 PDT 2026
 - Translations loaded at runtime from CSV via `_load_translations()` in settings_panel.gd — no editor import step needed
 - When adding new panels, also add mutual exclusivity closes in `_on_shop_button_pressed()`, `_on_inventory_button_pressed()`, and any new panel button handler
 - Use `tr("KEY")` for translatable UI strings; `_update_all_ui_text()` in settings_panel.gd refreshes all panels on language change
+- After monitor change, call `await get_tree().process_frame` before reading new screen dimensions, then reposition everything via setup() calls
 
 ---
 
@@ -164,4 +165,24 @@ Started: Fri Mar 13 14:59:40 PDT 2026
   - `TranslationServer.get_locale()` may return full locale like "en_US" — use `.substr(0, 2)` for 2-letter code
   - `_update_all_ui_text()` walks the scene tree to update all labels — when adding new UI panels, add their text refresh there
   - The edit button "Save Edit" state must be checked during language change to avoid resetting it to "Edit Layout"
+---
+
+## 2026-03-14 - US-028
+- Added monitor selection dropdown to settings panel below language selection
+- Dropdown lists all connected displays with "Monitor N — WxH" format using DisplayServer.screen_get_count/screen_get_size
+- Selecting a monitor calls DisplayServer.window_set_current_screen() to move the window
+- After monitor change: recalculates floor_y via _compute_floor_y(), resizes window to new screen, repositions pet and all furniture (clamped to new bounds, Y set to new floor_y)
+- UI elements (slide menu, shop, inventory, settings panels, coin HUD) all repositioned via their setup() methods
+- Settings panel re-opens automatically after monitor switch so user can continue adjusting
+- Monitor dropdown refreshes on panel open to detect newly connected/disconnected displays
+- Selected monitor persisted in save_data.json under 'monitor' key
+- On load, falls back to primary monitor (index 0) if saved index exceeds screen_get_count()
+- Monitor index 0 (primary) skipped on load since it's the default
+- Added MONITOR_LABEL translation key (English: "Monitor", Portuguese: "Monitor")
+- Files changed: scripts/settings_panel.gd, scripts/main.gd, scenes/main.tscn, translations/translations.csv, scripts/ralph/prd.json
+- **Learnings for future iterations:**
+  - `DisplayServer.window_set_current_screen()` moves the window but screen size APIs may not update immediately — use `await get_tree().process_frame` before reading new screen dimensions
+  - `DisplayServer.screen_get_position()` returns the global position of a screen — use it to set window.position when switching monitors
+  - When repositioning all UI after monitor change, call setup() on each panel/menu in the same order as _ready() to maintain consistent layout
+  - Monitor dropdown should be repopulated on panel open since display configuration can change at runtime
 ---

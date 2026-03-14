@@ -4,6 +4,7 @@ extends PanelContainer
 ## Panel slides in/out adjacent to the slide menu with tween animations.
 
 signal settings_closed
+signal monitor_changed(monitor_index: int)
 
 const ANIM_DURATION: float = 0.3
 const PANEL_WIDTH: float = 280.0
@@ -26,6 +27,8 @@ var _languages: Array[Dictionary] = [
 @onready var _close_button: Button = $VBox/CloseButton
 @onready var _language_label: Label = $VBox/LanguageLabel
 @onready var _language_dropdown: OptionButton = $VBox/LanguageDropdown
+@onready var _monitor_label: Label = $VBox/MonitorLabel
+@onready var _monitor_dropdown: OptionButton = $VBox/MonitorDropdown
 
 
 func _ready() -> void:
@@ -45,6 +48,10 @@ func _ready() -> void:
 	# Select current locale in dropdown
 	_select_current_locale()
 
+	# Populate monitor dropdown
+	_populate_monitors()
+	_monitor_dropdown.item_selected.connect(_on_monitor_selected)
+
 
 func setup(menu_open_x: float, menu_panel_y: float) -> void:
 	## Position the settings panel to slide in adjacent to the menu.
@@ -61,6 +68,7 @@ func open_panel() -> void:
 		return
 	_is_open = true
 	_select_current_locale()
+	_populate_monitors()
 	visible = true
 	_animate_x(_open_x)
 
@@ -151,12 +159,52 @@ func _on_language_selected(index: int) -> void:
 	apply_language(locale)
 
 
+func get_current_monitor() -> int:
+	return DisplayServer.window_get_current_screen()
+
+
+func apply_monitor(monitor_index: int) -> void:
+	## Apply a monitor selection, moving the window and emitting signal.
+	var count := DisplayServer.screen_get_count()
+	if monitor_index < 0 or monitor_index >= count:
+		monitor_index = 0
+	DisplayServer.window_set_current_screen(monitor_index)
+	_select_current_monitor()
+	monitor_changed.emit(monitor_index)
+
+
+func _populate_monitors() -> void:
+	_monitor_dropdown.clear()
+	var count := DisplayServer.screen_get_count()
+	for i in range(count):
+		var screen_size := DisplayServer.screen_get_size(i)
+		var label := "Monitor %d — %dx%d" % [i + 1, screen_size.x, screen_size.y]
+		_monitor_dropdown.add_item(label, i)
+	_select_current_monitor()
+
+
+func _select_current_monitor() -> void:
+	var current := DisplayServer.window_get_current_screen()
+	var count := _monitor_dropdown.item_count
+	if current >= 0 and current < count:
+		_monitor_dropdown.selected = current
+	elif count > 0:
+		_monitor_dropdown.selected = 0
+
+
+func _on_monitor_selected(index: int) -> void:
+	if index < 0 or index >= DisplayServer.screen_get_count():
+		return
+	apply_monitor(index)
+
+
 func _update_all_ui_text() -> void:
 	## Refresh all UI text using tr() after a language change.
 	# Settings panel itself
 	_title.text = tr("SETTINGS_TITLE")
 	_close_button.text = tr("CLOSE")
 	_language_label.text = tr("LANGUAGE_LABEL")
+	_monitor_label.text = tr("MONITOR_LABEL")
 
 	# Update sibling panels and menus via tree
 	var main_node := get_parent()
