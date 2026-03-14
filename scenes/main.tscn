@@ -143,10 +143,11 @@ text = "Close"
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Items" type="VBoxContainer" parent="ShopPanel/VBox/ScrollContainer" unique_id=1588207456]
+[node name="Items" type="GridContainer" parent="ShopPanel/VBox/ScrollContainer" unique_id=1588207456]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+columns = 3
 
 [node name="InventoryPanel" type="PanelContainer" parent="." unique_id=1219940549]
 visible = false
