@@ -52,7 +52,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Currently animate_up/animate_down are commented out in main.gd but the methods still exist in coin_hud.gd. Clean up both sides. The _on_menu_opened and _on_menu_closed methods in main.gd may have other logic — check before removing entirely. The setup() call appears in _ready() and _on_monitor_changed()."
     },
     {

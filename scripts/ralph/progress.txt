@@ -1,56 +1,25 @@
 # Ralph Progress Log
-Started: Sat Mar 14 2026
+Started: Sat Mar 14 10:22:42 PDT 2026
 ---
 
 ## Codebase Patterns
-- UI panels (shop, coin HUD, etc.) are positioned programmatically in `setup()` using `floor_y` and `DisplayServer.screen_get_size()`
-- All interactive UI must be included in the passthrough polygon via `_update_passthrough()` in main.gd — use `get_rect()` or `get_global_rect()` helpers
-- Tween animations use 0.3s duration, `EASE_OUT`, `TRANS_CUBIC` — match this for consistency
-- slide_menu.gd emits `menu_opened`/`menu_closed` signals for coordinating UI animations
-- Adjacent panels (shop, inventory, settings) use `setup(menu_open_x, menu_panel_y)` for positioning relative to the slide menu
-- Use `on_before_close: Callable` on slide_menu to intercept close and sequence panel close animations
-- Panel open/close uses tween on `position:x` with `_animate_x()` pattern — hidden off-screen at `screen_w`, visible at computed `_open_x`
-- When adding new adjacent panels, update these locations in main.gd: `_handle_menu_close()`, `_update_passthrough()`, `_on_edit_layout_requested()`, `_enter_placement_mode()`
-- coin_hud.gd builds its UI programmatically in `_build_ui()` (no child nodes in .tscn)
-- The CoinSystem emits `coins_changed(new_total: int)` — connect to this for coin display updates
-- InventorySystem follows the same pattern as CoinSystem: extends Node, emits `inventory_changed(furniture_id, new_count)` signal
-- JSON parses numbers as float — always handle both `is float` and `is int` when loading numeric values from save_data.json
-- Inventory stored as `Dictionary[String, int]` mapping furniture_id to quantity; items with 0 count are erased from the dictionary
-- Dynamic Button nodes in Node2D: position is relative to parent; `_input` must NOT call `set_input_as_handled()` for clicks on dynamically added Buttons
-- To remove placed furniture: erase from `_furniture_nodes`, `_furniture_positions`, `queue_free()` the node, and check `pet_sprite._current_surface` for FALLING
-- Translations loaded at runtime from CSV via `_load_translations()` in settings_panel.gd — no editor import step needed
-- When adding new panels, also add mutual exclusivity closes in `_on_shop_button_pressed()`, `_on_inventory_button_pressed()`, and any new panel button handler
-- Pet animations use convention names: idle, walk, jump_prep, jump, fall, interact, dragged — always check `has_animation()` before playing for graceful fallback
-- Use `tr("KEY")` for translatable UI strings; `_update_all_ui_text()` in settings_panel.gd refreshes all panels on language change
-- After monitor change, call `await get_tree().process_frame` before reading new screen dimensions, then reposition everything via setup() calls
-- Furniture sprite is set in furniture.gd's _ready() method — apply display_scale there to both Sprite2D and CollisionShape2D
-- All texture.get_size() calls for furniture must be multiplied by display_scale — check main.gd, pet.gd, and furniture.gd
-- Pet SpriteFrames are pre-built .tres files — `has_animation()` before playing for graceful fallback
-- `DisplayServer.get_screen_count()` is the correct API (not `screen_get_count()`)
+- coin_hud.gd `setup()` signature: `(floor_y, toggle_x, toggle_w)` — no menu_panel_h param
+- slide_menu.gd declares `menu_opened` and `menu_closed` signals but they are not currently connected in main.gd
+- When removing unused code, grep all `.gd` files to confirm no remaining references before committing
+- Furniture display_scale is accessed as `fnode.data.display_scale` (a Vector2 on FurnitureData)
 
 ---
 
-## 2026-03-14 - US-032
-- Added `display_scale: Vector2` export var to FurnitureData with default Vector2(1, 1)
-- Applied display_scale to Sprite2D.scale and CollisionShape2D size in furniture.gd _ready()
-- Updated get_surface_y(), get_left_x(), get_right_x() in furniture.gd to multiply by display_scale
-- Updated ALL texture.get_size() references in main.gd (11 locations) and pet.gd (5 locations) to account for display_scale
-- Updated all 5 .tres files with display_scale = Vector2(2, 2)
-- Files changed: furniture_data.gd, furniture.gd, main.gd, pet.gd, table.tres, sofa.tres, bookshelf.tres, toy.tres, food_bowl.tres
+## 2026-03-14 - US-034
+- Removed `animate_up()` and `animate_down()` methods from coin_hud.gd
+- Removed `_pos_tween` and `_menu_panel_height` variables from coin_hud.gd
+- Removed `menu_panel_h` parameter from `coin_hud.setup()`
+- Removed commented-out `coin_hud.animate_up()`/`animate_down()` calls and empty `_on_menu_opened`/`_on_menu_closed` handlers from main.gd
+- Disconnected `menu_opened`/`menu_closed` signal connections in main.gd (signals still exist in slide_menu.gd)
+- Updated both `coin_hud.setup()` call sites in main.gd (in `_ready` and `_on_monitor_changed`)
+- Files changed: `scripts/coin_hud.gd`, `scripts/main.gd`
 - **Learnings for future iterations:**
-  - texture.get_size() is used extensively across main.gd and pet.gd for positioning, hit-testing, overlap detection, passthrough rects, and drag constraints — ALL must be scaled
-  - The placement preview in main.gd is a standalone Sprite2D (not a Furniture instance), so it needs display_scale applied separately
-  - No Godot CLI is available for typecheck — manual code review is the only verification method
----
-
-## 2026-03-14 - US-033
-- Added "Exit" button to slide menu below SettingsButton in main.tscn
-- Wired _exit_button in slide_menu.gd with `get_tree().quit()` on pressed
-- Added EXIT_BUTTON translation key (en: "Exit", pt: "Sair") in translations.csv
-- Updated `_update_all_ui_text()` in settings_panel.gd to refresh ExitButton text
-- Increased panel_height from 260 to 300 to accommodate the new button
-- Files changed: slide_menu.gd, main.tscn, translations.csv, settings_panel.gd
-- **Learnings for future iterations:**
-  - Adding a new menu button requires: .tscn node, @onready var, signal connect in _ready(), handler method, translation key, and _update_all_ui_text() entry
-  - The panel_height export var on slide_menu controls the menu panel size — adjust when adding/removing buttons
+  - coin_hud.gd has a `_get_rect()` method used by main.gd's `_update_passthrough()` for click-through polygon
+  - The `toggle_w` parameter in `setup()` is declared but unused — left as-is to minimize scope
+  - slide_menu signals (`menu_opened`/`menu_closed`) are part of slide_menu's API but currently have no consumers
 ---
