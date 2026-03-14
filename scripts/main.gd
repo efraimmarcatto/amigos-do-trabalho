@@ -25,6 +25,8 @@ var _furniture_nodes: Dictionary = {}
 var _furniture_positions: Dictionary = {}
 # Floor Y coordinate — top of taskbar (bottom of usable screen rect)
 var floor_y: float = 0.0
+# Container node for all furniture (z-ordered behind pet)
+var _furniture_container: Node2D = null
 
 # Placement mode state
 var _placement_mode: bool = false
@@ -54,6 +56,12 @@ func _ready() -> void:
 
 	# Start global input hooks for keyboard/mouse tracking
 	GlobalInput.start_hooks()
+
+	# Create furniture container (renders behind pet via z_index)
+	_furniture_container = Node2D.new()
+	_furniture_container.name = "FurnitureContainer"
+	_furniture_container.z_index = 0
+	add_child(_furniture_container)
 
 	# Update the mouse passthrough so transparent areas pass clicks through
 	_update_passthrough()
@@ -91,6 +99,9 @@ func _ready() -> void:
 	# Share furniture nodes dict and floor_y with pet
 	pet_sprite._furniture_nodes = _furniture_nodes
 	pet_sprite.floor_y = floor_y
+
+	# Ensure pet renders in front of furniture
+	pet_sprite.z_index = 1
 
 	# Position pet at floor level
 	var pet_half_h = (pet_sprite.get_sprite_size().y * pet_sprite.scale.abs().y) / 2.0
@@ -429,7 +440,7 @@ func _spawn_furniture_at(furniture_id: String, pos: Vector2) -> void:
 
 	var node: Furniture = FURNITURE_SCENE.instantiate()
 	node.data = fdata
-	add_child(node)
+	_furniture_container.add_child(node)
 	_furniture_nodes[furniture_id] = node
 	node.global_position = pos
 	_furniture_positions[furniture_id] = {"x": pos.x, "y": pos.y}
@@ -445,7 +456,7 @@ func _spawn_furniture(furniture_id: String) -> void:
 
 	var node: Furniture = FURNITURE_SCENE.instantiate()
 	node.data = fdata
-	add_child(node)
+	_furniture_container.add_child(node)
 	_furniture_nodes[furniture_id] = node
 
 	# Position: use saved position or assign a default
