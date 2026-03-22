@@ -1,214 +1,130 @@
 {
   "project": "Amigos do Trabalho - Desktop Virtual Pet",
-  "branchName": "ralph/menu-shop-inventory-pets",
-  "description": "Polish & Fixes Round 2 - Furniture scale/z-ordering, edit mode workflow, icon grid layouts, click passthrough, pet jump timeout, exit button, and first-launch hint.",
+  "branchName": "ralph/furniture-creator-tool",
+  "description": "Furniture Creator Tool - A Godot Editor plugin that provides a graphical interface for creating and configuring FurnitureData resources, including sprite selection, property editing, collision area customization, and live preview.",
   "userStories": [
     {
-      "id": "US-032",
-      "title": "Furniture display scale configuration on FurnitureData",
-      "description": "As a developer, I want to configure the display scale of each furniture type in its FurnitureData resource so pixel art renders at the correct size.",
+      "id": "US-001",
+      "title": "Open the Furniture Creator from the Godot Editor",
+      "description": "As a developer, I want to access the Furniture Creator from the Godot Editor so that I can create items without leaving my workflow.",
       "acceptanceCriteria": [
-        "Add `display_scale: Vector2` export var to FurnitureData with default Vector2(1, 1)",
-        "When furniture is spawned in main.gd (_spawn_furniture or equivalent), set the Sprite2D scale to furniture_data.display_scale",
-        "The CollisionShape2D scales proportionally with the sprite (multiply shape extents by display_scale)",
-        "Update all existing .tres files in furniture/data/ with appropriate display_scale values (start with Vector2(2, 2) for all items since they are small pixel art)",
-        "Scale is applied consistently whether placing from inventory or loading from save",
-        "Pet surface calculations (get_surface_y, get_left_x, get_right_x) account for the display_scale",
+        "A 'Furniture Creator' entry appears in the Godot Editor (e.g., via Project > Tools menu, or as a bottom panel/dock)",
+        "Clicking it opens the creator panel/window",
+        "The plugin is registered in addons/ following Godot 4 EditorPlugin conventions",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "The furniture sprite is set in furniture.gd's setup() method. Apply display_scale there to both the Sprite2D and the CollisionShape2D. The collision shape is a RectangleShape2D whose extents are computed from the texture size — multiply by display_scale. Also update get_surface_y(), get_left_x(), get_right_x() in furniture.gd to account for scale."
+      "notes": "Plugin structure follows Godot 4 conventions: addons/furniture_creator/plugin.cfg + plugin.gd. Register as EditorPlugin, add a bottom panel or dock with the creator UI."
     },
     {
-      "id": "US-033",
-      "title": "Exit game button in slide menu",
-      "description": "As a player, I want an exit button in the menu so I can close the application without using the taskbar.",
+      "id": "US-002",
+      "title": "Select a sprite from an existing atlas sprite sheet",
+      "description": "As a developer, I want to visually browse a sprite sheet and click-drag to select a region so that I can pick the exact sprite for my item.",
       "acceptanceCriteria": [
-        "Add 'Exit' button to the slide menu below the Settings button",
-        "Remove excess empty panel area below the new button (tighten panel_height if needed)",
-        "Clicking the button calls get_tree().quit()",
-        "Button uses the same style as existing menu buttons",
-        "Add translation keys EXIT_BUTTON for English ('Exit') and Portuguese ('Sair') in translations.csv",
-        "Update _update_all_ui_text() in settings_panel.gd to refresh the Exit button text",
+        "A 'From Atlas' tab/mode lets me choose a sprite sheet file (default to res://assets/Top-Down_Retro_Interior/)",
+        "The full sprite sheet is displayed with zoom controls",
+        "I can click and drag to define a rectangular region on the sheet",
+        "The selected region coordinates (x, y, width, height) are shown and editable numerically",
+        "The selected region is highlighted with a visible border/overlay",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Add the button in slide_menu.gd after SettingsButton. Connect its pressed signal to get_tree().quit(). The panel_height export var on slide_menu controls the menu size — adjust so there's no excess space below Exit."
+      "passes": false,
+      "notes": "Atlas region selection uses a custom Control that draws the sprite sheet and handles input for click-drag selection. Add zoom via mouse wheel or buttons."
     },
     {
-      "id": "US-034",
-      "title": "Remove coin animation code and keep HUD static",
-      "description": "As a developer, I want the commented-out coin animation code removed and the coin HUD to stay in its fixed position at all times.",
+      "id": "US-003",
+      "title": "Import a standalone image as item texture",
+      "description": "As a developer, I want to import a standalone image file so that I can use custom sprites not on an existing sprite sheet.",
       "acceptanceCriteria": [
-        "Delete the animate_up() and animate_down() methods from coin_hud.gd",
-        "Delete the _pos_tween variable and _menu_panel_height variable from coin_hud.gd",
-        "Remove the menu_panel_h parameter from coin_hud.setup() since it's no longer needed",
-        "Remove the commented-out coin_hud.animate_up() and coin_hud.animate_down() calls in main.gd _on_menu_opened/_on_menu_closed",
-        "Remove the pass statements left behind in _on_menu_opened/_on_menu_closed (or remove the methods entirely if they do nothing else)",
-        "Update all calls to coin_hud.setup() in main.gd to remove the menu_panel_h argument",
-        "Coin HUD remains in its initial fixed position at all times",
+        "A 'From File' tab/mode lets me pick an image file via Godot's file dialog",
+        "The selected image is displayed in the preview",
+        "The image path is stored as a direct Texture2D reference (not AtlasTexture)",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Currently animate_up/animate_down are commented out in main.gd but the methods still exist in coin_hud.gd. Clean up both sides. The _on_menu_opened and _on_menu_closed methods in main.gd may have other logic — check before removing entirely. The setup() call appears in _ready() and _on_monitor_changed()."
+      "passes": false,
+      "notes": "Use EditorFileDialog to pick image files. Store the loaded texture directly on FurnitureData.texture."
     },
     {
-      "id": "US-035",
-      "title": "Furniture z-ordering behind pet using FurnitureContainer",
-      "description": "As a player, I want furniture to always render behind the pet so the pet is never obscured.",
+      "id": "US-004",
+      "title": "Configure all FurnitureData properties via form fields",
+      "description": "As a developer, I want to set all item properties through labeled form fields so that I don't need to remember property names or valid values.",
       "acceptanceCriteria": [
-        "Add a Node2D named 'FurnitureContainer' to the main scene (or create it programmatically in main.gd _ready)",
-        "Set FurnitureContainer z_index to a value lower than the pet sprite's z_index (e.g., furniture z_index=0, pet z_index=1)",
-        "All furniture spawning (from inventory placement and from save load) adds furniture as children of FurnitureContainer instead of directly to the scene root",
-        "Edit mode drag, remove buttons, and all furniture operations work correctly with the new parent node",
-        "Pet is always visible in front of all furniture pieces regardless of position",
+        "Form includes fields for all 14 FurnitureData properties: id, display_name, coin_cost, walkable, walk_surface_y_offset, can_fall_off_edge, jumpable, interaction_type, interaction_coin_bonus, interaction_cooldown, discard_refund_ratio, display_scale, stackable",
+        "Conditional fields show/hide based on related toggles (walk_surface_y_offset visible only when walkable is checked, interaction fields visible only when interaction_type is set)",
+        "Refund value label updates live: shows coin_cost * discard_refund_ratio rounded",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Currently furniture is added as a child of the main Control node via add_child(). Change to _furniture_container.add_child(). The FurnitureContainer should be a Node2D (not Control) since furniture nodes are Node2D. Set z_index on both the container and the pet sprite. Check _furniture_nodes dict operations still work since they reference the node directly, not via parent."
+      "passes": false,
+      "notes": "Group form fields logically: Identity (id, name) > Economics (cost, refund) > Behavior (walkable, jumpable, stackable, interaction) > Visual (scale). Auto-generate id from display_name as snake_case."
     },
     {
-      "id": "US-036",
-      "title": "Edit mode - keep menu visible and allow inventory access",
-      "description": "As a player, I want the menu and Save Edit button to remain visible during edit mode, and to grab items from inventory to place them while editing.",
+      "id": "US-005",
+      "title": "Preview item at actual display scale",
+      "description": "As a developer, I want to see a live preview of the selected sprite at its configured display scale so I can verify the item looks correct before saving.",
       "acceptanceCriteria": [
-        "The slide menu is NOT hidden/closed when entering edit mode — it stays visible and interactive",
-        "The 'Save Edit' button text is always visible during edit mode (existing behavior, just ensure menu stays open)",
-        "The player can click the Inventory button in the menu during edit mode to open the inventory panel",
-        "Selecting an item from inventory during edit mode places it in the scene (same as normal placement but within edit mode context)",
-        "After placing an item from inventory during edit mode, the player returns to edit mode (not normal mode)",
-        "The remove/send-to-inventory button ('X') on each furniture is positioned above the furniture sprite height so it doesn't obstruct the furniture view — use a larger vertical offset",
+        "Preview area shows the selected sprite scaled by display_scale",
+        "Preview updates in real-time when sprite selection or scale changes",
+        "Preview is scrollable/pannable if the scaled sprite is large",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Currently _on_edit_layout_requested() in main.gd closes all panels before entering edit mode. Change this to keep the menu open. The inventory panel close can also be skipped. The remove button position is set when creating the Button in edit mode — increase the Y offset so it's further above the sprite. When placement finishes during edit mode, re-enter edit mode instead of returning to normal mode. May need a flag like _edit_mode_placement to track this."
+      "passes": false,
+      "notes": "Use a TextureRect or Sprite2D inside a ScrollContainer for the preview. Update on any property change."
     },
     {
-      "id": "US-037",
-      "title": "Shop icon grid layout with price and hover tooltip",
-      "description": "As a player, I want the shop to display items as a responsive icon grid with prices below icons and names on hover.",
+      "id": "US-006",
+      "title": "Auto-calculated collision with manual override",
+      "description": "As a developer, I want the collision area to be auto-calculated from the sprite size by default, but I also want to manually adjust it for items where only part of the sprite should have collision.",
       "acceptanceCriteria": [
-        "Replace the shop's vertical list layout with a responsive icon grid using GridContainer or FlowContainer",
-        "Number of columns adapts to panel width (fill as many icons as fit, e.g., 64px per cell with spacing)",
-        "Each grid cell shows the furniture texture/thumbnail at a consistent size (e.g., 48x48 or 64x64)",
-        "The item price (coin cost) is displayed below each icon",
-        "Hovering over an item shows the item name in a tooltip (use Godot's built-in tooltip_text property)",
-        "Clicking an item opens a small buy interface (popover or inline) with quantity selector and Buy button",
-        "The buy flow still works: select quantity, buy, items go to inventory, coins deducted",
+        "By default, collision size = texture_size * display_scale (matching current furniture.gd behavior)",
+        "A 'Custom collision' checkbox enables manual override",
+        "When enabled, width and height fields appear (pre-filled with auto-calculated values)",
+        "An offset field (Vector2) allows shifting the collision box relative to the sprite center",
+        "The collision rectangle is shown as a semi-transparent overlay on the preview",
+        "The auto-calculated default matches the current behavior",
+        "Custom collision data stored as collision_size_override and collision_offset on FurnitureData",
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "The current shop.gd builds rows with HBoxContainer per item. Replace with a GridContainer inside a ScrollContainer. Each cell is a VBoxContainer with: TextureRect (icon), Label (price). Use tooltip_text on the cell for the name. For the buy interface, consider a small popup panel that appears when clicking an icon, with quantity controls and a Buy button. Alternatively, clicking could select the item and show buy controls at the bottom of the shop panel."
+      "passes": false,
+      "notes": "collision_size_override and collision_offset already exist on FurnitureData. The preview overlay should draw a colored rectangle showing the collision bounds."
     },
     {
-      "id": "US-038",
-      "title": "Inventory icon grid layout with quantity badge and hover tooltip",
-      "description": "As a player, I want the inventory to display items as a responsive icon grid with quantity badges and names on hover.",
+      "id": "US-007",
+      "title": "Generate and save the .tres resource file",
+      "description": "As a developer, I want to click Save and have the tool generate a valid .tres file in res://furniture/data/ so the item is immediately available in the shop.",
       "acceptanceCriteria": [
-        "Replace the inventory's vertical list layout with a responsive icon grid (same style as shop grid from US-037)",
-        "Number of columns adapts to panel width",
-        "Each grid cell shows the furniture texture/thumbnail at a consistent size",
-        "A quantity badge (e.g., 'x3') is shown in the corner of each icon",
-        "No price is shown in inventory (unlike shop)",
-        "Hovering over an item shows the item name in a tooltip",
-        "Clicking an item opens a small action interface with Place and Discard buttons",
-        "Place and Discard actions work as before (place enters placement mode, discard shows confirmation)",
+        "Save button generates a FurnitureData resource with all configured properties",
+        "File is saved as res://furniture/data/{id}.tres",
+        "If file already exists, a confirmation dialog warns before overwriting",
+        "For atlas textures: generates correct AtlasTexture sub-resource with region",
+        "For standalone images: references the texture directly",
+        "After saving, the resource is visible in Godot's FileSystem dock immediately",
+        "The saved .tres file is loadable by the shop system without changes",
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Depends on US-037 for consistent visual style. Follow the same grid pattern from shop. The quantity badge can be a small Label positioned in the top-right corner of the cell with a dark background. Action interface on click: small popup with Place and Discard buttons, or selection + bottom action bar."
+      "passes": false,
+      "notes": "Use ResourceSaver.save() API for correct .tres format and UID generation. Call EditorInterface.get_resource_filesystem().scan() after saving to refresh the FileSystem dock."
     },
     {
-      "id": "US-039",
-      "title": "Discard confirmation popup positioned near menu",
-      "description": "As a player, I want the discard confirmation popup to appear near the menu instead of screen center.",
+      "id": "US-008",
+      "title": "Load and edit an existing furniture item",
+      "description": "As a developer, I want to load an existing .tres file into the tool so I can tweak properties and re-save without starting from scratch.",
       "acceptanceCriteria": [
-        "Discard confirmation dialog appears near the inventory panel / slide menu area (bottom-right quadrant of screen)",
-        "Dialog position is calculated relative to the inventory panel's position",
-        "Dialog does not overflow off-screen edges",
-        "Confirm and Cancel buttons work as before",
+        "A Load button opens a file dialog filtered to res://furniture/data/*.tres",
+        "Loading populates all form fields with the item's current values",
+        "Atlas region is restored and highlighted on the sprite sheet",
+        "Saving overwrites the original file (with confirmation)",
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "The discard confirmation is a ConfirmationDialog in inventory_panel.gd. ConfirmationDialog inherits from AcceptDialog which inherits from Window. Set its position using the popup's position property before showing it. Calculate position relative to the inventory panel's global position."
-    },
-    {
-      "id": "US-040",
-      "title": "Furniture stacking flag for decorative items",
-      "description": "As a developer, I want a stackable flag on FurnitureData so certain items like clocks and mugs can be placed on top of other furniture.",
-      "acceptanceCriteria": [
-        "Add `stackable: bool` export var to FurnitureData with default false",
-        "During placement mode, if the item is stackable and the mouse is over an existing walkable furniture piece, snap the preview Y to that furniture's surface Y",
-        "Non-stackable items can only be placed on the floor (existing behavior unchanged)",
-        "Stacked items save their absolute position (existing save format works)",
-        "During edit mode, dragging a base furniture piece also moves any items stacked on top of it",
-        "Removing a base furniture piece in edit mode also sends stacked items back to inventory",
-        "Typecheck passes"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Placement mode in main.gd constrains Y to floor_y. For stackable items, also check if mouse X is within any walkable furniture's X bounds, and if so, use that furniture's surface_y as the Y constraint. For edit mode drag/remove of stacked items, track parent-child relationships or use position overlap detection."
-    },
-    {
-      "id": "US-041",
-      "title": "Pet jump timeout with frustrated reaction",
-      "description": "As a player, I want my pet to stop trying to jump on furniture after repeated failures and show a brief frustrated reaction.",
-      "acceptanceCriteria": [
-        "Add `max_jump_attempts: int` export var to pet.gd (default 3, editable in Godot editor)",
-        "Pet tracks consecutive failed jump attempts toward the same furniture target",
-        "After max_jump_attempts failures, the pet gives up on that furniture target",
-        "On giving up, pet shows a frustrated/sad mood bubble (use existing speech bubble system)",
-        "After the reaction (1-2 seconds), pet resumes normal WALKING state on its current surface",
-        "Failed-attempt counter resets when the pet successfully jumps or targets different furniture",
-        "Typecheck passes"
-      ],
-      "priority": 10,
       "passes": false,
-      "notes": "The pet jump logic is in pet.gd. Look for where the pet attempts jumps and detects failures (lands back on same surface without reaching target). Add a counter per target furniture ID. The mood bubble can be triggered via the existing show_mood_bubble() or similar method with the SAD mood."
-    },
-    {
-      "id": "US-042",
-      "title": "Fix mouse click passthrough using actual object shapes",
-      "description": "As a player, I want clicks to pass through to the desktop in empty spaces between objects instead of being blocked by invisible bounding rectangles.",
-      "acceptanceCriteria": [
-        "The passthrough polygon in _update_passthrough() is built from individual object rects (pet sprite, each furniture piece, each visible UI panel) rather than one large HUD bounding rectangle",
-        "Empty space between furniture pieces allows clicks to pass through to the desktop",
-        "Empty space between the pet and the menu allows clicks to pass through",
-        "All interactive UI elements (menu toggle, open panels, coin HUD) still correctly block clicks",
-        "All furniture pieces still correctly block clicks for pet interaction",
-        "Pet sprite still blocks clicks for dragging",
-        "The passthrough polygon is a PackedVector2Array built by combining individual rectangles as separate polygon regions",
-        "Typecheck passes"
-      ],
-      "priority": 11,
-      "passes": false,
-      "notes": "Currently _update_passthrough() in main.gd collects rects and likely merges them into one bounding polygon. Instead, build the polygon as the outline of each individual rect appended sequentially. Godot's mouse_passthrough_polygon can represent multiple disconnected regions by using degenerate connecting edges (zero-width bridges between rects) or by listing each rect's 4 corners in sequence. Test that clicks between objects pass through correctly."
-    },
-    {
-      "id": "US-043",
-      "title": "Game start state fix and animated menu hint arrow",
-      "description": "As a player, I want the game to start with settings closed and see a brief animated arrow pointing to the menu on first launch.",
-      "acceptanceCriteria": [
-        "The settings panel is NOT visible on game start (ensure visible = false in _ready or in the .tscn)",
-        "On game start, if 'has_seen_menu_hint' is not true in save_data.json, show an animated arrow pointing at the hamburger menu button",
-        "The arrow is a simple sprite (triangle/chevron) with a bouncing/pulsing Tween animation",
-        "The arrow auto-disappears after a configurable duration (export var `hint_arrow_duration: float` in seconds, default 5.0, editable in Godot editor)",
-        "The arrow disappears immediately if the player opens the menu before the timer expires",
-        "After the arrow is shown (whether timed out or dismissed by menu open), save 'has_seen_menu_hint: true' in save_data.json",
-        "On subsequent launches, the arrow is not shown",
-        "Typecheck passes"
-      ],
-      "priority": 12,
-      "passes": false,
-      "notes": "The settings panel may be getting opened during _load_state() or _ready() due to a bug — check the initialization flow. The arrow can be a programmatically created Sprite2D or TextureRect positioned near the menu toggle button. Use a Tween with a looping bounce (position.y oscillation). Connect to slide_menu's menu_opened signal to dismiss early."
+      "notes": "Use ResourceLoader.load() to load the FurnitureData resource, then populate all form fields from its properties. If the texture is an AtlasTexture, restore the atlas and region."
     }
   ]
 }
