@@ -11,6 +11,8 @@ Started: 2026-03-21
 - Godot Buttons fire `pressed` on mouse RELEASE — when consuming input in `_input`/`_handle_edit_input`, must let through both press AND release for UI elements
 - For shop/inventory grid icons: use `EXPAND_IGNORE_SIZE` + explicit `size` + `clip_contents` on parent to keep TextureRects within bounds
 - Prefer tree order over z_index for rendering layers — `move_child(node, 0)` inserts at back; z_index affects ALL CanvasItem siblings (Node2D AND Control)
+- Furniture Area2D `input_pickable` must be false — it's only for collision detection; leaving it true causes viewport physics picking to interfere with pet click detection
+- Pet `_input` runs before Control `_gui_input` — pet must explicitly check for UI overlap and yield, or it will consume clicks meant for menus/panels
 
 ---
 
@@ -58,5 +60,20 @@ Started: 2026-03-21
   - In Godot 4, z_index affects ALL CanvasItem siblings (both Node2D and Control) — setting z_index=1 on a Node2D will make it render on top of sibling Control nodes with z_index=0
   - Prefer tree order over z_index for rendering layers — insert dynamic nodes at the correct position with `move_child(node, index)`
   - The `add_child()` call adds to the end; use `move_child()` immediately after to position correctly
+  - Manual browser verification needed (no browser testing tools available)
+---
+
+## 2026-03-21 - US-005
+- Fixed pet dragging when overlapping furniture
+- Two root causes:
+  1. Furniture Area2D had `input_pickable = true` (default) — viewport physics picking could interfere with pet click detection when pet overlapped furniture
+  2. Pet's `_input` consumed clicks even when they were on menu/panel areas, preventing menus from receiving clicks
+- Fix 1: Set `area.input_pickable = false` in furniture.gd `_ready()` since Area2D is only used for collision detection
+- Fix 2: Added `is_point_on_ui` Callable variable to pet.gd, set by main.gd to `_is_click_on_menu_or_panels`; pet checks this before grabbing and yields if click is on UI
+- Files changed: scripts/furniture.gd, scripts/main.gd, scripts/pet.gd
+- **Learnings for future iterations:**
+  - Godot Area2D `input_pickable` defaults to `true` — always disable it on Area2D nodes used only for collision/overlap detection, not mouse input
+  - `_input` phase runs before `_gui_input` phase — any node consuming events in `_input` blocks all Control `_gui_input` handlers; use a UI check callable to coordinate priority
+  - Using a `Callable` variable is a clean way to decouple input priority checks between scripts without tight coupling
   - Manual browser verification needed (no browser testing tools available)
 ---
