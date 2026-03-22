@@ -28,6 +28,9 @@ var _interaction_cooldown_row: Control
 var _display_scale_x_spin: SpinBox
 var _display_scale_y_spin: SpinBox
 
+# --- Atlas picker ---
+var _atlas_picker: Control  # AtlasRegionPicker instance
+
 
 func _ready() -> void:
 	var form_container: VBoxContainer = %FormContainer if has_node("%FormContainer") else $HSplit/LeftPanel/FormScroll/FormContainer
@@ -35,6 +38,15 @@ func _ready() -> void:
 
 
 func _build_form(container: VBoxContainer) -> void:
+	# --- Sprite Source: From Atlas ---
+	_add_section_header(container, "From Atlas")
+
+	_atlas_picker = VBoxContainer.new()
+	_atlas_picker.set_script(load("res://addons/furniture_creator/atlas_region_picker.gd"))
+	container.add_child(_atlas_picker)
+
+	_add_separator(container)
+
 	# --- Identity Section ---
 	_add_section_header(container, "Identity")
 
@@ -239,3 +251,10 @@ func _add_field_row(parent: Control, label_text: String, field: Control) -> HBox
 ## Returns the current display_scale as a Vector2.
 func get_display_scale() -> Vector2:
 	return Vector2(_display_scale_x_spin.value, _display_scale_y_spin.value)
+
+
+## Returns the atlas texture from the atlas picker, or null.
+func get_atlas_texture() -> AtlasTexture:
+	if _atlas_picker and _atlas_picker.has_method("get_atlas_texture"):
+		return _atlas_picker.get_atlas_texture()
+	return null
