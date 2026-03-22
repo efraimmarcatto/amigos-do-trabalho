@@ -381,7 +381,7 @@ func _enter_placement_mode(furniture_id: String) -> void:
 		# Position at mouse, constrained to floor
 		var tex_h = fdata.texture.get_size().y * fdata.display_scale.y
 		var mouse_x := get_global_mouse_position().x
-		var y := floor_y - tex_h / 2.0
+		var y = floor_y - tex_h / 2.0
 		# Stackable items snap to walkable furniture surfaces
 		if fdata.stackable:
 			var base := _get_walkable_furniture_at_x(mouse_x)
@@ -731,7 +731,8 @@ func _is_overlap_with_other(furniture_id: String, x_pos: float) -> bool:
 func _update_passthrough() -> void:
 	# Godot's mouse_passthrough_polygon: if set, only the area INSIDE the polygon
 	# receives mouse events; everything outside is passed through.
-	# We build a bounding box covering all visible interactive elements.
+	# We build individual rects for each interactive element and connect them
+	# with zero-width bridges so clicks pass through empty space between objects.
 
 	var rects: Array[Rect2] = []
 
@@ -791,21 +792,30 @@ func _update_passthrough() -> void:
 			rects.append(Rect2(fpos - fhalf, ftex_size))
 
 	if rects.is_empty():
+		get_window().mouse_passthrough_polygon = PackedVector2Array()
 		return
 
-	# Merge all rects into one bounding box
-	# Use .abs() on every Rect2 to guarantee positive dimensions before merging.
-	# Rect2 with negative width/height can occur when UI elements are at screen edges.
-	var merged := rects[0].abs()
-	for i in range(1, rects.size()):
-		merged = merged.merge(rects[i].abs())
-
-	var polygon: PackedVector2Array = PackedVector2Array([
-		merged.position,
-		Vector2(merged.end.x, merged.position.y),
-		merged.end,
-		Vector2(merged.position.x, merged.end.y),
-	])
+	# Build polygon from individual rects connected by round-trip zero-width
+	# bridges from a common anchor point. Each rect is traced as:
+	#   anchor → tl → tr → br → bl → tl → (back to anchor for next rect)
+	# The bridge edges (anchor→tl and tl→anchor) overlap in opposite directions,
+	# so they cancel out in ray-casting point-in-polygon tests — only the rect
+	# interiors count as "inside" the polygon.
+	var polygon: PackedVector2Array = PackedVector2Array()
+	var anchor: Vector2 = rects[0].abs().position
+	for i in range(rects.size()):
+		var r := rects[i].abs()
+		var tl := r.position
+		var tr := Vector2(r.end.x, r.position.y)
+		var br := r.end
+		var bl := Vector2(r.position.x, r.end.y)
+		polygon.append(anchor)
+		polygon.append(tl)
+		polygon.append(tr)
+		polygon.append(br)
+		polygon.append(bl)
+		polygon.append(tl)
+	# Polygon auto-closes back to anchor (first point)
 
 	get_window().mouse_passthrough_polygon = polygon
 
@@ -827,7 +837,7 @@ func _input(event: InputEvent) -> void:
 			var tex_h = fdata.texture.get_size().y * fdata.display_scale.y
 			var screen_w := float(DisplayServer.screen_get_size().x)
 			var x := clampf(event.position.x, tex_w / 2.0, screen_w - tex_w / 2.0)
-			var y := floor_y - tex_h / 2.0
+			var y = floor_y - tex_h / 2.0
 			# Stackable items snap to walkable furniture surfaces
 			if fdata.stackable:
 				var base := _get_walkable_furniture_at_x(x)
