@@ -409,9 +409,11 @@ func _build_preview() -> void:
 	_preview_display.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_preview_scroll.add_child(_preview_display)
 
-	# Connect drag-to-move signals from preview
+	# Connect drag-to-move and resize signals from preview
 	_preview_display.collision_offset_changed.connect(_on_preview_collision_offset_changed)
 	_preview_display.standing_offset_changed.connect(_on_preview_standing_offset_changed)
+	_preview_display.collision_resized.connect(_on_preview_collision_resized)
+	_preview_display.standing_resized.connect(_on_preview_standing_resized)
 
 	# Connect picker signals for live preview updates
 	if _atlas_picker:
@@ -550,6 +552,28 @@ func _on_preview_standing_offset_changed(new_offset: Vector2) -> void:
 	if not _custom_standing_check.button_pressed:
 		_custom_standing_check.button_pressed = true
 		_on_custom_standing_toggled(true)
+	_standing_offset_x_spin.value = new_offset.x
+	_standing_offset_y_spin.value = new_offset.y
+	_update_preview()
+
+
+func _on_preview_collision_resized(new_size: Vector2, new_offset: Vector2) -> void:
+	if not _custom_collision_check.button_pressed:
+		_custom_collision_check.button_pressed = true
+		_on_custom_collision_toggled(true)
+	_collision_width_spin.value = new_size.x
+	_collision_height_spin.value = new_size.y
+	_collision_offset_x_spin.value = new_offset.x
+	_collision_offset_y_spin.value = new_offset.y
+	_update_preview()
+
+
+func _on_preview_standing_resized(new_size: Vector2, new_offset: Vector2) -> void:
+	if not _custom_standing_check.button_pressed:
+		_custom_standing_check.button_pressed = true
+		_on_custom_standing_toggled(true)
+	_standing_width_spin.value = new_size.x
+	_standing_height_spin.value = new_size.y
 	_standing_offset_x_spin.value = new_offset.x
 	_standing_offset_y_spin.value = new_offset.y
 	_update_preview()
