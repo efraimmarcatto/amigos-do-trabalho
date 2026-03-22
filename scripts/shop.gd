@@ -152,11 +152,14 @@ func _create_grid_cell(item: FurnitureData) -> Control:
 	icon_btn.tooltip_text = item.display_name
 	icon_btn.pressed.connect(_on_item_clicked.bind(item))
 
+	icon_btn.clip_contents = true
+
 	var icon := TextureRect.new()
 	icon.texture = item.texture
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
-	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	icon.size = Vector2(ICON_SIZE, ICON_SIZE)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	icon_btn.add_child(icon)
