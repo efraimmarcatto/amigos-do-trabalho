@@ -25,6 +25,7 @@ Started: Sat Mar 21 22:43:46 PDT 2026
 - Load .tres resources: `load(path)` returns Resource; check `is FurnitureData` before casting
 - Detect atlas vs standalone textures: `data.texture is AtlasTexture`; get source sheet via `.atlas.resource_path`
 - Preview drag interactions: use _gui_input method override, DragTarget enum for state, emit signals on mouse release to sync form spinboxes
+- Preview resize: DragMode enum (MOVE vs RESIZE) separates move/resize logic; handle hit test runs before body hit test for priority; opposite-corner-fixed resize uses offset += (old_size - new_size) / 2.0
 
 ---
 
@@ -217,4 +218,36 @@ Sun Mar 22 03:06:28 -03 2026: Paused due to rate limit until 4am
   - When drag modifies offset, update the property directly on the preview for real-time feedback, then emit signal on release to sync spinboxes
   - Hit test uses Rect2.has_point() — rects computed from same center-based formula as _draw()
   - Auto-enabling custom collision/standing when user drags ensures the offset is saved (without custom enabled, offset returns Vector2.ZERO)
+---
+
+## 2026-03-22 - US-006
+- Added 8 resize handles (4 corners + 4 edge midpoints) per rectangle in preview_display.gd
+- Handles are 6px squares drawn on rectangle outlines when hovered or being edited
+- Corner handles resize from that corner (opposite corner stays fixed), edge handles resize in one axis
+- Added DragMode enum (NONE, MOVE, RESIZE) alongside existing DragTarget to distinguish move vs resize drags
+- Handle hit test checks both rects with smaller-gets-priority, and takes precedence over body drag
+- Emits collision_resized/standing_resized signals with new size and offset when resize ends
+- furniture_creator_panel.gd connects to resize signals and updates size + offset spinboxes
+- Auto-enables custom collision/standing checkbox if not already enabled when resizing
+- Minimum size enforced at 4×4 px
+- Cursor changes to CURSOR_HSIZE/VSIZE/FDIAGSIZE/BDIAGSIZE based on handle position
+- Files changed: addons/furniture_creator/preview_display.gd, addons/furniture_creator/furniture_creator_panel.gd
+- **Learnings for future iterations:**
+  - Resize handle math: opposite corner stays fixed, so offset shifts by half the size change (center-based positioning)
+  - Handle hit area should be slightly larger than visual (added 2px padding) for usability
+  - _hovered_target tracks which rect is hovered to control handle visibility — queue_redraw() on hover change
+  - Handle hit test must run before body hit test in mouse press to give handles click priority
+---
+
+## 2026-03-22 - US-007
+- Replaced dynamic FurnitureContainer creation with @onready reference to existing Furnitures node in main.tscn
+- Changed Furnitures node type from Node to Node2D in main.tscn for spatial parenting
+- Removed Node2D.new() / add_child / move_child code from _ready()
+- _spawn_furniture() and _spawn_furniture_at() continue to use _furniture_container (now referencing $Furnitures)
+- Furnitures node is already before PetSprite in scene tree, so furniture renders behind pet
+- Files changed: scripts/main.gd, scenes/main.tscn
+- **Learnings for future iterations:**
+  - Furnitures node was already in main.tscn — just needed to reference it with @onready instead of creating dynamically
+  - Changing Node to Node2D in .tscn is just changing the type= attribute in the node declaration
+  - @onready var with $NodeName is the idiomatic Godot pattern for referencing scene tree nodes
 ---
