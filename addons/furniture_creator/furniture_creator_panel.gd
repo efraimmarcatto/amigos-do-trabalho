@@ -481,8 +481,10 @@ func _update_preview() -> void:
 	var scale := get_display_scale()
 	var col_size := get_collision_size()
 	var col_offset := get_collision_offset()
+	var stand_size := get_standing_size()
+	var stand_offset := get_standing_offset()
 
-	_preview_display.update_preview(tex, scale, col_size, col_offset)
+	_preview_display.update_preview(tex, scale, col_size, col_offset, stand_size, stand_offset)
 
 	# Update auto-calculated labels
 	if tex:
