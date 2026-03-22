@@ -81,6 +81,9 @@ var _current_surface: Furniture = null  # null = screen floor
 # Floor Y coordinate — set by main.gd (top of taskbar / bottom of usable rect)
 var floor_y: float = 0.0
 
+# Callable set by main.gd to check if a point is on a menu or panel (menus take priority over pet)
+var is_point_on_ui: Callable = Callable()
+
 # Interaction tracking
 var _interacting_furniture: Furniture = null
 var _interaction_timer: float = 0.0
@@ -641,6 +644,9 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			if _is_point_on_pet(event.position):
+				# Let menus/panels take priority — don't grab pet if clicking on UI
+				if is_point_on_ui.is_valid() and is_point_on_ui.call(event.position):
+					return
 				_mouse_pressed = true
 				_mouse_press_pos = event.position
 				_is_dragging = false

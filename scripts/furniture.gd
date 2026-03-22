@@ -17,6 +17,9 @@ var _last_interaction_time: float = -9999.0
 
 
 func _ready() -> void:
+	# Disable input picking — Area2D is only used for pet collision detection, not mouse input.
+	# Leaving it enabled causes viewport physics picking to consume clicks when pet overlaps furniture.
+	area.input_pickable = false
 	if data and data.texture:
 		sprite.texture = data.texture
 		# Apply display scale to the sprite

@@ -105,9 +105,10 @@ func _ready() -> void:
 	# Connect pet mood bubble visibility to update passthrough
 	pet_sprite.mood_bubble_visible_changed.connect(_on_mood_bubble_changed)
 
-	# Share furniture nodes dict and floor_y with pet
+	# Share furniture nodes dict, floor_y, and UI checker with pet
 	pet_sprite._furniture_nodes = _furniture_nodes
 	pet_sprite.floor_y = floor_y
+	pet_sprite.is_point_on_ui = _is_click_on_menu_or_panels
 
 	# Pet renders in front of furniture (earlier in tree) but behind UI panels (later in tree)
 	# No z_index needed — tree order handles rendering: FurnitureContainer → PetSprite → UI Controls
