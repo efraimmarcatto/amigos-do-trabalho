@@ -9,6 +9,7 @@ Started: 2026-03-21
 - All interactive UI must be included in the passthrough polygon via `_update_passthrough()` in main.gd
 - In edit/placement mode, passthrough is disabled (empty polygon) so window captures all input
 - Godot Buttons fire `pressed` on mouse RELEASE — when consuming input in `_input`/`_handle_edit_input`, must let through both press AND release for UI elements
+- For shop/inventory grid icons: use `EXPAND_IGNORE_SIZE` + explicit `size` + `clip_contents` on parent to keep TextureRects within bounds
 
 ---
 
@@ -33,4 +34,16 @@ Started: 2026-03-21
   - Godot Button `pressed` signal fires on mouse RELEASE (ACTION_MODE_BUTTON_RELEASE is default) — both press AND release events must reach the Button for it to work
   - When `_handle_edit_input` consumes input, it must let through BOTH press and release for menu/panel clicks, not just press
   - No typecheck tooling available for this Godot project — verify GDScript syntax manually
+---
+
+## 2026-03-21 - US-003
+- Fixed shop panel image sizing and alignment
+- Root cause: `EXPAND_FIT_WIDTH_PROPORTIONAL` allowed TextureRect to grow beyond 48x48 target when source textures were larger; `PRESET_CENTER` anchors didn't constrain size
+- Fix: Changed `expand_mode` to `EXPAND_IGNORE_SIZE` so TextureRect respects only `custom_minimum_size`/`size`, set explicit `size` to ICON_SIZE, and enabled `clip_contents` on the parent Button to prevent any overflow
+- Files changed: scripts/shop.gd
+- **Learnings for future iterations:**
+  - `EXPAND_FIT_WIDTH_PROPORTIONAL` expands the TextureRect to fit the parent width, not the target size — use `EXPAND_IGNORE_SIZE` when you want the TextureRect constrained to its own size properties
+  - Always set `clip_contents = true` on parent containers when child textures may be larger than the target area
+  - `STRETCH_KEEP_ASPECT_CENTERED` handles the centering/aspect ratio within the given size — no need for additional anchor tricks
+  - Manual browser verification needed (no browser testing tools available)
 ---
