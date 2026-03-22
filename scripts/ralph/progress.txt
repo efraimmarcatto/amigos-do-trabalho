@@ -10,6 +10,8 @@ Started: Sat Mar 21 22:43:46 PDT 2026
 - Existing furniture .tres files: bookshelf, food_bowl, sofa, table, toy in furniture/data/
 - collision_size_override and collision_offset default to Vector2.ZERO — when zero, auto-sizing behavior is used
 - Branch created from ralph/layout-edit-shop-pet-regression-fixes (has all furniture infrastructure)
+- Plugin panel layout: HSplitContainer with LeftPanel (form, 60%) and RightPanel (preview, 40%) in furniture_creator_panel.tscn
+- All editor plugin scripts must use @tool annotation
 
 ---
 
@@ -21,4 +23,15 @@ Started: Sat Mar 21 22:43:46 PDT 2026
   - New @export vars with default values are backward-compatible with existing .tres files — Godot uses the default when the property isn't in the file
   - The collision shape size was previously computed inline as `data.texture.get_size() * data.display_scale`
   - collision_shape.position defaults to Vector2.ZERO (centered on parent), so applying offset only matters when non-zero
+---
+
+## 2026-03-21 - US-002
+- Plugin scaffold was already implemented — verified all acceptance criteria met
+- Files present: addons/furniture_creator/plugin.cfg, plugin.gd, furniture_creator_panel.gd, furniture_creator_panel.tscn
+- Plugin registered in project.godot under [editor_plugins]
+- **Learnings for future iterations:**
+  - The plugin uses a .tscn scene for the panel layout (furniture_creator_panel.tscn) with an HSplitContainer dividing left form area and right preview area
+  - Panel is added via add_control_to_bottom_panel() in plugin.gd _enter_tree()
+  - The panel scene already has a LeftPanel (VBoxContainer) and RightPanel (VBoxContainer) structure ready for form/preview content
+  - All @tool scripts in the plugin must have @tool annotation to run in the editor
 ---
