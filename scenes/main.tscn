@@ -23,6 +23,8 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
+[node name="Furnitures" type="Node2D" parent="." unique_id=1962725627]
+
 [node name="PetSprite" type="AnimatedSprite2D" parent="." unique_id=1104589341]
 position = Vector2(960, 1016)
 scale = Vector2(2, 2)
