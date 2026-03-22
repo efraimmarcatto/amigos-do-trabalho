@@ -28,8 +28,10 @@ var _interaction_cooldown_row: Control
 var _display_scale_x_spin: SpinBox
 var _display_scale_y_spin: SpinBox
 
-# --- Atlas picker ---
+# --- Sprite source pickers ---
 var _atlas_picker: Control  # AtlasRegionPicker instance
+var _file_picker: Control   # ImageFilePicker instance
+var _sprite_tabs: TabContainer
 
 
 func _ready() -> void:
@@ -38,12 +40,24 @@ func _ready() -> void:
 
 
 func _build_form(container: VBoxContainer) -> void:
-	# --- Sprite Source: From Atlas ---
-	_add_section_header(container, "From Atlas")
+	# --- Sprite Source: Tabbed Atlas / File pickers ---
+	_add_section_header(container, "Sprite Source")
+
+	_sprite_tabs = TabContainer.new()
+	_sprite_tabs.custom_minimum_size.y = 300
+	_sprite_tabs.tab_changed.connect(_on_sprite_tab_changed)
 
 	_atlas_picker = VBoxContainer.new()
+	_atlas_picker.name = "From Atlas"
 	_atlas_picker.set_script(load("res://addons/furniture_creator/atlas_region_picker.gd"))
-	container.add_child(_atlas_picker)
+	_sprite_tabs.add_child(_atlas_picker)
+
+	_file_picker = VBoxContainer.new()
+	_file_picker.name = "From File"
+	_file_picker.set_script(load("res://addons/furniture_creator/image_file_picker.gd"))
+	_sprite_tabs.add_child(_file_picker)
+
+	container.add_child(_sprite_tabs)
 
 	_add_separator(container)
 
@@ -193,6 +207,18 @@ func _on_interaction_type_changed(index: int) -> void:
 	_interaction_cooldown_row.visible = is_interactive
 
 
+func _on_sprite_tab_changed(tab: int) -> void:
+	# Clear the other tab's selection when switching
+	if tab == 0:
+		# Switched to "From Atlas" — clear file picker
+		if _file_picker and _file_picker.has_method("clear"):
+			_file_picker.clear()
+	elif tab == 1:
+		# Switched to "From File" — clear atlas picker
+		if _atlas_picker and _atlas_picker.has_method("clear"):
+			_atlas_picker.clear()
+
+
 func _on_coin_cost_changed(_value: float) -> void:
 	_update_refund_label()
 
@@ -258,3 +284,23 @@ func get_atlas_texture() -> AtlasTexture:
 	if _atlas_picker and _atlas_picker.has_method("get_atlas_texture"):
 		return _atlas_picker.get_atlas_texture()
 	return null
+
+
+## Returns the standalone file texture from the file picker, or null.
+func get_file_texture() -> Texture2D:
+	if _file_picker and _file_picker.has_method("get_texture"):
+		return _file_picker.get_texture()
+	return null
+
+
+## Returns whichever texture is currently selected (atlas or file), or null.
+func get_selected_texture() -> Texture2D:
+	if _sprite_tabs.current_tab == 0:
+		return get_atlas_texture()
+	else:
+		return get_file_texture()
+
+
+## Returns the current sprite source mode: "atlas" or "file".
+func get_sprite_source_mode() -> String:
+	return "atlas" if _sprite_tabs.current_tab == 0 else "file"
