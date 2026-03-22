@@ -33,8 +33,18 @@ var _atlas_picker: Control  # AtlasRegionPicker instance
 var _file_picker: Control   # ImageFilePicker instance
 var _sprite_tabs: TabContainer
 
+# --- Collision controls ---
+var _custom_collision_check: CheckBox
+var _collision_auto_label: Label
+var _collision_width_spin: SpinBox
+var _collision_height_spin: SpinBox
+var _collision_offset_x_spin: SpinBox
+var _collision_offset_y_spin: SpinBox
+var _collision_size_row: Control
+var _collision_offset_row: Control
+
 # --- Preview ---
-var _preview_texture_rect: TextureRect
+var _preview_display: Control  # PreviewDisplay instance
 var _preview_placeholder: Label
 var _preview_scroll: ScrollContainer
 
@@ -194,6 +204,68 @@ func _build_form(container: VBoxContainer) -> void:
 
 	_add_field_row(container, "Display Scale", scale_hbox)
 
+	# --- Custom Collision ---
+	_custom_collision_check = CheckBox.new()
+	_custom_collision_check.toggled.connect(_on_custom_collision_toggled)
+	_add_field_row(container, "Custom Collision", _custom_collision_check)
+
+	_collision_auto_label = Label.new()
+	_collision_auto_label.text = "Auto-calculated from texture × scale"
+	_collision_auto_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	container.add_child(_collision_auto_label)
+
+	var col_size_hbox := HBoxContainer.new()
+	var cw_label := Label.new()
+	cw_label.text = "W:"
+	col_size_hbox.add_child(cw_label)
+	_collision_width_spin = SpinBox.new()
+	_collision_width_spin.min_value = 1
+	_collision_width_spin.max_value = 9999
+	_collision_width_spin.step = 1
+	_collision_width_spin.value = 64
+	_collision_width_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_collision_width_spin.value_changed.connect(_on_collision_param_changed)
+	col_size_hbox.add_child(_collision_width_spin)
+	var ch_label := Label.new()
+	ch_label.text = "H:"
+	col_size_hbox.add_child(ch_label)
+	_collision_height_spin = SpinBox.new()
+	_collision_height_spin.min_value = 1
+	_collision_height_spin.max_value = 9999
+	_collision_height_spin.step = 1
+	_collision_height_spin.value = 64
+	_collision_height_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_collision_height_spin.value_changed.connect(_on_collision_param_changed)
+	col_size_hbox.add_child(_collision_height_spin)
+	_collision_size_row = _add_field_row(container, "Collision Size", col_size_hbox)
+	_collision_size_row.visible = false
+
+	var col_offset_hbox := HBoxContainer.new()
+	var cox_label := Label.new()
+	cox_label.text = "X:"
+	col_offset_hbox.add_child(cox_label)
+	_collision_offset_x_spin = SpinBox.new()
+	_collision_offset_x_spin.min_value = -9999
+	_collision_offset_x_spin.max_value = 9999
+	_collision_offset_x_spin.step = 1
+	_collision_offset_x_spin.value = 0
+	_collision_offset_x_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_collision_offset_x_spin.value_changed.connect(_on_collision_param_changed)
+	col_offset_hbox.add_child(_collision_offset_x_spin)
+	var coy_label := Label.new()
+	coy_label.text = "Y:"
+	col_offset_hbox.add_child(coy_label)
+	_collision_offset_y_spin = SpinBox.new()
+	_collision_offset_y_spin.min_value = -9999
+	_collision_offset_y_spin.max_value = 9999
+	_collision_offset_y_spin.step = 1
+	_collision_offset_y_spin.value = 0
+	_collision_offset_y_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_collision_offset_y_spin.value_changed.connect(_on_collision_param_changed)
+	col_offset_hbox.add_child(_collision_offset_y_spin)
+	_collision_offset_row = _add_field_row(container, "Collision Offset", col_offset_hbox)
+	_collision_offset_row.visible = false
+
 
 func _build_preview() -> void:
 	var preview_area: Panel = $HSplit/RightPanel/PreviewArea
@@ -209,7 +281,7 @@ func _build_preview() -> void:
 	_preview_placeholder.set_anchors_preset(Control.PRESET_FULL_RECT)
 	preview_area.add_child(_preview_placeholder)
 
-	# Scrollable preview for the scaled sprite
+	# Scrollable preview for the scaled sprite with collision overlay
 	_preview_scroll = ScrollContainer.new()
 	_preview_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_preview_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -217,10 +289,10 @@ func _build_preview() -> void:
 	_preview_scroll.visible = false
 	preview_area.add_child(_preview_scroll)
 
-	_preview_texture_rect = TextureRect.new()
-	_preview_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP
-	_preview_texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_preview_scroll.add_child(_preview_texture_rect)
+	_preview_display = Control.new()
+	_preview_display.set_script(load("res://addons/furniture_creator/preview_display.gd"))
+	_preview_display.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_preview_scroll.add_child(_preview_display)
 
 	# Connect picker signals for live preview updates
 	if _atlas_picker:
@@ -283,14 +355,33 @@ func _update_preview() -> void:
 	_preview_scroll.visible = true
 
 	var scale := get_display_scale()
-	var tex_size := tex.get_size()
-	var scaled_size := tex_size * scale
+	var col_size := get_collision_size()
+	var col_offset := get_collision_offset()
 
-	_preview_texture_rect.texture = tex
-	_preview_texture_rect.custom_minimum_size = scaled_size
-	_preview_texture_rect.size = scaled_size
-	_preview_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
-	_preview_texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_preview_display.update_preview(tex, scale, col_size, col_offset)
+
+	# Update auto-calculated label
+	if _collision_auto_label and tex:
+		var auto_size := tex.get_size() * scale
+		_collision_auto_label.text = "Auto: %d × %d px" % [int(auto_size.x), int(auto_size.y)]
+
+
+func _on_custom_collision_toggled(pressed: bool) -> void:
+	_collision_auto_label.visible = not pressed
+	_collision_size_row.visible = pressed
+	_collision_offset_row.visible = pressed
+	if pressed:
+		# Pre-fill with auto-calculated values
+		var tex := get_selected_texture()
+		if tex:
+			var auto_size := tex.get_size() * get_display_scale()
+			_collision_width_spin.value = auto_size.x
+			_collision_height_spin.value = auto_size.y
+	_update_preview()
+
+
+func _on_collision_param_changed(_value: float) -> void:
+	_update_preview()
 
 
 func _on_coin_cost_changed(_value: float) -> void:
@@ -378,3 +469,17 @@ func get_selected_texture() -> Texture2D:
 ## Returns the current sprite source mode: "atlas" or "file".
 func get_sprite_source_mode() -> String:
 	return "atlas" if _sprite_tabs.current_tab == 0 else "file"
+
+
+## Returns the collision size override (Vector2.ZERO if auto).
+func get_collision_size() -> Vector2:
+	if _custom_collision_check and _custom_collision_check.button_pressed:
+		return Vector2(_collision_width_spin.value, _collision_height_spin.value)
+	return Vector2.ZERO
+
+
+## Returns the collision offset.
+func get_collision_offset() -> Vector2:
+	if _custom_collision_check and _custom_collision_check.button_pressed:
+		return Vector2(_collision_offset_x_spin.value, _collision_offset_y_spin.value)
+	return Vector2.ZERO
