@@ -23,13 +23,14 @@ layout_mode = 2
 text = "Furniture Creator"
 horizontal_alignment = 1
 
-[node name="Placeholder" type="Label" parent="HSplit/LeftPanel"]
+[node name="FormScroll" type="ScrollContainer" parent="HSplit/LeftPanel"]
 layout_mode = 2
-text = "Select a sprite and configure properties to create a new furniture item."
-autowrap_mode = 2
-horizontal_alignment = 1
-vertical_alignment = 1
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="FormContainer" type="VBoxContainer" parent="HSplit/LeftPanel/FormScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="RightPanel" type="VBoxContainer" parent="HSplit"]
 layout_mode = 2

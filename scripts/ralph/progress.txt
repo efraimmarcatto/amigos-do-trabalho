@@ -12,6 +12,8 @@ Started: Sat Mar 21 22:43:46 PDT 2026
 - Branch created from ralph/layout-edit-shop-pet-regression-fixes (has all furniture infrastructure)
 - Plugin panel layout: HSplitContainer with LeftPanel (form, 60%) and RightPanel (preview, 40%) in furniture_creator_panel.tscn
 - All editor plugin scripts must use @tool annotation
+- Form fields built programmatically in _build_form(); use _add_field_row() helper for label+field rows
+- interaction_type OptionButton indices: 0=(none), 1=play, 2=eat, 3=sleep
 
 ---
 
@@ -34,4 +36,16 @@ Started: Sat Mar 21 22:43:46 PDT 2026
   - Panel is added via add_control_to_bottom_panel() in plugin.gd _enter_tree()
   - The panel scene already has a LeftPanel (VBoxContainer) and RightPanel (VBoxContainer) structure ready for form/preview content
   - All @tool scripts in the plugin must have @tool annotation to run in the editor
+---
+
+## 2026-03-21 - US-003
+- Built property form with all FurnitureData fields, grouped into Identity/Economics/Behavior/Visual sections
+- Replaced placeholder label in .tscn with ScrollContainer > VBoxContainer for form
+- Form built programmatically in _build_form() for dynamic visibility toggling
+- Files changed: addons/furniture_creator/furniture_creator_panel.gd, addons/furniture_creator/furniture_creator_panel.tscn
+- **Learnings for future iterations:**
+  - _add_field_row() returns the HBoxContainer row, useful for toggling visibility of conditional fields
+  - interaction_type OptionButton indices: 0=(none), 1=play, 2=eat, 3=sleep
+  - _id_manually_edited flag prevents auto-generation after user edits the id field directly
+  - display_scale defaults to Vector2(4, 4) per PRD requirement (not the FurnitureData default of 1,1)
 ---
