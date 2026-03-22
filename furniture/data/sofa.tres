@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://cs01pwuerwdb3" path="res://scripts/furniture_data.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://do2kxbeegx1hp" path="res://assets/Top-Down_Retro_Interior/TopDownHouse_FurnitureState1.png" id="2_bq4xv"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_oboyu"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_bq4xv"]
 atlas = ExtResource("2_bq4xv")
 region = Rect2(144, 160, 32, 32)
 
@@ -11,11 +11,15 @@ region = Rect2(144, 160, 32, 32)
 script = ExtResource("1_script")
 id = "sofa"
 display_name = "Sofa"
-texture = SubResource("AtlasTexture_oboyu")
+texture = SubResource("AtlasTexture_bq4xv")
 coin_cost = 100
 walkable = true
 jumpable = true
 interaction_type = "sleep"
 interaction_coin_bonus = 5
 interaction_cooldown = 30.0
-display_scale = Vector2(4, 4)
+display_scale = Vector2(4.1, 4.1)
+collision_size_override = Vector2(74, 72)
+collision_offset = Vector2(-2, -29)
+standing_size_override = Vector2(74, 61)
+standing_offset = Vector2(0, 34)

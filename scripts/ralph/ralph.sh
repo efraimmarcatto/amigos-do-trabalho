@@ -99,7 +99,35 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     # Use danger-full-access to match the old autonomous behavior with total permission.
     OUTPUT=$(codex exec --dangerously-bypass-approvals-and-sandbox --color never -C "$PROJECT_ROOT" - < "$SCRIPT_DIR/AGENTS.md" 2>&1 | tee /dev/stderr) || true
   fi
-  
+   if echo "$OUTPUT" | grep -iq "hit your limit"; then
+    RESET_TIME=$(echo "$OUTPUT" | grep -oE '[0-9]+(am|pm)')
+    
+    if [ -n "$RESET_TIME" ]; then
+      echo ""
+      echo "⚠️ Rate limit hit. Resets at: $RESET_TIME"
+      
+      CURRENT_EPOCH=$(date +%s)
+      TARGET_EPOCH=$(date -d "$RESET_TIME" +%s)
+
+      # If the target time has already passed today, assume it's for tomorrow
+      if [ "$TARGET_EPOCH" -le "$CURRENT_EPOCH" ]; then
+          TARGET_EPOCH=$(date -d "tomorrow $RESET_TIME" +%s)
+      fi
+
+      # Calculate sleep duration + 60s safety margin
+      SLEEP_SECONDS=$((TARGET_EPOCH - CURRENT_EPOCH + 60))
+      
+      echo "Waiting $((SLEEP_SECONDS / 60)) minutes until reset..."
+      echo "$(date): Paused due to rate limit until $RESET_TIME" >> "$PROGRESS_FILE"
+      
+      sleep "$SLEEP_SECONDS"
+      
+      echo "Resuming execution..."
+      # Decrement loop counter so this iteration doesn't count towards MAX_ITERATIONS
+      i=$((i - 1))
+      continue
+    fi
+  fi
   # Check for completion signal
   if echo "$OUTPUT" | grep -q "<promise>COMPLETE</promise>"; then
     echo ""

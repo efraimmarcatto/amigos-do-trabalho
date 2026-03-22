@@ -26,13 +26,13 @@ window/size/window_width_override=1920
 window/size/window_height_override=1080
 window/per_pixel_transparency/allowed=true
 
-[physics]
-
-3d/physics_engine="Jolt Physics"
-
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/furniture_creator/plugin.cfg")
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
 
 [rendering]
 

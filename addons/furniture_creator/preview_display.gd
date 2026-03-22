@@ -141,8 +141,8 @@ func _gui_input(event: InputEvent) -> void:
 
 	if event is InputEventMouseMotion:
 		if _drag_mode == DragMode.MOVE:
-			var delta := event.position - _drag_start_mouse
-			var new_offset := _drag_start_offset + delta
+			var delta = event.position - _drag_start_mouse
+			var new_offset = _drag_start_offset + delta
 			if _drag_target == DragTarget.COLLISION:
 				collision_offset = new_offset
 			elif _drag_target == DragTarget.STANDING:

@@ -1,0 +1,17 @@
+# Ralph Progress Log
+Started: 2026-03-21
+---
+
+## Codebase Patterns
+- Dynamic Button nodes added as children of Node2D don't reliably receive GUI input — handle clicks directly in `_input`/`_handle_edit_input` using `btn.get_global_rect().has_point(event.position)` and call the action function explicitly
+- Use `GIT_CONFIG_GLOBAL=/dev/null` with `-c user.name=... -c user.email=...` to work around broken gpg.format in .gitconfig
+- UI panels (shop, coin HUD, etc.) are positioned programmatically in `setup()` using `floor_y` and `DisplayServer.screen_get_size()`
+- All interactive UI must be included in the passthrough polygon via `_update_passthrough()` in main.gd
+- In edit/placement mode, passthrough is disabled (empty polygon) so window captures all input
+- Godot Buttons fire `pressed` on mouse RELEASE — when consuming input in `_input`/`_handle_edit_input`, must let through both press AND release for UI elements
+- For shop/inventory grid icons: use `EXPAND_IGNORE_SIZE` + explicit `size` + `clip_contents` on parent to keep TextureRects within bounds
+- Prefer tree order over z_index for rendering layers — `move_child(node, 0)` inserts at back; z_index affects ALL CanvasItem siblings (Node2D AND Control)
+- Furniture Area2D `input_pickable` must be false — it's only for collision detection; leaving it true causes viewport physics picking to interfere with pet click detection
+- Pet `_input` runs before Control `_gui_input` — pet must explicitly check for UI overlap and yield, or it will consume clicks meant for menus/panels
+
+---
