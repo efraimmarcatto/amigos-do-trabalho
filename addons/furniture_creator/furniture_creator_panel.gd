@@ -409,6 +409,10 @@ func _build_preview() -> void:
 	_preview_display.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_preview_scroll.add_child(_preview_display)
 
+	# Connect drag-to-move signals from preview
+	_preview_display.collision_offset_changed.connect(_on_preview_collision_offset_changed)
+	_preview_display.standing_offset_changed.connect(_on_preview_standing_offset_changed)
+
 	# Connect picker signals for live preview updates
 	if _atlas_picker:
 		_atlas_picker.atlas_texture_changed.connect(_on_sprite_changed)
@@ -528,6 +532,26 @@ func _on_custom_standing_toggled(pressed: bool) -> void:
 
 
 func _on_standing_param_changed(_value: float) -> void:
+	_update_preview()
+
+
+func _on_preview_collision_offset_changed(new_offset: Vector2) -> void:
+	# Enable custom collision if not already enabled
+	if not _custom_collision_check.button_pressed:
+		_custom_collision_check.button_pressed = true
+		_on_custom_collision_toggled(true)
+	_collision_offset_x_spin.value = new_offset.x
+	_collision_offset_y_spin.value = new_offset.y
+	_update_preview()
+
+
+func _on_preview_standing_offset_changed(new_offset: Vector2) -> void:
+	# Enable custom standing if not already enabled
+	if not _custom_standing_check.button_pressed:
+		_custom_standing_check.button_pressed = true
+		_on_custom_standing_toggled(true)
+	_standing_offset_x_spin.value = new_offset.x
+	_standing_offset_y_spin.value = new_offset.y
 	_update_preview()
 
 
