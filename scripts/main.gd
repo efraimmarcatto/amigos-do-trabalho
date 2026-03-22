@@ -963,16 +963,15 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
-func _is_click_on_remove_button(point: Vector2) -> bool:
-	## Returns true if the point is within any furniture's remove button.
+func _get_remove_button_furniture_id(point: Vector2) -> String:
+	## Returns the furniture ID whose remove button contains the point, or "" if none.
 	for fid in _furniture_nodes:
 		var fnode: Furniture = _furniture_nodes[fid]
 		var btn := fnode.get_node_or_null("RemoveButton")
 		if btn and btn is Button:
-			var btn_rect := Rect2(fnode.global_position + btn.position, btn.size)
-			if btn_rect.has_point(point):
-				return true
-	return false
+			if btn.get_global_rect().has_point(point):
+				return fid
+	return ""
 
 
 func _is_click_on_menu_or_panels(point: Vector2) -> bool:
@@ -996,8 +995,12 @@ func _is_click_on_menu_or_panels(point: Vector2) -> bool:
 func _handle_edit_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			# Don't intercept clicks on remove buttons — let Button handle them
-			if _is_click_on_remove_button(event.position):
+			# Handle remove button clicks directly — Buttons parented to Node2D
+			# don't reliably receive GUI input, so we detect and trigger here.
+			var remove_fid := _get_remove_button_furniture_id(event.position)
+			if remove_fid != "":
+				_on_remove_furniture(remove_fid)
+				get_viewport().set_input_as_handled()
 				return
 			# Don't intercept clicks on menu or panels — let UI handle them
 			if _is_click_on_menu_or_panels(event.position):
