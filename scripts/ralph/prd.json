@@ -171,7 +171,7 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "The pet jump logic is in pet.gd. Look for where the pet attempts jumps and detects failures (lands back on same surface without reaching target). Add a counter per target furniture ID. The mood bubble can be triggered via the existing show_mood_bubble() or similar method with the SAD mood."
     },
     {
@@ -189,7 +189,7 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "Currently _update_passthrough() in main.gd collects rects and likely merges them into one bounding polygon. Instead, build the polygon as the outline of each individual rect appended sequentially. Godot's mouse_passthrough_polygon can represent multiple disconnected regions by using degenerate connecting edges (zero-width bridges between rects) or by listing each rect's 4 corners in sequence. Test that clicks between objects pass through correctly."
     },
     {

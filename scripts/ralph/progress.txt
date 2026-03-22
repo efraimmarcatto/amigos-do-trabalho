@@ -17,6 +17,7 @@ Started: Sat Mar 14 10:22:42 PDT 2026
 - ConfirmationDialog positioning: use `.position = Vector2i(x, y)` + `.popup()` instead of `.popup_centered()` for custom placement
 - Stackable items use `_get_stacked_furniture_ids(base_id)` to find items on top — checks X bounds and Y proximity (8px tolerance)
 - `_get_walkable_furniture_at_x(x)` returns the walkable Furniture node whose X bounds contain a given x coordinate
+- `_update_passthrough()` builds per-object rect polygons with round-trip anchor bridges (not a single merged bounding box)
 
 ---
 
@@ -114,4 +115,32 @@ Started: Sat Mar 14 10:22:42 PDT 2026
   - The 8px Y tolerance in `_get_stacked_furniture_ids` accounts for floating-point position drift
   - `_is_overlap_with_other` only checks the dragged piece, not stacked items — stacked items ride along freely
   - Non-stackable items remain floor-only; the placement Y calculation branches on `fdata.stackable`
+---
+
+## 2026-03-21 - US-041
+- Added `max_jump_attempts` export var (default 3) to pet.gd
+- Added `_jump_fail_target_id`, `_jump_fail_count`, `_frustrated_timer` tracking vars
+- Modified `_try_jump_onto_furniture()` to track consecutive failed attempts per furniture ID (using dict key from `_furniture_nodes`)
+- After max failures, calls new `_show_frustrated_reaction()` which shows SAD mood bubble for 1-2 seconds
+- Pet stays idle during frustrated reaction (idle timer extended to cover bubble duration)
+- Failed-attempt counter resets on successful jump landing (on target or any walkable furniture)
+- Missed jumps (landing on floor with a target) also increment the fail counter
+- Files changed: `scripts/pet.gd`
+- **Learnings for future iterations:**
+  - `_furniture_nodes` dict keys are furniture_id strings — use `str(fid)` from the dict iteration for consistent ID tracking
+  - The mood bubble system can be used directly without `_show_mood_bubble()` by setting `_bubble_icon.texture` to a specific mood texture (e.g., `_mood_textures[PetMood.SAD]`)
+  - `_change_state(PetState.IDLE)` sets `_idle_timer` to 1-5 seconds — override with `maxf()` after the call to guarantee minimum idle duration
+---
+
+## 2026-03-21 - US-042
+- Replaced single merged bounding box in `_update_passthrough()` with individual rect polygons
+- Each rect is traced as: anchor → tl → tr → br → bl → tl, connected by round-trip zero-width bridges from a common anchor point
+- Bridge edges (anchor→tl and tl→anchor) overlap in opposite directions and cancel out in ray-casting point-in-polygon tests
+- Empty space between furniture, pet, and UI elements now passes clicks through to the desktop
+- Also clears passthrough polygon when no rects exist (prevents stale polygon)
+- Files changed: `scripts/main.gd`
+- **Learnings for future iterations:**
+  - Godot's `mouse_passthrough_polygon` uses ray-casting point-in-polygon test — naive zero-width bridges can cause false crossings; round-trip bridges from a shared anchor cancel out correctly
+  - The polygon auto-closes from the last vertex back to the first — no need to explicitly append the first point again
+  - `Rect2.abs()` is needed before extracting corners to handle negative-dimension rects from UI elements at screen edges
 ---
