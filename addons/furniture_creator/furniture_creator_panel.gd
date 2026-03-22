@@ -43,6 +43,10 @@ var _collision_offset_y_spin: SpinBox
 var _collision_size_row: Control
 var _collision_offset_row: Control
 
+# --- Save ---
+var _save_button: Button
+var _error_label: Label
+
 # --- Preview ---
 var _preview_display: Control  # PreviewDisplay instance
 var _preview_placeholder: Label
@@ -266,6 +270,20 @@ func _build_form(container: VBoxContainer) -> void:
 	_collision_offset_row = _add_field_row(container, "Collision Offset", col_offset_hbox)
 	_collision_offset_row.visible = false
 
+	_add_separator(container)
+
+	# --- Save Section ---
+	_error_label = Label.new()
+	_error_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_error_label.visible = false
+	container.add_child(_error_label)
+
+	_save_button = Button.new()
+	_save_button.text = "Save"
+	_save_button.pressed.connect(_on_save_pressed)
+	container.add_child(_save_button)
+
 
 func _build_preview() -> void:
 	var preview_area: Panel = $HSplit/RightPanel/PreviewArea
@@ -483,3 +501,97 @@ func get_collision_offset() -> Vector2:
 	if _custom_collision_check and _custom_collision_check.button_pressed:
 		return Vector2(_collision_offset_x_spin.value, _collision_offset_y_spin.value)
 	return Vector2.ZERO
+
+
+# --- Save ---
+
+func _on_save_pressed() -> void:
+	_error_label.visible = false
+
+	# Validate required fields
+	var item_id := _id_edit.text.strip_edges()
+	var item_name := _display_name_edit.text.strip_edges()
+	var tex := get_selected_texture()
+
+	var errors: PackedStringArray = []
+	if item_id.is_empty():
+		errors.append("ID is required")
+	if item_name.is_empty():
+		errors.append("Display Name is required")
+	if tex == null:
+		errors.append("A texture must be selected")
+
+	if errors.size() > 0:
+		_error_label.text = "Error: " + ", ".join(errors)
+		_error_label.visible = true
+		return
+
+	var save_path := "res://furniture/data/" + item_id + ".tres"
+
+	# Check if file exists — show confirmation dialog
+	if FileAccess.file_exists(save_path):
+		var dialog := ConfirmationDialog.new()
+		dialog.dialog_text = "File '%s' already exists. Overwrite?" % save_path
+		dialog.confirmed.connect(func():
+			_do_save(save_path)
+			dialog.queue_free()
+		)
+		dialog.canceled.connect(func(): dialog.queue_free())
+		add_child(dialog)
+		dialog.popup_centered()
+		return
+
+	_do_save(save_path)
+
+
+func _do_save(save_path: String) -> void:
+	var data := FurnitureData.new()
+	data.id = _id_edit.text.strip_edges()
+	data.display_name = _display_name_edit.text.strip_edges()
+	data.coin_cost = int(_coin_cost_spin.value)
+	data.discard_refund_ratio = _discard_refund_spin.value
+	data.walkable = _walkable_check.button_pressed
+	data.walk_surface_y_offset = int(_walk_surface_y_offset_spin.value)
+	data.can_fall_off_edge = _can_fall_off_edge_check.button_pressed
+	data.jumpable = _jumpable_check.button_pressed
+	data.stackable = _stackable_check.button_pressed
+	data.display_scale = get_display_scale()
+
+	# Interaction
+	var interaction_idx := _interaction_type_option.selected
+	match interaction_idx:
+		1: data.interaction_type = "play"
+		2: data.interaction_type = "eat"
+		3: data.interaction_type = "sleep"
+		_: data.interaction_type = ""
+	data.interaction_coin_bonus = int(_interaction_coin_bonus_spin.value)
+	data.interaction_cooldown = _interaction_cooldown_spin.value
+
+	# Texture
+	if get_sprite_source_mode() == "atlas":
+		data.texture = get_atlas_texture()
+	else:
+		data.texture = get_file_texture()
+
+	# Collision overrides
+	data.collision_size_override = get_collision_size()
+	data.collision_offset = get_collision_offset()
+
+	var err := ResourceSaver.save(data, save_path)
+	if err != OK:
+		_error_label.text = "Error saving: error code %d" % err
+		_error_label.visible = true
+		return
+
+	# Refresh the editor filesystem so the file appears
+	var efs := EditorInterface.get_resource_filesystem()
+	if efs:
+		efs.scan()
+
+	_error_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
+	_error_label.text = "Saved to %s" % save_path
+	_error_label.visible = true
+	# Reset color after showing success
+	await get_tree().create_timer(3.0).timeout
+	_error_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	_error_label.visible = false
