@@ -31,3 +31,7 @@ extends Resource
 @export var display_scale: Vector2 = Vector2(1, 1)
 ## Whether this item can be placed on top of other walkable furniture
 @export var stackable: bool = false
+## Custom collision size — when non-zero, used instead of auto-calculated (texture * scale)
+@export var collision_size_override: Vector2 = Vector2.ZERO
+## Offset of the collision shape from sprite center
+@export var collision_offset: Vector2 = Vector2.ZERO

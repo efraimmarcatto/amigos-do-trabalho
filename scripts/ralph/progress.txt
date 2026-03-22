@@ -1,79 +1,12 @@
 # Ralph Progress Log
-Started: 2026-03-21
+Started: Sat Mar 21 22:43:46 PDT 2026
 ---
 
 ## Codebase Patterns
-- Dynamic Button nodes added as children of Node2D don't reliably receive GUI input — handle clicks directly in `_input`/`_handle_edit_input` using `btn.get_global_rect().has_point(event.position)` and call the action function explicitly
 - Use `GIT_CONFIG_GLOBAL=/dev/null` with `-c user.name=... -c user.email=...` to work around broken gpg.format in .gitconfig
-- UI panels (shop, coin HUD, etc.) are positioned programmatically in `setup()` using `floor_y` and `DisplayServer.screen_get_size()`
-- All interactive UI must be included in the passthrough polygon via `_update_passthrough()` in main.gd
-- In edit/placement mode, passthrough is disabled (empty polygon) so window captures all input
-- Godot Buttons fire `pressed` on mouse RELEASE — when consuming input in `_input`/`_handle_edit_input`, must let through both press AND release for UI elements
-- For shop/inventory grid icons: use `EXPAND_IGNORE_SIZE` + explicit `size` + `clip_contents` on parent to keep TextureRects within bounds
-- Prefer tree order over z_index for rendering layers — `move_child(node, 0)` inserts at back; z_index affects ALL CanvasItem siblings (Node2D AND Control)
-- Furniture Area2D `input_pickable` must be false — it's only for collision detection; leaving it true causes viewport physics picking to interfere with pet click detection
-- Pet `_input` runs before Control `_gui_input` — pet must explicitly check for UI overlap and yield, or it will consume clicks meant for menus/panels
+- No typecheck tooling available for this Godot project — verify GDScript syntax manually
+- FurnitureData is a Resource class in scripts/furniture_data.gd; runtime node is Furniture in scripts/furniture.gd
+- Furniture Area2D `input_pickable` must be false — it's only for collision detection
+- Existing furniture .tres files: bookshelf, food_bowl, sofa, table, toy in furniture/data/
 
----
-
-## 2026-03-21 - US-001
-- Fixed X remove button clicks in layout edit mode
-- Changed `_is_click_on_remove_button(point) -> bool` to `_get_remove_button_furniture_id(point) -> String`
-- Used `btn.get_global_rect()` instead of manually computing `Rect2(fnode.global_position + btn.position, btn.size)`
-- Now directly calls `_on_remove_furniture(fid)` from `_handle_edit_input` instead of relying on Button GUI propagation
-- Files changed: scripts/main.gd
-- **Learnings for future iterations:**
-  - Button (Control) nodes parented to Node2D don't reliably receive clicks via Godot's GUI system — detect hits manually and call the handler directly
-  - The manual rect calculation `fnode.global_position + btn.position` may not match `btn.get_global_rect()` — always prefer `get_global_rect()` for Control nodes
-  - `_handle_edit_input` consumes all left clicks at line 1015 via `set_input_as_handled()` — any GUI elements that need clicks must be handled BEFORE that line
----
-
-## 2026-03-21 - US-002
-- Fixed save button click in layout edit mode
-- Root cause: `_handle_edit_input` consumed ALL mouse release events (line 1021) via `set_input_as_handled()`, preventing Godot Buttons from firing their `pressed` signal (which triggers on release by default)
-- Fix: Added `_is_click_on_menu_or_panels(event.position)` check before consuming release events, returning early so the event reaches the Button's GUI handler
-- Files changed: scripts/main.gd
-- **Learnings for future iterations:**
-  - Godot Button `pressed` signal fires on mouse RELEASE (ACTION_MODE_BUTTON_RELEASE is default) — both press AND release events must reach the Button for it to work
-  - When `_handle_edit_input` consumes input, it must let through BOTH press and release for menu/panel clicks, not just press
-  - No typecheck tooling available for this Godot project — verify GDScript syntax manually
----
-
-## 2026-03-21 - US-003
-- Fixed shop panel image sizing and alignment
-- Root cause: `EXPAND_FIT_WIDTH_PROPORTIONAL` allowed TextureRect to grow beyond 48x48 target when source textures were larger; `PRESET_CENTER` anchors didn't constrain size
-- Fix: Changed `expand_mode` to `EXPAND_IGNORE_SIZE` so TextureRect respects only `custom_minimum_size`/`size`, set explicit `size` to ICON_SIZE, and enabled `clip_contents` on the parent Button to prevent any overflow
-- Files changed: scripts/shop.gd
-- **Learnings for future iterations:**
-  - `EXPAND_FIT_WIDTH_PROPORTIONAL` expands the TextureRect to fit the parent width, not the target size — use `EXPAND_IGNORE_SIZE` when you want the TextureRect constrained to its own size properties
-  - Always set `clip_contents = true` on parent containers when child textures may be larger than the target area
-  - `STRETCH_KEEP_ASPECT_CENTERED` handles the centering/aspect ratio within the given size — no need for additional anchor tricks
-  - Manual browser verification needed (no browser testing tools available)
----
-
-## 2026-03-21 - US-004
-- Fixed pet rendering order: pet now renders in front of furniture but behind all UI panels
-- Root cause: `pet_sprite.z_index = 1` made pet render on top of ALL z_index=0 nodes, including UI Control panels. `FurnitureContainer` was added dynamically at the end of the tree (after UI panels) with z_index=0
-- Fix: Removed all z_index overrides; instead insert FurnitureContainer as first child (`move_child(_furniture_container, 0)`) so tree order alone gives correct layering: FurnitureContainer → PetSprite → UI Controls
-- Files changed: scripts/main.gd
-- **Learnings for future iterations:**
-  - In Godot 4, z_index affects ALL CanvasItem siblings (both Node2D and Control) — setting z_index=1 on a Node2D will make it render on top of sibling Control nodes with z_index=0
-  - Prefer tree order over z_index for rendering layers — insert dynamic nodes at the correct position with `move_child(node, index)`
-  - The `add_child()` call adds to the end; use `move_child()` immediately after to position correctly
-  - Manual browser verification needed (no browser testing tools available)
----
-
-## 2026-03-21 - US-005
-- Fixed pet dragging when overlapping furniture
-- Two root causes:
-  1. Furniture Area2D had `input_pickable = true` (default) — viewport physics picking could interfere with pet click detection when pet overlapped furniture
-  2. Pet's `_input` consumed clicks even when they were on menu/panel areas, preventing menus from receiving clicks
-- Fix 1: Set `area.input_pickable = false` in furniture.gd `_ready()` since Area2D is only used for collision detection
-- Fix 2: Added `is_point_on_ui` Callable variable to pet.gd, set by main.gd to `_is_click_on_menu_or_panels`; pet checks this before grabbing and yields if click is on UI
-- Files changed: scripts/furniture.gd, scripts/main.gd, scripts/pet.gd
-- **Learnings for future iterations:**
-  - Godot Area2D `input_pickable` defaults to `true` — always disable it on Area2D nodes used only for collision/overlap detection, not mouse input
-  - `_input` phase runs before `_gui_input` phase — any node consuming events in `_input` blocks all Control `_gui_input` handlers; use a UI check callable to coordinate priority
-  - Using a `Callable` variable is a clean way to decouple input priority checks between scripts without tight coupling
-  - Manual browser verification needed (no browser testing tools available)
 ---

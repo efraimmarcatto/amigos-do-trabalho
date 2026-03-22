@@ -24,11 +24,14 @@ func _ready() -> void:
 		sprite.texture = data.texture
 		# Apply display scale to the sprite
 		sprite.scale = data.display_scale
-		# Size the collision shape to match the scaled texture
-		var tex_size := data.texture.get_size() * data.display_scale
+		# Size the collision shape — use override if set, otherwise auto-calculate from texture
 		var shape := RectangleShape2D.new()
-		shape.size = tex_size
+		if data.collision_size_override != Vector2.ZERO:
+			shape.size = data.collision_size_override
+		else:
+			shape.size = data.texture.get_size() * data.display_scale
 		collision_shape.shape = shape
+		collision_shape.position = data.collision_offset
 
 
 ## Returns true if interaction is available (has interaction_type and cooldown elapsed).
