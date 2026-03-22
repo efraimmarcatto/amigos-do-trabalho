@@ -43,6 +43,16 @@ var _collision_offset_y_spin: SpinBox
 var _collision_size_row: Control
 var _collision_offset_row: Control
 
+# --- Standing area controls ---
+var _custom_standing_check: CheckBox
+var _standing_auto_label: Label
+var _standing_width_spin: SpinBox
+var _standing_height_spin: SpinBox
+var _standing_offset_x_spin: SpinBox
+var _standing_offset_y_spin: SpinBox
+var _standing_size_row: Control
+var _standing_offset_row: Control
+
 # --- Load/Save ---
 var _load_button: Button
 var _new_button: Button
@@ -158,6 +168,74 @@ func _build_form(container: VBoxContainer) -> void:
 	_walk_surface_y_offset_spin.value = 0
 	_walk_surface_y_offset_row = _add_field_row(container, "Walk Surface Y Offset", _walk_surface_y_offset_spin)
 	_walk_surface_y_offset_row.visible = false
+
+	# --- Custom Standing Area (visible only when Walkable is checked) ---
+	_custom_standing_check = CheckBox.new()
+	_custom_standing_check.toggled.connect(_on_custom_standing_toggled)
+	var _custom_standing_row := _add_field_row(container, "Custom Standing Area", _custom_standing_check)
+	_custom_standing_row.name = "CustomStandingRow"
+
+	_standing_auto_label = Label.new()
+	_standing_auto_label.text = "Auto-calculated from texture × scale"
+	_standing_auto_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	_standing_auto_label.name = "StandingAutoLabel"
+	container.add_child(_standing_auto_label)
+
+	var stand_size_hbox := HBoxContainer.new()
+	var sw_label := Label.new()
+	sw_label.text = "W:"
+	stand_size_hbox.add_child(sw_label)
+	_standing_width_spin = SpinBox.new()
+	_standing_width_spin.min_value = 1
+	_standing_width_spin.max_value = 9999
+	_standing_width_spin.step = 1
+	_standing_width_spin.value = 64
+	_standing_width_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_standing_width_spin.value_changed.connect(_on_standing_param_changed)
+	stand_size_hbox.add_child(_standing_width_spin)
+	var sh_label := Label.new()
+	sh_label.text = "H:"
+	stand_size_hbox.add_child(sh_label)
+	_standing_height_spin = SpinBox.new()
+	_standing_height_spin.min_value = 1
+	_standing_height_spin.max_value = 9999
+	_standing_height_spin.step = 1
+	_standing_height_spin.value = 64
+	_standing_height_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_standing_height_spin.value_changed.connect(_on_standing_param_changed)
+	stand_size_hbox.add_child(_standing_height_spin)
+	_standing_size_row = _add_field_row(container, "Standing Size", stand_size_hbox)
+	_standing_size_row.visible = false
+
+	var stand_offset_hbox := HBoxContainer.new()
+	var sox_label := Label.new()
+	sox_label.text = "X:"
+	stand_offset_hbox.add_child(sox_label)
+	_standing_offset_x_spin = SpinBox.new()
+	_standing_offset_x_spin.min_value = -9999
+	_standing_offset_x_spin.max_value = 9999
+	_standing_offset_x_spin.step = 1
+	_standing_offset_x_spin.value = 0
+	_standing_offset_x_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_standing_offset_x_spin.value_changed.connect(_on_standing_param_changed)
+	stand_offset_hbox.add_child(_standing_offset_x_spin)
+	var soy_label := Label.new()
+	soy_label.text = "Y:"
+	stand_offset_hbox.add_child(soy_label)
+	_standing_offset_y_spin = SpinBox.new()
+	_standing_offset_y_spin.min_value = -9999
+	_standing_offset_y_spin.max_value = 9999
+	_standing_offset_y_spin.step = 1
+	_standing_offset_y_spin.value = 0
+	_standing_offset_y_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_standing_offset_y_spin.value_changed.connect(_on_standing_param_changed)
+	stand_offset_hbox.add_child(_standing_offset_y_spin)
+	_standing_offset_row = _add_field_row(container, "Standing Offset", stand_offset_hbox)
+	_standing_offset_row.visible = false
+
+	# Hide standing area controls initially (shown when Walkable is checked)
+	_custom_standing_row.visible = false
+	_standing_auto_label.visible = false
 
 	_can_fall_off_edge_check = CheckBox.new()
 	_can_fall_off_edge_check.button_pressed = true
@@ -352,6 +430,15 @@ func _on_id_manually_changed(_new_text: String) -> void:
 
 func _on_walkable_toggled(pressed: bool) -> void:
 	_walk_surface_y_offset_row.visible = pressed
+	# Show/hide standing area controls based on walkable state
+	var standing_row := _custom_standing_check.get_parent()
+	standing_row.visible = pressed
+	if pressed:
+		_standing_auto_label.visible = not _custom_standing_check.button_pressed
+	else:
+		_standing_auto_label.visible = false
+		_standing_size_row.visible = false
+		_standing_offset_row.visible = false
 
 
 func _on_interaction_type_changed(index: int) -> void:
@@ -397,10 +484,13 @@ func _update_preview() -> void:
 
 	_preview_display.update_preview(tex, scale, col_size, col_offset)
 
-	# Update auto-calculated label
-	if _collision_auto_label and tex:
+	# Update auto-calculated labels
+	if tex:
 		var auto_size := tex.get_size() * scale
-		_collision_auto_label.text = "Auto: %d × %d px" % [int(auto_size.x), int(auto_size.y)]
+		if _collision_auto_label:
+			_collision_auto_label.text = "Auto: %d × %d px" % [int(auto_size.x), int(auto_size.y)]
+		if _standing_auto_label:
+			_standing_auto_label.text = "Auto: %d × %d px" % [int(auto_size.x), int(auto_size.y)]
 
 
 func _on_custom_collision_toggled(pressed: bool) -> void:
@@ -418,6 +508,24 @@ func _on_custom_collision_toggled(pressed: bool) -> void:
 
 
 func _on_collision_param_changed(_value: float) -> void:
+	_update_preview()
+
+
+func _on_custom_standing_toggled(pressed: bool) -> void:
+	_standing_auto_label.visible = not pressed
+	_standing_size_row.visible = pressed
+	_standing_offset_row.visible = pressed
+	if pressed:
+		# Pre-fill with auto-calculated values
+		var tex := get_selected_texture()
+		if tex:
+			var auto_size := tex.get_size() * get_display_scale()
+			_standing_width_spin.value = auto_size.x
+			_standing_height_spin.value = auto_size.y
+	_update_preview()
+
+
+func _on_standing_param_changed(_value: float) -> void:
 	_update_preview()
 
 
@@ -522,6 +630,20 @@ func get_collision_offset() -> Vector2:
 	return Vector2.ZERO
 
 
+## Returns the standing size override (Vector2.ZERO if auto/unchecked).
+func get_standing_size() -> Vector2:
+	if _custom_standing_check and _custom_standing_check.button_pressed:
+		return Vector2(_standing_width_spin.value, _standing_height_spin.value)
+	return Vector2.ZERO
+
+
+## Returns the standing offset.
+func get_standing_offset() -> Vector2:
+	if _custom_standing_check and _custom_standing_check.button_pressed:
+		return Vector2(_standing_offset_x_spin.value, _standing_offset_y_spin.value)
+	return Vector2.ZERO
+
+
 # --- Save ---
 
 func _on_save_pressed() -> void:
@@ -595,6 +717,10 @@ func _do_save(save_path: String) -> void:
 	# Collision overrides
 	data.collision_size_override = get_collision_size()
 	data.collision_offset = get_collision_offset()
+
+	# Standing area overrides
+	data.standing_size_override = get_standing_size()
+	data.standing_offset = get_standing_offset()
 
 	var err := ResourceSaver.save(data, save_path)
 	if err != OK:
@@ -714,6 +840,31 @@ func _load_furniture_data(data: FurnitureData, path: String) -> void:
 		_collision_size_row.visible = false
 		_collision_offset_row.visible = false
 
+	# Standing area overrides (only relevant when walkable)
+	var standing_row := _custom_standing_check.get_parent()
+	if data.walkable:
+		standing_row.visible = true
+		if data.standing_size_override != Vector2.ZERO:
+			_custom_standing_check.button_pressed = true
+			_standing_auto_label.visible = false
+			_standing_size_row.visible = true
+			_standing_offset_row.visible = true
+			_standing_width_spin.value = data.standing_size_override.x
+			_standing_height_spin.value = data.standing_size_override.y
+			_standing_offset_x_spin.value = data.standing_offset.x
+			_standing_offset_y_spin.value = data.standing_offset.y
+		else:
+			_custom_standing_check.button_pressed = false
+			_standing_auto_label.visible = true
+			_standing_size_row.visible = false
+			_standing_offset_row.visible = false
+	else:
+		standing_row.visible = false
+		_standing_auto_label.visible = false
+		_custom_standing_check.button_pressed = false
+		_standing_size_row.visible = false
+		_standing_offset_row.visible = false
+
 	_update_preview()
 
 	_error_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
@@ -762,6 +913,18 @@ func _reset_form() -> void:
 	_collision_auto_label.visible = true
 	_collision_size_row.visible = false
 	_collision_offset_row.visible = false
+
+	# Standing area
+	_custom_standing_check.button_pressed = false
+	var standing_row := _custom_standing_check.get_parent()
+	standing_row.visible = false
+	_standing_auto_label.visible = false
+	_standing_size_row.visible = false
+	_standing_offset_row.visible = false
+	_standing_width_spin.value = 64
+	_standing_height_spin.value = 64
+	_standing_offset_x_spin.value = 0
+	_standing_offset_y_spin.value = 0
 
 	# Sprite source
 	_sprite_tabs.current_tab = 0
