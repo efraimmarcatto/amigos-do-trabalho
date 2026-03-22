@@ -18,10 +18,13 @@ Started: Sat Mar 21 22:43:46 PDT 2026
 - Sprite source uses TabContainer with tabs "From Atlas" (index 0) and "From File" (index 1); use get_selected_texture() for unified access
 - Preview uses PreviewDisplay (preview_display.gd) custom Control with _draw() for texture + collision overlay compositing
 - Collision getters: get_collision_size() returns Vector2.ZERO for auto, get_collision_offset() returns Vector2.ZERO when unchecked
+- Standing getters: get_standing_size() returns Vector2.ZERO for auto, get_standing_offset() returns Vector2.ZERO when unchecked — same pattern as collision
+- Conditionally-visible form rows: store row reference from _add_field_row(), or use control.get_parent() for rows built as local vars
 - Save .tres files: ResourceSaver.save(resource, path); refresh with EditorInterface.get_resource_filesystem().scan()
 - Check file existence with FileAccess.file_exists() for res:// paths; use ConfirmationDialog for overwrite prompts
 - Load .tres resources: `load(path)` returns Resource; check `is FurnitureData` before casting
 - Detect atlas vs standalone textures: `data.texture is AtlasTexture`; get source sheet via `.atlas.resource_path`
+- Preview drag interactions: use _gui_input method override, DragTarget enum for state, emit signals on mouse release to sync form spinboxes
 
 ---
 
@@ -149,4 +152,69 @@ Sun Mar 22 03:06:28 -03 2026: Paused due to rate limit until 4am
   - Set `_id_manually_edited = true` before loading to prevent auto-generation from overwriting the loaded id
   - When resetting form, must manually toggle visibility of conditional rows (walkable offset, interaction fields, collision)
   - Picker scripts need explicit `set_atlas`/`set_texture_from_path` methods — `clear()` + manual field setting doesn't trigger proper signal chains
+---
+
+## 2026-03-22 - US-001
+- Added `standing_size_override: Vector2 = Vector2.ZERO` and `standing_offset: Vector2 = Vector2.ZERO` @export vars to FurnitureData
+- These follow the same pattern as collision_size_override/collision_offset
+- Files changed: scripts/furniture_data.gd
+- **Learnings for future iterations:**
+  - standing_size_override/standing_offset mirror the collision_size_override/collision_offset pattern — when zero, use auto-calculated values
+  - New @export vars with Vector2.ZERO defaults are backward-compatible with existing .tres files (confirmed with sofa.tres)
+---
+
+## 2026-03-22 - US-002
+- Modified get_surface_y(), get_left_x(), get_right_x() in furniture.gd to use standing_size_override/standing_offset when non-zero
+- Falls back to original texture × display_scale calculation when standing_size_override == Vector2.ZERO
+- Files changed: scripts/furniture.gd
+- **Learnings for future iterations:**
+  - The standing area bounds follow the same center-based coordinate pattern as collision: position ± size/2 + offset
+  - get_surface_y() also adds walk_surface_y_offset on top of the standing area calculation
+  - All three getters share the same guard pattern: check data/texture first, then check standing override, then fallback to texture-based calc
+---
+
+## 2026-03-22 - US-003
+- Added standing area controls to furniture editor form in the Behavior section
+- Custom Standing Area checkbox visible only when Walkable is checked
+- When checked, shows Standing Size W/H (1–9999) and Standing Offset X/Y (-9999 to 9999) SpinBoxes
+- Pre-fills with auto-calculated values (texture × display_scale) when first enabled
+- Shows auto-calculated label when unchecked (mirrors collision auto label pattern)
+- Standing area values saved/loaded via standing_size_override and standing_offset in _do_save()/_load_furniture_data()
+- _reset_form() clears standing area controls (unchecked, hidden, values zeroed)
+- Files changed: addons/furniture_creator/furniture_creator_panel.gd
+- **Learnings for future iterations:**
+  - Standing area controls follow the exact same pattern as collision controls — checkbox, auto label, size/offset spinboxes
+  - Standing area row visibility is gated by both walkable checkbox AND custom standing checkbox
+  - Use `_custom_standing_check.get_parent()` to access the containing row for visibility toggling since the row is a local var in _build_form()
+  - When loading, must set standing row visibility based on data.walkable before checking standing_size_override
+---
+
+## 2026-03-22 - US-004
+- Added standing_size and standing_offset properties to preview_display.gd
+- update_preview() now accepts optional standing_size and standing_offset parameters (default Vector2.ZERO for backward compat)
+- Standing area renders as green semi-transparent rectangle (Color(0.2, 0.8, 0.2, 0.3)) with green outline
+- Collision area continues to render in blue — both visible simultaneously
+- furniture_creator_panel.gd _update_preview() passes standing area values from get_standing_size()/get_standing_offset()
+- Files changed: addons/furniture_creator/preview_display.gd, addons/furniture_creator/furniture_creator_panel.gd
+- **Learnings for future iterations:**
+  - Standing overlay only draws when standing_size != Vector2.ZERO (unlike collision which always draws with auto fallback)
+  - Using default parameter values in update_preview() maintains backward compatibility with existing callers
+  - Both overlays use the same center-based positioning: center - size/2 + offset
+---
+
+## 2026-03-22 - US-005
+- Added mouse drag-to-move for collision and standing rectangles in preview_display.gd
+- Added _gui_input handler with drag state tracking (DragTarget enum: NONE, COLLISION, STANDING)
+- Emits collision_offset_changed and standing_offset_changed signals when drag ends
+- Smaller rectangle gets click priority when rects overlap (area comparison)
+- Cursor changes to CURSOR_MOVE when hovering over draggable rectangles
+- furniture_creator_panel.gd connects to signals and updates offset spinboxes
+- Handler auto-enables custom collision/standing checkbox if not already enabled when dragging
+- Files changed: addons/furniture_creator/preview_display.gd, addons/furniture_creator/furniture_creator_panel.gd
+- **Learnings for future iterations:**
+  - _gui_input(event) is the correct way to handle mouse input on a Control in Godot (not gui_input signal, which also works but method override is cleaner for custom Controls)
+  - DragTarget enum pattern keeps drag state clean — track which rect is being dragged, start position, and start offset
+  - When drag modifies offset, update the property directly on the preview for real-time feedback, then emit signal on release to sync spinboxes
+  - Hit test uses Rect2.has_point() — rects computed from same center-based formula as _draw()
+  - Auto-enabling custom collision/standing when user drags ensures the offset is saved (without custom enabled, offset returns Vector2.ZERO)
 ---
