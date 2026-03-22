@@ -1,14 +1,36 @@
 # Ralph Progress Log
-## Codebase Patterns
-- Keep edit-mode affordances on furniture in `scripts/main.gd` as runtime-only child controls and resync them from `_edit_mode` whenever furniture is spawned or restored.
-
-Started: Sat Mar 21 21:19:34 PDT 2026
+Started: 2026-03-21
 ---
-## 2026-03-22 04:28:24 UTC - US-001
-- Implemented a shared edit-mode sync path so furniture highlights and `RemoveButton` controls are added only while layout edit mode is active, with the same logic reused when furniture is spawned during runtime.
-- Files changed: `scripts/main.gd`, `scripts/ralph/prd.json`, `scripts/ralph/progress.txt`
+
+## Codebase Patterns
+- Dynamic Button nodes added as children of Node2D don't reliably receive GUI input — handle clicks directly in `_input`/`_handle_edit_input` using `btn.get_global_rect().has_point(event.position)` and call the action function explicitly
+- Use `GIT_CONFIG_GLOBAL=/dev/null` with `-c user.name=... -c user.email=...` to work around broken gpg.format in .gitconfig
+- UI panels (shop, coin HUD, etc.) are positioned programmatically in `setup()` using `floor_y` and `DisplayServer.screen_get_size()`
+- All interactive UI must be included in the passthrough polygon via `_update_passthrough()` in main.gd
+- In edit/placement mode, passthrough is disabled (empty polygon) so window captures all input
+- Godot Buttons fire `pressed` on mouse RELEASE — when consuming input in `_input`/`_handle_edit_input`, must let through both press AND release for UI elements
+
+---
+
+## 2026-03-21 - US-001
+- Fixed X remove button clicks in layout edit mode
+- Changed `_is_click_on_remove_button(point) -> bool` to `_get_remove_button_furniture_id(point) -> String`
+- Used `btn.get_global_rect()` instead of manually computing `Rect2(fnode.global_position + btn.position, btn.size)`
+- Now directly calls `_on_remove_furniture(fid)` from `_handle_edit_input` instead of relying on Button GUI propagation
+- Files changed: scripts/main.gd
 - **Learnings for future iterations:**
-  - Patterns discovered: furniture instances are spawned dynamically under `FurnitureContainer`, so edit-mode UI must be synchronized in code rather than assumed from scene state.
-  - Gotchas encountered: this environment does not provide a `godot` binary, so headless typecheck/runtime validation could not be executed here.
-  - Useful context: browser/manual UI verification is still needed for layout edit behavior because no browser tooling is configured in this workspace.
+  - Button (Control) nodes parented to Node2D don't reliably receive clicks via Godot's GUI system — detect hits manually and call the handler directly
+  - The manual rect calculation `fnode.global_position + btn.position` may not match `btn.get_global_rect()` — always prefer `get_global_rect()` for Control nodes
+  - `_handle_edit_input` consumes all left clicks at line 1015 via `set_input_as_handled()` — any GUI elements that need clicks must be handled BEFORE that line
+---
+
+## 2026-03-21 - US-002
+- Fixed save button click in layout edit mode
+- Root cause: `_handle_edit_input` consumed ALL mouse release events (line 1021) via `set_input_as_handled()`, preventing Godot Buttons from firing their `pressed` signal (which triggers on release by default)
+- Fix: Added `_is_click_on_menu_or_panels(event.position)` check before consuming release events, returning early so the event reaches the Button's GUI handler
+- Files changed: scripts/main.gd
+- **Learnings for future iterations:**
+  - Godot Button `pressed` signal fires on mouse RELEASE (ACTION_MODE_BUTTON_RELEASE is default) — both press AND release events must reach the Button for it to work
+  - When `_handle_edit_input` consumes input, it must let through BOTH press and release for menu/panel clicks, not just press
+  - No typecheck tooling available for this Godot project — verify GDScript syntax manually
 ---

@@ -1,18 +1,20 @@
 {
-  "project": "Amigos do Trabalho - Desktop Virtual Pet",
+  "project": "DesktopPet",
   "branchName": "ralph/layout-edit-shop-pet-regression-fixes",
-  "description": "Fix regressions in layout edit flow, shop visual fit and buy action, and pet layering/drag interaction by enforcing node hierarchy.",
+  "description": "Fix regressions in layout edit mode (X button and save button unresponsive), shop panel image sizing/alignment, and pet rendering/dragging issues",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Show remove button only in layout edit mode",
-      "description": "As a player, I want the remove (X) controls to appear only when layout edit mode is active so normal mode stays non-destructive.",
+      "title": "Fix X remove button clicks in layout edit mode",
+      "description": "As a user, I want to click the X button on furniture during edit mode so that I can send items back to inventory.",
       "acceptanceCriteria": [
-        "X control is hidden for all placeable items when layout edit mode is off",
-        "X control is visible for editable placeable items when layout edit mode is on",
-        "Entering and exiting edit mode toggles X visibility immediately without scene reload",
-        "Verify in browser",
-        "Typecheck passes"
+        "Investigate input handling in _handle_edit_input() (scripts/main.gd:996) — the function calls get_viewport().set_input_as_handled() at line 1012 for all left clicks; verify that remove button clicks return early BEFORE this call and that the event actually reaches the Button's GUI handler",
+        "Verify _is_click_on_remove_button() (scripts/main.gd:966) rect calculation matches the actual Button global rect — it manually computes Rect2(fnode.global_position + btn.position, btn.size) which may not match the Button's true screen position when parented to a Node2D",
+        "Remove buttons respond to clicks on all furniture items during edit mode",
+        "Clicking X removes the furniture from the scene and adds it to inventory",
+        "Stacked furniture on top of removed furniture is also returned to inventory",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
       "passes": true,
@@ -20,30 +22,31 @@
     },
     {
       "id": "US-002",
-      "title": "Send furniture to inventory through X in edit mode",
-      "description": "As a player, I want clicking X in edit mode to immediately return furniture to inventory so I can quickly reorganize the room.",
+      "title": "Fix save button click in layout edit mode",
+      "description": "As a user, I want to click the Save button in the slide menu to save my layout and exit edit mode instead of pressing ESC.",
       "acceptanceCriteria": [
-        "Clicking X in edit mode removes the selected placed item from the room",
-        "Removed item quantity increments in inventory immediately",
-        "No confirmation dialog is shown",
-        "X action is not available when edit mode is off",
-        "Verify in browser",
-        "Typecheck passes"
+        "Investigate why Save Edit button (scripts/slide_menu.gd:151) does not respond during edit mode — likely same root cause as US-001 input consumption, or the slide_menu._unhandled_input auto-close (scripts/slide_menu.gd:172) closing the menu before the button click registers",
+        "Clicking Save Edit button in the slide menu exits edit mode and saves the layout",
+        "Button label reverts to Edit Layout after saving",
+        "Furniture positions are persisted to save_data.json",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Persist layout on save",
-      "description": "As a player, I want Save Layout to persist moved and edited furniture so the arrangement remains after reload.",
+      "title": "Fix shop panel image sizing and alignment",
+      "description": "As a user, I want shop item images to fit within their grid cell buttons so the shop looks correct.",
       "acceptanceCriteria": [
-        "Clicking Save Layout writes the current furniture transforms and state to the existing persistence path",
-        "After save and scene reload or app restart, furniture positions match the saved layout",
-        "If save fails, a visible error feedback is shown and previous persisted layout remains intact",
-        "Verify in browser",
-        "Typecheck passes"
+        "Fix TextureRect in _create_grid_cell() (scripts/shop.gd:155-161) — EXPAND_FIT_WIDTH_PROPORTIONAL (line 159) and PRESET_CENTER anchors (line 161) cause overflow when source textures are larger than the 48x48 target; use EXPAND_IGNORE_SIZE or EXPAND_FIT_WIDTH with clip_contents on the parent button",
+        "Item images fit within their button bounds (64x64 cell, 48x48 icon target)",
+        "Images are centered within their buttons with no overflow or clipping artifacts",
+        "Layout remains correct across different numbers of items and varying grid column counts",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
       "passes": false,
@@ -51,14 +54,15 @@
     },
     {
       "id": "US-004",
-      "title": "Fit shop item images and buttons",
-      "description": "As a player, I want shop item images to align and fit within buttons so the shop stays readable and usable.",
+      "title": "Fix pet rendering — in front of furniture, behind menus",
+      "description": "As a user, I want the pet to appear in front of furniture but behind UI menus so it looks natural and menus remain usable.",
       "acceptanceCriteria": [
-        "Item images fit inside intended card or button bounds without overflow",
-        "Image alignment is consistent with button labels and price text",
-        "No shop item image overlaps adjacent controls in the tested viewport",
-        "Verify in browser",
-        "Typecheck passes"
+        "Pet renders visually in front of all furniture sprites",
+        "Pet renders behind slide menu, shop panel, inventory panel, settings panel, and pet selection panel",
+        "The current z_index approach (scripts/main.gd:113, pet z_index=1 vs furniture container z_index=0) may need adjustment — z_index only works within the same parent; UI Control nodes render on top of Node2D regardless, so verify the actual rendering order and fix if menus appear behind the pet",
+        "Menus and panels remain fully clickable and visually on top of the pet",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
       "passes": false,
@@ -66,31 +70,18 @@
     },
     {
       "id": "US-005",
-      "title": "Fix shop buy transaction behavior",
-      "description": "As a player, I want the Buy action to complete reliably so coins and inventory update correctly.",
+      "title": "Fix pet dragging when overlapping furniture",
+      "description": "As a user, I want to grab and drag the pet even when it overlaps furniture so it does not feel stuck.",
       "acceptanceCriteria": [
-        "Buying an affordable item succeeds and immediately updates coin total and inventory",
-        "Buying a non-affordable item is blocked and preserves existing feedback behavior",
-        "Rapid repeated clicks do not duplicate purchases beyond defined quantity rules",
-        "Verify in browser",
-        "Typecheck passes"
+        "Investigate pet _is_point_on_pet() (scripts/pet.gd:673) and _input() (scripts/pet.gd:640) — pet click detection may be blocked by the passthrough polygon excluding the pet area when it overlaps furniture, or by furniture nodes consuming input first",
+        "Pet can be grabbed by clicking on it even when overlapping furniture",
+        "Dragging the pet works smoothly regardless of what is behind it",
+        "Releasing the pet after drag triggers FALLING state correctly",
+        "Pet cannot be grabbed when clicking on a menu or panel area — menus take priority",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-006",
-      "title": "Place UI and furniture nodes behind pet node",
-      "description": "As a player, I want UI elements and placeable items under a node behind the pet node so pet visibility and dragging are correct.",
-      "acceptanceCriteria": [
-        "Scene hierarchy has a node grouping UI elements and placeable items behind the pet node",
-        "Pet renders in front based on node or canvas order rather than only z-index tweaks",
-        "Pet remains draggable when overlapping furniture or menu visuals in lower-priority nodes",
-        "Verify in browser",
-        "Typecheck passes"
-      ],
-      "priority": 6,
       "passes": false,
       "notes": ""
     }
