@@ -47,6 +47,8 @@ enum PetMood { SAD, NEUTRAL, HAPPY }
 @export var jump_vertical_impulse: float = 500.0
 ## Duration of jump_prep pause before launching (seconds)
 @export var jump_prep_duration: float = 0.15
+## Max consecutive failed jump attempts before giving up on a furniture target
+@export var max_jump_attempts: int = 3
 
 ## Frame count per animation (defaults to sheet_columns if 0)
 @export var idle_frames: int = 0
@@ -93,6 +95,9 @@ var menu_open: bool = false
 # Jump state tracking
 var _jump_prep_timer: float = 0.0
 var _jump_target_furniture: Furniture = null
+var _jump_fail_target_id: String = ""
+var _jump_fail_count: int = 0
+var _frustrated_timer: float = 0.0
 
 # Speech bubble for mood display
 var _bubble_panel: PanelContainer = null
@@ -421,6 +426,8 @@ func _process_jumping(delta: float) -> void:
 			_velocity = Vector2.ZERO
 			_current_surface = _jump_target_furniture
 			_jump_target_furniture = null
+			_jump_fail_target_id = ""
+			_jump_fail_count = 0
 			_change_state(PetState.IDLE)
 			return
 
@@ -441,6 +448,8 @@ func _process_jumping(delta: float) -> void:
 				_velocity = Vector2.ZERO
 				_current_surface = fnode
 				_jump_target_furniture = null
+				_jump_fail_target_id = ""
+				_jump_fail_count = 0
 				_change_state(PetState.IDLE)
 				return
 
@@ -449,6 +458,9 @@ func _process_jumping(delta: float) -> void:
 	if position.y >= land_floor_y:
 		position.y = land_floor_y
 		_velocity = Vector2.ZERO
+		# Track missed jump as a failure
+		if _jump_target_furniture and not _jump_fail_target_id.is_empty():
+			_jump_fail_count += 1
 		_current_surface = null
 		_jump_target_furniture = null
 		_change_state(PetState.IDLE)
@@ -466,7 +478,16 @@ func _try_jump_onto_furniture() -> void:
 		# Check distance from pet to furniture center
 		var dist := absf(position.x - fnode.global_position.x)
 		if dist <= jump_range + fnode.data.texture.get_size().x * fnode.data.display_scale.x / 2.0:
+			var fid_str := str(fid)
+			# Check if we've given up on this target
+			if fid_str == _jump_fail_target_id and _jump_fail_count >= max_jump_attempts:
+				_show_frustrated_reaction()
+				return
 			if randf() < jump_probability:
+				# Successful jump initiation — reset fail counter
+				if fid_str != _jump_fail_target_id:
+					_jump_fail_target_id = fid_str
+					_jump_fail_count = 0
 				_jump_target_furniture = fnode
 				_jump_prep_timer = jump_prep_duration
 				# Face toward the furniture
@@ -475,6 +496,40 @@ func _try_jump_onto_furniture() -> void:
 					scale.x = absf(_base_scale.x) * dir
 				_change_state(PetState.JUMP_PREP)
 				return
+			else:
+				# Failed attempt — track it
+				if fid_str == _jump_fail_target_id:
+					_jump_fail_count += 1
+				else:
+					_jump_fail_target_id = fid_str
+					_jump_fail_count = 1
+				if _jump_fail_count >= max_jump_attempts:
+					_show_frustrated_reaction()
+					return
+
+
+func _show_frustrated_reaction() -> void:
+	## Pet gives up on jumping — show a sad/frustrated mood bubble and pause briefly.
+	_jump_fail_target_id = ""
+	_jump_fail_count = 0
+	_frustrated_timer = randf_range(1.0, 2.0)
+	# Show SAD mood bubble for the frustration
+	if _bubble_panel and _bubble_icon:
+		if PetMood.SAD in _mood_textures:
+			_bubble_icon.texture = _mood_textures[PetMood.SAD]
+		_update_bubble_position()
+		if _bubble_fade_tween and _bubble_fade_tween.is_valid():
+			_bubble_fade_tween.kill()
+		_bubble_panel.modulate = Color(1, 1, 1, 1)
+		_bubble_panel.visible = true
+		mood_bubble_visible_changed.emit(true)
+		_bubble_fade_tween = create_tween()
+		_bubble_fade_tween.tween_interval(_frustrated_timer)
+		_bubble_fade_tween.tween_property(_bubble_panel, "modulate:a", 0.0, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		_bubble_fade_tween.tween_callback(_hide_mood_bubble)
+	_change_state(PetState.IDLE)
+	# Ensure pet stays idle long enough for the reaction to play
+	_idle_timer = maxf(_idle_timer, _frustrated_timer + 0.5)
 
 
 func _jump_down_from_furniture() -> void:
