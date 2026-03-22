@@ -43,6 +43,13 @@ var _edit_mode_placement: bool = false
 # Chest button shown during placement mode
 var _placement_chest_btn: Button = null
 
+# Menu hint arrow (first-launch)
+## Duration in seconds the hint arrow stays visible before auto-dismissing.
+@export var hint_arrow_duration: float = 5.0
+var _has_seen_menu_hint: bool = false
+var _hint_arrow: Sprite2D = null
+var _hint_arrow_tween: Tween = null
+
 func _ready() -> void:
 	# Make the viewport background transparent
 	get_viewport().transparent_bg = true
@@ -116,6 +123,11 @@ func _ready() -> void:
 	# Load saved state (also spawns furniture)
 	_load_state()
 
+	# Show menu hint arrow on first launch
+	if not _has_seen_menu_hint:
+		_show_menu_hint_arrow()
+		slide_menu.menu_opened.connect(_dismiss_menu_hint_arrow)
+
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
@@ -138,6 +150,7 @@ func _save_state() -> void:
 		"language": settings_panel.get_current_locale(),
 		"monitor": settings_panel.get_current_monitor(),
 		"selected_pet": pet_selection_panel.get_current_pet(),
+		"has_seen_menu_hint": _has_seen_menu_hint,
 	}
 	var json_string := JSON.stringify(data)
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -180,6 +193,8 @@ func _load_state() -> void:
 		settings_panel.apply_language(data["language"])
 	if data.has("selected_pet") and data["selected_pet"] is String:
 		pet_selection_panel.apply_pet(data["selected_pet"])
+	if data.has("has_seen_menu_hint") and data["has_seen_menu_hint"] == true:
+		_has_seen_menu_hint = true
 	if data.has("monitor"):
 		var monitor_idx := 0
 		if data["monitor"] is float:
@@ -200,6 +215,69 @@ func _load_state() -> void:
 				furniture_to_spawn.append(item)
 	for fid in furniture_to_spawn:
 		_spawn_furniture(fid)
+
+
+func _show_menu_hint_arrow() -> void:
+	## Show an animated arrow pointing at the hamburger menu toggle on first launch.
+	var toggle_rect := slide_menu.get_toggle_rect()
+
+	# Create a simple triangle arrow using a Polygon2D
+	_hint_arrow = Sprite2D.new()
+	_hint_arrow.name = "MenuHintArrow"
+
+	# Draw a right-pointing chevron/triangle as an image
+	var img := Image.create(24, 24, false, Image.FORMAT_RGBA8)
+	# Draw a simple right-pointing triangle
+	for y_px in range(24):
+		for x_px in range(24):
+			# Triangle pointing right: x >= abs(y - 12) scaled
+			if x_px <= 20 and x_px >= int(absf(float(y_px) - 12.0) * 20.0 / 12.0):
+				img.set_pixel(x_px, y_px, Color(1.0, 1.0, 0.2, 1.0))  # Yellow arrow
+			else:
+				img.set_pixel(x_px, y_px, Color(0, 0, 0, 0))
+	var tex := ImageTexture.create_from_image(img)
+	_hint_arrow.texture = tex
+	_hint_arrow.scale = Vector2(2.0, 2.0)
+
+	# Position to the left of the toggle button
+	_hint_arrow.position = Vector2(
+		toggle_rect.position.x - 40.0,
+		toggle_rect.position.y + toggle_rect.size.y / 2.0
+	)
+	_hint_arrow.z_index = 10
+	add_child(_hint_arrow)
+
+	# Animate with a horizontal bounce (pulsing left-right)
+	_hint_arrow_tween = create_tween()
+	_hint_arrow_tween.set_loops(0)  # Infinite loops
+	var base_x := _hint_arrow.position.x
+	_hint_arrow_tween.tween_property(_hint_arrow, "position:x", base_x + 10.0, 0.4) \
+		.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	_hint_arrow_tween.tween_property(_hint_arrow, "position:x", base_x, 0.4) \
+		.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+
+	# Auto-dismiss after hint_arrow_duration seconds
+	get_tree().create_timer(hint_arrow_duration).timeout.connect(_dismiss_menu_hint_arrow)
+
+	_update_passthrough()
+
+
+func _dismiss_menu_hint_arrow() -> void:
+	## Remove the hint arrow and mark as seen.
+	if _hint_arrow and is_instance_valid(_hint_arrow):
+		if _hint_arrow_tween and _hint_arrow_tween.is_running():
+			_hint_arrow_tween.kill()
+		_hint_arrow_tween = null
+		_hint_arrow.queue_free()
+		_hint_arrow = null
+		_update_passthrough()
+
+	if not _has_seen_menu_hint:
+		_has_seen_menu_hint = true
+		_save_state()
+		# Disconnect the menu_opened signal since we no longer need it
+		if slide_menu.menu_opened.is_connected(_dismiss_menu_hint_arrow):
+			slide_menu.menu_opened.disconnect(_dismiss_menu_hint_arrow)
 
 
 func _on_coins_changed(new_total: int) -> void:
@@ -781,6 +859,13 @@ func _update_passthrough() -> void:
 	# Include pet selection panel when open
 	if pet_selection_panel and pet_selection_panel.is_panel_open():
 		rects.append(pet_selection_panel.get_global_rect())
+
+	# Include hint arrow when visible
+	if _hint_arrow and is_instance_valid(_hint_arrow):
+		var arrow_pos: Vector2 = _hint_arrow.global_position
+		var arrow_size: Vector2 = Vector2(24, 24) * _hint_arrow.scale
+		var arrow_half: Vector2 = arrow_size / 2.0
+		rects.append(Rect2(arrow_pos - arrow_half, arrow_size))
 
 	# Include all spawned furniture
 	for fid in _furniture_nodes:
