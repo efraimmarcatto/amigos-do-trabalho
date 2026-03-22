@@ -14,6 +14,14 @@ Started: Sat Mar 21 22:43:46 PDT 2026
 - All editor plugin scripts must use @tool annotation
 - Form fields built programmatically in _build_form(); use _add_field_row() helper for label+field rows
 - interaction_type OptionButton indices: 0=(none), 1=play, 2=eat, 3=sleep
+- Use EditorFileDialog (not FileDialog) in editor plugins; use set_meta/get_meta to pass state to custom draw controls
+- Sprite source uses TabContainer with tabs "From Atlas" (index 0) and "From File" (index 1); use get_selected_texture() for unified access
+- Preview uses PreviewDisplay (preview_display.gd) custom Control with _draw() for texture + collision overlay compositing
+- Collision getters: get_collision_size() returns Vector2.ZERO for auto, get_collision_offset() returns Vector2.ZERO when unchecked
+- Save .tres files: ResourceSaver.save(resource, path); refresh with EditorInterface.get_resource_filesystem().scan()
+- Check file existence with FileAccess.file_exists() for res:// paths; use ConfirmationDialog for overwrite prompts
+- Load .tres resources: `load(path)` returns Resource; check `is FurnitureData` before casting
+- Detect atlas vs standalone textures: `data.texture is AtlasTexture`; get source sheet via `.atlas.resource_path`
 
 ---
 
@@ -48,4 +56,97 @@ Started: Sat Mar 21 22:43:46 PDT 2026
   - interaction_type OptionButton indices: 0=(none), 1=play, 2=eat, 3=sleep
   - _id_manually_edited flag prevents auto-generation after user edits the id field directly
   - display_scale defaults to Vector2(4, 4) per PRD requirement (not the FurnitureData default of 1,1)
+---
+
+## 2026-03-21 - US-004
+- Added atlas sprite sheet region picker with browse, zoom, click-drag selection, and SpinBox fine-tuning
+- Created atlas_region_picker.gd (VBoxContainer with file picker, zoom slider, sheet display, region SpinBoxes)
+- Created atlas_sheet_display.gd (custom Control with _draw() for texture rendering and selection overlay)
+- Integrated into furniture_creator_panel.gd as "From Atlas" section at top of form
+- Files changed: addons/furniture_creator/atlas_region_picker.gd (new), addons/furniture_creator/atlas_sheet_display.gd (new), addons/furniture_creator/furniture_creator_panel.gd
+- **Learnings for future iterations:**
+  - EditorFileDialog is the correct dialog class for editor plugins (not FileDialog)
+  - For custom drawing controls, use set_meta/get_meta to pass state from parent and queue_redraw() to trigger redraws
+  - The sheet display control is separate from the picker to keep _draw() logic isolated
+  - AtlasTexture.region expects a Rect2 — use .abs() to normalize negative-size rects from drag direction
+  - gui_input signal on the display control handles mouse events for drag selection
+---
+
+## 2026-03-21 - US-005
+- Added standalone image import option as "From File" tab alongside "From Atlas"
+- Created image_file_picker.gd (VBoxContainer with EditorFileDialog browse, preview TextureRect)
+- Replaced flat section headers with TabContainer for sprite source selection
+- Switching tabs clears the other picker's selection
+- Added get_file_texture(), get_selected_texture(), get_sprite_source_mode() to panel
+- Files changed: addons/furniture_creator/image_file_picker.gd (new), addons/furniture_creator/furniture_creator_panel.gd
+- **Learnings for future iterations:**
+  - TabContainer children's .name property becomes the tab title — set it before adding to the TabContainer
+  - Use tab_changed signal to implement mutual exclusion between sprite source modes
+  - get_selected_texture() and get_sprite_source_mode() provide unified API for downstream consumers (save/preview)
+  - EditorFileDialog filters use "*.ext ; Description" format (space-semicolon-space)
+---
+Sun Mar 22 03:06:28 -03 2026: Paused due to rate limit until 4am
+
+## 2026-03-22 - US-006
+- Added live sprite preview at display scale in the right panel
+- Implemented _build_preview() to create ScrollContainer with TextureRect in PreviewArea
+- Implemented _update_preview() to render selected texture at current display_scale
+- Connected atlas_texture_changed, region_changed, texture_changed signals for real-time updates
+- Connected display_scale spinbox value_changed signals to _on_display_scale_changed
+- Placeholder label shown when no sprite is selected; ScrollContainer shown when sprite exists
+- Files changed: addons/furniture_creator/furniture_creator_panel.gd
+- **Learnings for future iterations:**
+  - TextureRect.STRETCH_SCALE + custom_minimum_size is the right combo for scaled preview in a ScrollContainer
+  - TEXTURE_FILTER_NEAREST preserves pixel art crispness at scale
+  - _on_sprite_changed takes Variant param to handle both AtlasTexture and Texture2D signal signatures
+---
+
+## 2026-03-22 - US-007
+- Added collision area override controls to the Visual section of the form
+- Created preview_display.gd — custom Control that draws both the texture and collision overlay using _draw()
+- Replaced TextureRect-based preview with PreviewDisplay for overlay support
+- Custom Collision checkbox toggles between auto-calculated label and manual W/H + offset SpinBoxes
+- Collision overlay (semi-transparent blue rect) drawn on preview in both auto and custom modes
+- Added get_collision_size() and get_collision_offset() getters to panel
+- Files changed: addons/furniture_creator/furniture_creator_panel.gd, addons/furniture_creator/preview_display.gd (new)
+- **Learnings for future iterations:**
+  - draw_texture_rect() + draw_rect() in _draw() is the cleanest way to composite overlays on a texture preview
+  - Custom Control with _draw() is better than layering multiple Controls for overlays — avoids input event and sizing issues
+  - Collision rect position: centered on sprite center, then offset — matches how furniture.gd positions collision_shape
+  - When checkbox enables SpinBoxes, pre-fill with auto-calculated values so user starts from a reasonable baseline
+---
+
+## 2026-03-22 - US-008
+- Added Save button at the bottom of the property form with validation and overwrite confirmation
+- Validates required fields (id, display_name, texture) before saving
+- Creates FurnitureData resource with all configured properties from form fields
+- Handles atlas sprites (AtlasTexture) and standalone images (Texture2D) correctly
+- Saves to res://furniture/data/{id}.tres using ResourceSaver.save()
+- Shows ConfirmationDialog before overwriting existing files
+- Triggers EditorInterface.get_resource_filesystem().scan() so saved file appears in FileSystem dock
+- Shows success/error messages in a label above the Save button
+- Files changed: addons/furniture_creator/furniture_creator_panel.gd
+- **Learnings for future iterations:**
+  - ResourceSaver.save(resource, path) is the correct way to save .tres files from editor plugins
+  - EditorInterface.get_resource_filesystem().scan() refreshes Godot's FileSystem dock after saving
+  - ConfirmationDialog works well in editor plugins — use confirmed/canceled signals with lambdas
+  - FileAccess.file_exists() works with res:// paths for checking existing files
+  - FurnitureData.new() creates a blank resource; set properties individually then save
+---
+
+## 2026-03-22 - US-009
+- Added Load button that opens EditorFileDialog filtered to res://furniture/data/*.tres
+- Loading a FurnitureData resource populates all form fields with current property values
+- Atlas textures detected via `is AtlasTexture` — restores atlas path and region via new `set_atlas()` method
+- Standalone textures restored via new `set_texture_from_path()` method on file picker
+- Collision override fields populated when collision_size_override != Vector2.ZERO
+- Added New button that resets all fields to defaults (display_scale 4×4, refund ratio 0.5, etc.)
+- Tracks `_loaded_path` so saving after load overwrites the original file (with confirmation)
+- Files changed: addons/furniture_creator/furniture_creator_panel.gd, addons/furniture_creator/atlas_region_picker.gd, addons/furniture_creator/image_file_picker.gd
+- **Learnings for future iterations:**
+  - `data.texture is AtlasTexture` correctly detects atlas vs standalone textures in loaded .tres files
+  - AtlasTexture.atlas.resource_path gives the source sprite sheet path for restoring atlas picker state
+  - Set `_id_manually_edited = true` before loading to prevent auto-generation from overwriting the loaded id
+  - When resetting form, must manually toggle visibility of conditional rows (walkable offset, interaction fields, collision)
+  - Picker scripts need explicit `set_atlas`/`set_texture_from_path` methods — `clear()` + manual field setting doesn't trigger proper signal chains
 ---

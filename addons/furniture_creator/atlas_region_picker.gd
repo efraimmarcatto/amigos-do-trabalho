@@ -254,6 +254,16 @@ func get_atlas_path() -> String:
 	return _file_path_edit.text
 
 
+## Sets the atlas from an existing path and region (used when loading a .tres).
+func set_atlas(path: String, region: Rect2) -> void:
+	_file_path_edit.text = path
+	_sheet_texture = load(path) if not path.is_empty() else null
+	_selected_region = region
+	_update_spinboxes_from_region()
+	_update_sheet_display()
+	_emit_changes()
+
+
 ## Clears the atlas selection.
 func clear() -> void:
 	_file_path_edit.text = ""

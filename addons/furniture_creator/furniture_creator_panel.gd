@@ -43,9 +43,12 @@ var _collision_offset_y_spin: SpinBox
 var _collision_size_row: Control
 var _collision_offset_row: Control
 
-# --- Save ---
+# --- Load/Save ---
+var _load_button: Button
+var _new_button: Button
 var _save_button: Button
 var _error_label: Label
+var _loaded_path: String = ""  # Tracks the file path of the loaded resource
 
 # --- Preview ---
 var _preview_display: Control  # PreviewDisplay instance
@@ -60,6 +63,22 @@ func _ready() -> void:
 
 
 func _build_form(container: VBoxContainer) -> void:
+	# --- Load / New buttons at the top ---
+	var action_row := HBoxContainer.new()
+	_load_button = Button.new()
+	_load_button.text = "Load"
+	_load_button.pressed.connect(_on_load_pressed)
+	_load_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_row.add_child(_load_button)
+	_new_button = Button.new()
+	_new_button.text = "New"
+	_new_button.pressed.connect(_on_new_pressed)
+	_new_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_row.add_child(_new_button)
+	container.add_child(action_row)
+
+	_add_separator(container)
+
 	# --- Sprite Source: Tabbed Atlas / File pickers ---
 	_add_section_header(container, "Sprite Source")
 
@@ -528,7 +547,7 @@ func _on_save_pressed() -> void:
 
 	var save_path := "res://furniture/data/" + item_id + ".tres"
 
-	# Check if file exists — show confirmation dialog
+	# Check if file exists (including re-saving loaded file) — show confirmation dialog
 	if FileAccess.file_exists(save_path):
 		var dialog := ConfirmationDialog.new()
 		dialog.dialog_text = "File '%s' already exists. Overwrite?" % save_path
@@ -588,10 +607,169 @@ func _do_save(save_path: String) -> void:
 	if efs:
 		efs.scan()
 
+	_loaded_path = save_path
 	_error_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
 	_error_label.text = "Saved to %s" % save_path
 	_error_label.visible = true
 	# Reset color after showing success
 	await get_tree().create_timer(3.0).timeout
 	_error_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	_error_label.visible = false
+
+
+# --- Load / New ---
+
+func _on_load_pressed() -> void:
+	var dialog := EditorFileDialog.new()
+	dialog.file_mode = EditorFileDialog.FILE_MODE_OPEN_FILE
+	dialog.access = EditorFileDialog.ACCESS_RESOURCES
+	dialog.filters = PackedStringArray(["*.tres ; Resource Files"])
+	dialog.current_dir = "res://furniture/data/"
+	dialog.file_selected.connect(_on_load_file_selected)
+	dialog.canceled.connect(func(): dialog.queue_free())
+	add_child(dialog)
+	dialog.popup_centered(Vector2i(800, 600))
+
+
+func _on_load_file_selected(path: String) -> void:
+	# Clean up dialog
+	for child in get_children():
+		if child is EditorFileDialog:
+			child.queue_free()
+
+	var res := load(path)
+	if not res is FurnitureData:
+		_error_label.text = "Error: Selected file is not a FurnitureData resource"
+		_error_label.visible = true
+		return
+
+	_load_furniture_data(res as FurnitureData, path)
+
+
+func _load_furniture_data(data: FurnitureData, path: String) -> void:
+	_loaded_path = path
+
+	# Identity
+	_id_manually_edited = true  # Prevent auto-generation from overwriting loaded id
+	_display_name_edit.text = data.display_name
+	_id_edit.text = data.id
+
+	# Economics
+	_coin_cost_spin.value = data.coin_cost
+	_discard_refund_spin.value = data.discard_refund_ratio
+	_update_refund_label()
+
+	# Behavior
+	_walkable_check.button_pressed = data.walkable
+	_walk_surface_y_offset_row.visible = data.walkable
+	_walk_surface_y_offset_spin.value = data.walk_surface_y_offset
+	_can_fall_off_edge_check.button_pressed = data.can_fall_off_edge
+	_jumpable_check.button_pressed = data.jumpable
+	_stackable_check.button_pressed = data.stackable
+
+	# Interaction
+	match data.interaction_type:
+		"play": _interaction_type_option.select(1)
+		"eat": _interaction_type_option.select(2)
+		"sleep": _interaction_type_option.select(3)
+		_: _interaction_type_option.select(0)
+	var is_interactive := _interaction_type_option.selected != 0
+	_interaction_coin_bonus_row.visible = is_interactive
+	_interaction_cooldown_row.visible = is_interactive
+	_interaction_coin_bonus_spin.value = data.interaction_coin_bonus
+	_interaction_cooldown_spin.value = data.interaction_cooldown
+
+	# Visual
+	_display_scale_x_spin.value = data.display_scale.x
+	_display_scale_y_spin.value = data.display_scale.y
+
+	# Texture — detect atlas vs standalone
+	if data.texture is AtlasTexture:
+		var atlas_tex := data.texture as AtlasTexture
+		_sprite_tabs.current_tab = 0
+		if _atlas_picker.has_method("set_atlas") and atlas_tex.atlas:
+			_atlas_picker.set_atlas(atlas_tex.atlas.resource_path, atlas_tex.region)
+		if _file_picker.has_method("clear"):
+			_file_picker.clear()
+	elif data.texture != null:
+		_sprite_tabs.current_tab = 1
+		if _file_picker.has_method("set_texture_from_path"):
+			_file_picker.set_texture_from_path(data.texture.resource_path)
+		if _atlas_picker.has_method("clear"):
+			_atlas_picker.clear()
+
+	# Collision overrides
+	if data.collision_size_override != Vector2.ZERO:
+		_custom_collision_check.button_pressed = true
+		_collision_auto_label.visible = false
+		_collision_size_row.visible = true
+		_collision_offset_row.visible = true
+		_collision_width_spin.value = data.collision_size_override.x
+		_collision_height_spin.value = data.collision_size_override.y
+		_collision_offset_x_spin.value = data.collision_offset.x
+		_collision_offset_y_spin.value = data.collision_offset.y
+	else:
+		_custom_collision_check.button_pressed = false
+		_collision_auto_label.visible = true
+		_collision_size_row.visible = false
+		_collision_offset_row.visible = false
+
+	_update_preview()
+
+	_error_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.3))
+	_error_label.text = "Loaded: %s" % path
+	_error_label.visible = true
+
+
+func _on_new_pressed() -> void:
+	_reset_form()
+
+
+func _reset_form() -> void:
+	_loaded_path = ""
+	_id_manually_edited = false
+
+	# Identity
+	_display_name_edit.text = ""
+	_id_edit.text = ""
+
+	# Economics
+	_coin_cost_spin.value = 0
+	_discard_refund_spin.value = 0.5
+	_update_refund_label()
+
+	# Behavior
+	_walkable_check.button_pressed = false
+	_walk_surface_y_offset_row.visible = false
+	_walk_surface_y_offset_spin.value = 0
+	_can_fall_off_edge_check.button_pressed = true
+	_jumpable_check.button_pressed = false
+	_stackable_check.button_pressed = false
+
+	# Interaction
+	_interaction_type_option.select(0)
+	_interaction_coin_bonus_row.visible = false
+	_interaction_cooldown_row.visible = false
+	_interaction_coin_bonus_spin.value = 0
+	_interaction_cooldown_spin.value = 0.0
+
+	# Visual
+	_display_scale_x_spin.value = 4.0
+	_display_scale_y_spin.value = 4.0
+
+	# Collision
+	_custom_collision_check.button_pressed = false
+	_collision_auto_label.visible = true
+	_collision_size_row.visible = false
+	_collision_offset_row.visible = false
+
+	# Sprite source
+	_sprite_tabs.current_tab = 0
+	if _atlas_picker.has_method("clear"):
+		_atlas_picker.clear()
+	if _file_picker.has_method("clear"):
+		_file_picker.clear()
+
+	_update_preview()
+
 	_error_label.visible = false

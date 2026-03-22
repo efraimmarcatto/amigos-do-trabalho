@@ -87,6 +87,14 @@ func get_file_path() -> String:
 	return _file_path_edit.text
 
 
+## Sets the texture from an existing path (used when loading a .tres).
+func set_texture_from_path(path: String) -> void:
+	_file_path_edit.text = path
+	_selected_texture = load(path) if not path.is_empty() else null
+	_preview_rect.texture = _selected_texture
+	texture_changed.emit(_selected_texture)
+
+
 ## Clears the selection.
 func clear() -> void:
 	_file_path_edit.text = ""
