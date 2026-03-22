@@ -52,6 +52,8 @@ func mark_interacted() -> void:
 func get_surface_y() -> float:
 	if not data or not data.texture:
 		return global_position.y
+	if data.standing_size_override != Vector2.ZERO:
+		return global_position.y - data.standing_size_override.y / 2.0 + data.standing_offset.y + data.walk_surface_y_offset
 	var half_h := data.texture.get_size().y * data.display_scale.y / 2.0
 	return global_position.y - half_h + data.walk_surface_y_offset
 
@@ -60,6 +62,8 @@ func get_surface_y() -> float:
 func get_left_x() -> float:
 	if not data or not data.texture:
 		return global_position.x
+	if data.standing_size_override != Vector2.ZERO:
+		return global_position.x - data.standing_size_override.x / 2.0 + data.standing_offset.x
 	return global_position.x - data.texture.get_size().x * data.display_scale.x / 2.0
 
 
@@ -67,4 +71,6 @@ func get_left_x() -> float:
 func get_right_x() -> float:
 	if not data or not data.texture:
 		return global_position.x
+	if data.standing_size_override != Vector2.ZERO:
+		return global_position.x + data.standing_size_override.x / 2.0 + data.standing_offset.x
 	return global_position.x + data.texture.get_size().x * data.display_scale.x / 2.0
