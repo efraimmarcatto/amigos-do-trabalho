@@ -1,20 +1,19 @@
 {
   "project": "DesktopPet",
-  "branchName": "ralph/layout-edit-shop-pet-regression-fixes",
-  "description": "Fix regressions in layout edit mode (X button and save button unresponsive), shop panel image sizing/alignment, and pet rendering/dragging issues",
+  "branchName": "ralph/furniture-creator-tool",
+  "description": "Godot Editor plugin for creating and editing FurnitureData resources with visual sprite selection, property form, collision override, and live preview",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Fix X remove button clicks in layout edit mode",
-      "description": "As a user, I want to click the X button on furniture during edit mode so that I can send items back to inventory.",
+      "title": "Add collision override properties to FurnitureData",
+      "description": "As a developer, I need collision_size_override and collision_offset properties on FurnitureData so the creator tool can store custom collision areas.",
       "acceptanceCriteria": [
-        "Investigate input handling in _handle_edit_input() (scripts/main.gd:996) — the function calls get_viewport().set_input_as_handled() at line 1012 for all left clicks; verify that remove button clicks return early BEFORE this call and that the event actually reaches the Button's GUI handler",
-        "Verify _is_click_on_remove_button() (scripts/main.gd:966) rect calculation matches the actual Button global rect — it manually computes Rect2(fnode.global_position + btn.position, btn.size) which may not match the Button's true screen position when parented to a Node2D",
-        "Remove buttons respond to clicks on all furniture items during edit mode",
-        "Clicking X removes the furniture from the scene and adds it to inventory",
-        "Stacked furniture on top of removed furniture is also returned to inventory",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Add '@export var collision_size_override: Vector2 = Vector2.ZERO' to scripts/furniture_data.gd — when non-zero, used instead of auto-calculated size",
+        "Add '@export var collision_offset: Vector2 = Vector2.ZERO' to scripts/furniture_data.gd — offset from sprite center",
+        "Update furniture.gd _ready(): if data.collision_size_override != Vector2.ZERO, use it as shape.size instead of tex_size; apply collision_offset to collision_shape.position",
+        "Existing .tres files remain compatible — new properties default to zero so current auto-sizing behavior is unchanged",
+        "Verify all 5 existing items (table, sofa, toy, food_bowl, bookshelf) still work correctly with no behavior change",
+        "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
@@ -22,67 +21,144 @@
     },
     {
       "id": "US-002",
-      "title": "Fix save button click in layout edit mode",
-      "description": "As a user, I want to click the Save button in the slide menu to save my layout and exit edit mode instead of pressing ESC.",
+      "title": "Scaffold editor plugin with plugin.cfg and main dock",
+      "description": "As a developer, I want the Furniture Creator to register as a Godot 4 EditorPlugin so I can activate it from Project Settings > Plugins.",
       "acceptanceCriteria": [
-        "Investigate why Save Edit button (scripts/slide_menu.gd:151) does not respond during edit mode — likely same root cause as US-001 input consumption, or the slide_menu._unhandled_input auto-close (scripts/slide_menu.gd:172) closing the menu before the button click registers",
-        "Clicking Save Edit button in the slide menu exits edit mode and saves the layout",
-        "Button label reverts to Edit Layout after saving",
-        "Furniture positions are persisted to save_data.json",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Create addons/furniture_creator/plugin.cfg with correct Godot 4 format (name, description, author, version, script)",
+        "Create addons/furniture_creator/plugin.gd extending EditorPlugin",
+        "On _enter_tree(), add a custom dock/panel to the editor (use add_control_to_bottom_panel or add_control_to_dock)",
+        "The dock contains a placeholder Label 'Furniture Creator' to confirm it loads",
+        "On _exit_tree(), remove the dock cleanly",
+        "Plugin can be enabled in Project Settings > Plugins without errors",
+        "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Fix shop panel image sizing and alignment",
-      "description": "As a user, I want shop item images to fit within their grid cell buttons so the shop looks correct.",
+      "title": "Build property form with all FurnitureData fields",
+      "description": "As a developer, I want a form with all FurnitureData properties so I can configure items visually.",
       "acceptanceCriteria": [
-        "Fix TextureRect in _create_grid_cell() (scripts/shop.gd:155-161) — EXPAND_FIT_WIDTH_PROPORTIONAL (line 159) and PRESET_CENTER anchors (line 161) cause overflow when source textures are larger than the 48x48 target; use EXPAND_IGNORE_SIZE or EXPAND_FIT_WIDTH with clip_contents on the parent button",
-        "Item images fit within their button bounds (64x64 cell, 48x48 icon target)",
-        "Images are centered within their buttons with no overflow or clipping artifacts",
-        "Layout remains correct across different numbers of items and varying grid column counts",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Replace placeholder label with a ScrollContainer containing the property form",
+        "Form fields grouped: Identity (id, display_name) > Economics (coin_cost, discard_refund_ratio) > Behavior (walkable, walk_surface_y_offset, can_fall_off_edge, jumpable, stackable, interaction_type, interaction_coin_bonus, interaction_cooldown) > Visual (display_scale)",
+        "id field auto-generates from display_name as snake_case but is editable",
+        "interaction_type is a dropdown with options: (none), play, eat, sleep",
+        "interaction_coin_bonus and interaction_cooldown only visible when interaction_type is not (none)",
+        "walk_surface_y_offset only visible when walkable is checked",
+        "discard_refund_ratio is a SpinBox (0.0–1.0 step 0.05) with a label showing calculated refund: 'Refund: X coins'",
+        "display_scale defaults to Vector2(4, 4)",
+        "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Fix pet rendering — in front of furniture, behind menus",
-      "description": "As a user, I want the pet to appear in front of furniture but behind UI menus so it looks natural and menus remain usable.",
+      "title": "Add atlas sprite sheet region picker",
+      "description": "As a developer, I want to browse a sprite sheet and click-drag to select a region so I can pick sprites visually.",
       "acceptanceCriteria": [
-        "Pet renders visually in front of all furniture sprites",
-        "Pet renders behind slide menu, shop panel, inventory panel, settings panel, and pet selection panel",
-        "The current z_index approach (scripts/main.gd:113, pet z_index=1 vs furniture container z_index=0) may need adjustment — z_index only works within the same parent; UI Control nodes render on top of Node2D regardless, so verify the actual rendering order and fix if menus appear behind the pet",
-        "Menus and panels remain fully clickable and visually on top of the pet",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Add a 'From Atlas' tab/section at the top of the form",
+        "A file picker button defaults to res://assets/Top-Down_Retro_Interior/ and filters for .png files",
+        "Selecting a file displays the full sprite sheet in a scrollable, zoomable TextureRect area",
+        "Click-and-drag on the sheet defines a selection rectangle shown as a colored overlay",
+        "The selected region (x, y, w, h) is displayed in 4 SpinBox fields for manual fine-tuning",
+        "Editing the SpinBox values updates the visual selection rectangle",
+        "The resulting AtlasTexture region is stored for use when saving",
+        "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Fix pet dragging when overlapping furniture",
-      "description": "As a user, I want to grab and drag the pet even when it overlaps furniture so it does not feel stuck.",
+      "title": "Add standalone image import option",
+      "description": "As a developer, I want to import a standalone image file so I can use custom sprites not on an atlas.",
       "acceptanceCriteria": [
-        "Investigate pet _is_point_on_pet() (scripts/pet.gd:673) and _input() (scripts/pet.gd:640) — pet click detection may be blocked by the passthrough polygon excluding the pet area when it overlaps furniture, or by furniture nodes consuming input first",
-        "Pet can be grabbed by clicking on it even when overlapping furniture",
-        "Dragging the pet works smoothly regardless of what is behind it",
-        "Releasing the pet after drag triggers FALLING state correctly",
-        "Pet cannot be grabbed when clicking on a menu or panel area — menus take priority",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Add a 'From File' tab/section alongside 'From Atlas'",
+        "A file picker allows selecting any image file from the project (filters: *.png, *.jpg, *.svg, *.tres)",
+        "Selecting a file loads it as a Texture2D and displays it in the preview",
+        "Switching between 'From Atlas' and 'From File' tabs clears the other's selection",
+        "The texture reference is stored for use when saving",
+        "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Add live sprite preview at display scale",
+      "description": "As a developer, I want to see the selected sprite at its configured display_scale so I can verify it looks correct.",
+      "acceptanceCriteria": [
+        "A preview panel (right side or bottom of the dock) shows the selected sprite",
+        "Sprite is rendered at the current display_scale value (e.g., 4x4 by default)",
+        "Preview updates in real-time when sprite selection changes or display_scale changes",
+        "If the scaled sprite is larger than the preview area, the preview is scrollable",
+        "When no sprite is selected, show a placeholder message",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Add collision area override controls with preview overlay",
+      "description": "As a developer, I want to toggle custom collision and see the collision rectangle overlaid on the preview so I can tune it for items like the sofa.",
+      "acceptanceCriteria": [
+        "A 'Custom collision' checkbox in the Visual section of the form (below display_scale)",
+        "When unchecked, collision is auto-calculated (texture_size * display_scale) — shown as a label",
+        "When checked, width/height SpinBoxes appear pre-filled with auto-calculated values, plus an offset Vector2 field",
+        "The collision rectangle is drawn as a semi-transparent colored overlay on the sprite preview",
+        "Overlay updates in real-time as collision size/offset values change",
+        "Auto-calculated collision (checkbox unchecked) also shows the overlay so the developer can see the default area",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Save FurnitureData as .tres resource file",
+      "description": "As a developer, I want to click Save and have the tool generate a valid .tres file in res://furniture/data/ so the item is immediately available in the shop.",
+      "acceptanceCriteria": [
+        "A 'Save' button at the bottom of the form",
+        "Validates required fields before saving: id, display_name, and texture must be set — shows error message if missing",
+        "Creates a FurnitureData resource with all configured properties",
+        "For atlas sprites: creates AtlasTexture sub-resource with the selected region",
+        "For standalone images: references the Texture2D directly",
+        "Saves to res://furniture/data/{id}.tres using ResourceSaver.save()",
+        "If file already exists, shows a confirmation dialog before overwriting",
+        "After saving, the file is visible in Godot's FileSystem dock",
+        "The saved .tres file loads correctly in the existing shop system (shop.gd scans res://furniture/data/)",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Load existing .tres files for editing",
+      "description": "As a developer, I want to load an existing FurnitureData .tres file into the tool so I can tweak properties and re-save.",
+      "acceptanceCriteria": [
+        "A 'Load' button at the top of the form",
+        "Opens a file dialog filtered to res://furniture/data/*.tres",
+        "Loading populates all form fields with the item's current property values",
+        "If the item uses an AtlasTexture, switches to 'From Atlas' mode and restores the atlas path and region selection",
+        "If the item uses a standalone Texture2D, switches to 'From File' mode and shows the texture",
+        "Collision override fields are populated if collision_size_override != Vector2.ZERO",
+        "Saving after load overwrites the original file (with confirmation)",
+        "A 'New' button resets all fields to defaults for creating a fresh item",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
       "notes": ""
     }
   ]

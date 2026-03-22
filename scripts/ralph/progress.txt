@@ -8,5 +8,17 @@ Started: Sat Mar 21 22:43:46 PDT 2026
 - FurnitureData is a Resource class in scripts/furniture_data.gd; runtime node is Furniture in scripts/furniture.gd
 - Furniture Area2D `input_pickable` must be false — it's only for collision detection
 - Existing furniture .tres files: bookshelf, food_bowl, sofa, table, toy in furniture/data/
+- collision_size_override and collision_offset default to Vector2.ZERO — when zero, auto-sizing behavior is used
+- Branch created from ralph/layout-edit-shop-pet-regression-fixes (has all furniture infrastructure)
 
+---
+
+## 2026-03-21 - US-001
+- Added `collision_size_override: Vector2` and `collision_offset: Vector2` exports to FurnitureData
+- Updated furniture.gd `_ready()` to use override size when non-zero, apply offset to collision_shape.position
+- Files changed: scripts/furniture_data.gd, scripts/furniture.gd
+- **Learnings for future iterations:**
+  - New @export vars with default values are backward-compatible with existing .tres files — Godot uses the default when the property isn't in the file
+  - The collision shape size was previously computed inline as `data.texture.get_size() * data.display_scale`
+  - collision_shape.position defaults to Vector2.ZERO (centered on parent), so applying offset only matters when non-zero
 ---
