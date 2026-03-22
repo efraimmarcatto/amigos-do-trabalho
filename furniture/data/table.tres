@@ -15,4 +15,5 @@ texture = SubResource("AtlasTexture_cb61e")
 coin_cost = 120
 walkable = true
 jumpable = true
-display_scale = Vector2(2, 2)
+display_scale = Vector2(4, 4)
+stackable = true

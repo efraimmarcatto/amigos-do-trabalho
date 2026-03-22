@@ -1,0 +1,21 @@
+# Ralph Progress Log
+Started: Fri Mar 13 2026
+---
+
+## Codebase Patterns
+- GlobalInput is a C++ GDExtension singleton registered via Engine::register_singleton in register_types.cpp — no autoload needed
+- Project uses Godot 4.6 with GL Compatibility renderer and transparent viewport
+- Save data stored at user://save_data.json — extend this for future features
+- Pet visual states (SAD/NEUTRAL/HAPPY) use modulate color tinting — called PetMood (separate from PetState movement enum)
+- pet.gd uses PetState enum (IDLE, WALKING, FALLING, DRAGGED, INTERACTING) for movement; _process() delegates to _process_<state>() handlers
+- main.gd is a Control node that manages passthrough polygon for click-through transparency
+- _update_passthrough() collects Rect2 from all visible elements and merges them — add new UI elements there
+- _change_state() in pet.gd handles enter/exit visual effects for state transitions
+- Floor Y for pet landing = DisplayServer.screen_get_size().y - (texture height * scale.y) / 2.0
+- Window is set to fullscreen at runtime via DisplayServer.screen_get_size() in main.gd _ready()
+- When sprite flips (scale.x negative), use scale.abs() for size calculations
+- FurnitureData is a Resource with class_name — globally available, .tres files live in furniture/data/
+- Shop (scripts/shop.gd) exposes get_owned()/set_owned() for persistence and furniture_purchased signal
+- pet.gd _furniture_nodes is a shared Dictionary reference set by main.gd
+- Furniture interactions: can_interact() checks cooldown, mark_interacted() starts cooldown + emits pet_interacted signal
+---

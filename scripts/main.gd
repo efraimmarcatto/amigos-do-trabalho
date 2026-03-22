@@ -219,7 +219,7 @@ func _load_state() -> void:
 
 func _show_menu_hint_arrow() -> void:
 	## Show an animated arrow pointing at the hamburger menu toggle on first launch.
-	var toggle_rect := slide_menu.get_toggle_rect()
+	var toggle_rect = slide_menu.get_toggle_rect()
 
 	# Create a simple triangle arrow using a Polygon2D
 	_hint_arrow = Sprite2D.new()
@@ -542,6 +542,8 @@ func _spawn_furniture_at(furniture_id: String, pos: Vector2) -> void:
 	_furniture_nodes[furniture_id] = node
 	node.global_position = pos
 	_furniture_positions[furniture_id] = {"x": pos.x, "y": pos.y}
+	if _edit_mode:
+		_sync_edit_mode_furniture_state()
 	_save_state()
 
 
@@ -564,6 +566,8 @@ func _spawn_furniture(furniture_id: String) -> void:
 	else:
 		node.global_position = _default_furniture_position(furniture_id)
 		_furniture_positions[furniture_id] = {"x": node.global_position.x, "y": node.global_position.y}
+	if _edit_mode:
+		_sync_edit_mode_furniture_state()
 
 
 func _compute_floor_y() -> float:
@@ -628,10 +632,7 @@ func _enter_edit_mode() -> void:
 	if pet_sprite.current_state == pet_sprite.PetState.WALKING:
 		pet_sprite._change_state(pet_sprite.PetState.IDLE)
 	# Highlight all furniture and add remove buttons
-	for fid in _furniture_nodes:
-		var fnode: Furniture = _furniture_nodes[fid]
-		fnode.modulate = Color(1.2, 1.2, 0.8, 1.0)
-		_add_remove_button(fid, fnode)
+	_sync_edit_mode_furniture_state()
 	# Update edit button label
 	slide_menu.set_edit_button_text(tr("SAVE_EDIT_BUTTON"))
 	# Disable passthrough to capture all input
@@ -646,10 +647,7 @@ func _exit_edit_mode() -> void:
 	# Resume pet
 	pet_sprite.paused = false
 	# Remove furniture highlights and remove buttons
-	for fid in _furniture_nodes:
-		var fnode: Furniture = _furniture_nodes[fid]
-		fnode.modulate = Color(1.0, 1.0, 1.0, 1.0)
-		_remove_remove_button(fnode)
+	_sync_edit_mode_furniture_state()
 	# Restore edit button label
 	slide_menu.set_edit_button_text(tr("EDIT_LAYOUT_BUTTON"))
 	# Close menu and panels that were open during edit mode
@@ -661,28 +659,42 @@ func _exit_edit_mode() -> void:
 	_save_state()
 
 
+func _sync_edit_mode_furniture_state() -> void:
+	## Keeps furniture highlight and remove-button state aligned with edit mode.
+	for fid in _furniture_nodes:
+		var fnode: Furniture = _furniture_nodes[fid]
+		if _edit_mode:
+			fnode.modulate = Color(1.2, 1.2, 0.8, 1.0)
+			_add_remove_button(fid, fnode)
+		else:
+			fnode.modulate = Color(1.0, 1.0, 1.0, 1.0)
+			_remove_remove_button(fnode)
+
+
 func _add_remove_button(furniture_id: String, fnode: Furniture) -> void:
 	## Adds a small "X" button above the furniture piece for removal during edit mode.
-	var btn := Button.new()
-	btn.name = "RemoveButton"
-	btn.text = "X"
-	btn.size = Vector2(28, 28)
+	var btn := fnode.get_node_or_null("RemoveButton") as Button
+	if btn == null:
+		btn = Button.new()
+		btn.name = "RemoveButton"
+		btn.text = "X"
+		btn.size = Vector2(28, 28)
+		btn.pressed.connect(_on_remove_furniture.bind(furniture_id))
+		# Style the button with a red-ish background
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0.8, 0.2, 0.2, 0.9)
+		style.corner_radius_top_left = 4
+		style.corner_radius_top_right = 4
+		style.corner_radius_bottom_left = 4
+		style.corner_radius_bottom_right = 4
+		btn.add_theme_stylebox_override("normal", style)
+		btn.add_theme_color_override("font_color", Color.WHITE)
+		fnode.add_child(btn)
 	# Position above the furniture sprite (centered horizontally)
 	var tex_h := 0.0
 	if fnode.data and fnode.data.texture:
 		tex_h = fnode.data.texture.get_size().y * fnode.data.display_scale.y
 	btn.position = Vector2(-14.0, -(tex_h / 2.0) - 64.0)
-	btn.pressed.connect(_on_remove_furniture.bind(furniture_id))
-	# Style the button with a red-ish background
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.8, 0.2, 0.2, 0.9)
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	style.corner_radius_bottom_left = 4
-	style.corner_radius_bottom_right = 4
-	btn.add_theme_stylebox_override("normal", style)
-	btn.add_theme_color_override("font_color", Color.WHITE)
-	fnode.add_child(btn)
 
 
 func _remove_remove_button(fnode: Furniture) -> void:

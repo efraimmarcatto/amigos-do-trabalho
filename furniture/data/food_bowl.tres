@@ -18,5 +18,5 @@ interaction_type = "eat"
 interaction_coin_bonus = 10
 interaction_cooldown = 60.0
 discard_refund_ratio = 0.4
-display_scale = Vector2(2, 2)
+display_scale = Vector2(4, 4)
 stackable = true

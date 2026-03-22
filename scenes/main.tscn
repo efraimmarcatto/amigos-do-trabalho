@@ -114,7 +114,7 @@ layout_mode = 2
 layout_mode = 2
 text = "Settings"
 
-[node name="ExitButton" type="Button" parent="SlideMenu/MenuPanel/VBox"]
+[node name="ExitButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=996134682]
 layout_mode = 2
 text = "Exit"
 
