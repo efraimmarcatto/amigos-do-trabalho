@@ -33,10 +33,16 @@ var _atlas_picker: Control  # AtlasRegionPicker instance
 var _file_picker: Control   # ImageFilePicker instance
 var _sprite_tabs: TabContainer
 
+# --- Preview ---
+var _preview_texture_rect: TextureRect
+var _preview_placeholder: Label
+var _preview_scroll: ScrollContainer
+
 
 func _ready() -> void:
 	var form_container: VBoxContainer = %FormContainer if has_node("%FormContainer") else $HSplit/LeftPanel/FormScroll/FormContainer
 	_build_form(form_container)
+	_build_preview()
 
 
 func _build_form(container: VBoxContainer) -> void:
@@ -183,7 +189,45 @@ func _build_form(container: VBoxContainer) -> void:
 	_display_scale_y_spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scale_hbox.add_child(_display_scale_y_spin)
 
+	_display_scale_x_spin.value_changed.connect(_on_display_scale_changed)
+	_display_scale_y_spin.value_changed.connect(_on_display_scale_changed)
+
 	_add_field_row(container, "Display Scale", scale_hbox)
+
+
+func _build_preview() -> void:
+	var preview_area: Panel = $HSplit/RightPanel/PreviewArea
+
+	# Placeholder label shown when no sprite is selected
+	_preview_placeholder = Label.new()
+	_preview_placeholder.text = "No sprite selected.\nSelect a sprite from the form to preview."
+	_preview_placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_preview_placeholder.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_preview_placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_preview_placeholder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_preview_placeholder.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_preview_placeholder.set_anchors_preset(Control.PRESET_FULL_RECT)
+	preview_area.add_child(_preview_placeholder)
+
+	# Scrollable preview for the scaled sprite
+	_preview_scroll = ScrollContainer.new()
+	_preview_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_preview_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_preview_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_preview_scroll.visible = false
+	preview_area.add_child(_preview_scroll)
+
+	_preview_texture_rect = TextureRect.new()
+	_preview_texture_rect.stretch_mode = TextureRect.STRETCH_KEEP
+	_preview_texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_preview_scroll.add_child(_preview_texture_rect)
+
+	# Connect picker signals for live preview updates
+	if _atlas_picker:
+		_atlas_picker.atlas_texture_changed.connect(_on_sprite_changed)
+		_atlas_picker.region_changed.connect(func(_r: Rect2) -> void: _update_preview())
+	if _file_picker:
+		_file_picker.texture_changed.connect(_on_sprite_changed)
 
 
 # --- Signal handlers ---
@@ -217,6 +261,36 @@ func _on_sprite_tab_changed(tab: int) -> void:
 		# Switched to "From File" — clear atlas picker
 		if _atlas_picker and _atlas_picker.has_method("clear"):
 			_atlas_picker.clear()
+	_update_preview()
+
+
+func _on_sprite_changed(_texture: Variant) -> void:
+	_update_preview()
+
+
+func _on_display_scale_changed(_value: float) -> void:
+	_update_preview()
+
+
+func _update_preview() -> void:
+	var tex := get_selected_texture()
+	if tex == null:
+		_preview_placeholder.visible = true
+		_preview_scroll.visible = false
+		return
+
+	_preview_placeholder.visible = false
+	_preview_scroll.visible = true
+
+	var scale := get_display_scale()
+	var tex_size := tex.get_size()
+	var scaled_size := tex_size * scale
+
+	_preview_texture_rect.texture = tex
+	_preview_texture_rect.custom_minimum_size = scaled_size
+	_preview_texture_rect.size = scaled_size
+	_preview_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	_preview_texture_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
 func _on_coin_cost_changed(_value: float) -> void:
