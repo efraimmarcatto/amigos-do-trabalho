@@ -10,6 +10,7 @@ Started: 2026-03-21
 - In edit/placement mode, passthrough is disabled (empty polygon) so window captures all input
 - Godot Buttons fire `pressed` on mouse RELEASE — when consuming input in `_input`/`_handle_edit_input`, must let through both press AND release for UI elements
 - For shop/inventory grid icons: use `EXPAND_IGNORE_SIZE` + explicit `size` + `clip_contents` on parent to keep TextureRects within bounds
+- Prefer tree order over z_index for rendering layers — `move_child(node, 0)` inserts at back; z_index affects ALL CanvasItem siblings (Node2D AND Control)
 
 ---
 
@@ -45,5 +46,17 @@ Started: 2026-03-21
   - `EXPAND_FIT_WIDTH_PROPORTIONAL` expands the TextureRect to fit the parent width, not the target size — use `EXPAND_IGNORE_SIZE` when you want the TextureRect constrained to its own size properties
   - Always set `clip_contents = true` on parent containers when child textures may be larger than the target area
   - `STRETCH_KEEP_ASPECT_CENTERED` handles the centering/aspect ratio within the given size — no need for additional anchor tricks
+  - Manual browser verification needed (no browser testing tools available)
+---
+
+## 2026-03-21 - US-004
+- Fixed pet rendering order: pet now renders in front of furniture but behind all UI panels
+- Root cause: `pet_sprite.z_index = 1` made pet render on top of ALL z_index=0 nodes, including UI Control panels. `FurnitureContainer` was added dynamically at the end of the tree (after UI panels) with z_index=0
+- Fix: Removed all z_index overrides; instead insert FurnitureContainer as first child (`move_child(_furniture_container, 0)`) so tree order alone gives correct layering: FurnitureContainer → PetSprite → UI Controls
+- Files changed: scripts/main.gd
+- **Learnings for future iterations:**
+  - In Godot 4, z_index affects ALL CanvasItem siblings (both Node2D and Control) — setting z_index=1 on a Node2D will make it render on top of sibling Control nodes with z_index=0
+  - Prefer tree order over z_index for rendering layers — insert dynamic nodes at the correct position with `move_child(node, index)`
+  - The `add_child()` call adds to the end; use `move_child()` immediately after to position correctly
   - Manual browser verification needed (no browser testing tools available)
 ---
