@@ -1017,7 +1017,10 @@ func _handle_edit_input(event: InputEvent) -> void:
 			# Release drag
 			if _edit_dragging_id != "":
 				_edit_dragging_id = ""
-			# Consume all left releases in edit mode to prevent menu auto-close
+			# Don't consume releases on menu/panels — Buttons need the release to fire pressed
+			if _is_click_on_menu_or_panels(event.position):
+				return
+			# Consume all other left releases in edit mode to prevent menu auto-close
 			get_viewport().set_input_as_handled()
 
 	elif event is InputEventMouseMotion and _edit_dragging_id != "":
