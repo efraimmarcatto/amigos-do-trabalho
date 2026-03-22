@@ -1,117 +1,103 @@
-# PRD: Layout Edit, Shop UI, and Pet Layering Regression Fixes
+# PRD: Layout Edit, Shop & Pet Regression Fixes
 
-## 1. Introduction/Overview
+## Introduction
 
-This PRD defines a focused regression fix for the in-game layout/shop flow. Current behavior allows moving items, but layout editing actions are partially broken: the `X` action does not reliably send furniture to inventory, saving layout is not working, shop item visuals are misaligned/oversized relative to buttons, buy action is broken, and pet interaction/layering conflicts with UI and furniture.
+Three regressions have been identified in the desktop pet application: (1) the layout edit mode's "X" remove buttons and save button are unresponsive to clicks, (2) shop panel item images are misaligned and oversized relative to their buttons, and (3) the pet renders behind furniture/menus and cannot be grabbed for dragging when overlapping other elements. This PRD covers bug fixes only — no new features or UX changes.
 
-The goal is to restore expected behavior without redesigning the system.
+## Goals
 
-## 2. Goals
+- Restore full layout edit mode functionality: remove buttons ("X") and save button respond to clicks
+- Fix shop panel so item images are properly sized and aligned within their grid cell buttons
+- Fix pet rendering order so the pet appears in front of furniture but behind menus
+- Ensure the pet can be grabbed and dragged even when overlapping furniture
 
-- Restore layout edit mode so `X` appears only during edit mode and sends item to inventory when clicked.
-- Restore layout save action so furniture placements persist after save.
-- Correct shop item image/button sizing and alignment to match current UI layout.
-- Fix shop buy action so purchases complete correctly.
-- Ensure scene hierarchy/layering places UI elements and placeable items in a node behind the pet node.
-- Ensure pet remains interactable/draggable when visually in front of furniture/menu based on configured node order.
+## User Stories
 
-## 3. User Stories
-
-### US-001: Show `X` only in layout edit mode
-**Description:** As a player, I want the remove (`X`) controls to appear only when layout edit mode is active so normal play mode stays clean and non-destructive.
+### US-001: Fix "X" remove button clicks in layout edit mode
+**Description:** As a user, I want to click the "X" button on furniture during edit mode so that I can send items back to inventory.
 
 **Acceptance Criteria:**
-- [ ] `X` control is hidden for all placeable items when layout edit mode is off.
-- [ ] `X` control is visible for editable placeable items when layout edit mode is on.
-- [ ] Entering/exiting edit mode toggles visibility immediately without reopening the scene.
-- [ ] Verify in browser.
+- [ ] Investigate why remove button clicks are not reaching the Button's `pressed` signal in edit mode — likely an input consumption issue in `_handle_edit_input()` (`scripts/main.gd:996`) or a position/rect mismatch between `_is_click_on_remove_button()` (`scripts/main.gd:966`) and the actual Button global rect
+- [ ] Remove buttons respond to clicks on all furniture items during edit mode
+- [ ] Clicking "X" removes the furniture from the scene and adds it to inventory (existing `_on_remove_furniture` logic at `scripts/main.gd:707`)
+- [ ] Stacked furniture on top of removed furniture is also returned to inventory
+- [ ] Typecheck/lint passes
+- [ ] Verify in browser using dev-browser skill
 
-### US-002: Send furniture to inventory via `X`
-**Description:** As a player, I want clicking `X` in edit mode to immediately move the item back to inventory so I can quickly reorganize the room.
-
-**Acceptance Criteria:**
-- [ ] Clicking `X` in edit mode removes the selected placed item from the room.
-- [ ] Removed item quantity is incremented in inventory immediately.
-- [ ] No confirmation dialog is shown.
-- [ ] Action is ignored when edit mode is off because `X` is not shown/usable.
-- [ ] Verify in browser.
-
-### US-003: Save layout persists moved/edited items
-**Description:** As a player, I want Save Layout to persist my moved furniture and edit actions so my arrangement remains after reload.
+### US-002: Fix save button click in layout edit mode
+**Description:** As a user, I want to click the "Save" button in the slide menu to save my layout and exit edit mode, instead of having to press ESC.
 
 **Acceptance Criteria:**
-- [ ] Clicking Save Layout writes current item transforms/state to the existing persistence path.
-- [ ] After save and scene reload (or app restart), positions match the saved layout.
-- [ ] If save fails, user gets visible feedback and previous persisted layout is not corrupted.
-- [ ] Verify in browser.
+- [ ] Investigate why the save button (edit button re-labeled as "Save Edit" at `scripts/slide_menu.gd:151`) doesn't respond during edit mode — likely the same input handling issue as US-001, or the menu auto-closing before the click registers (check `slide_menu.gd:172` `_unhandled_input` auto-close behavior)
+- [ ] Clicking the "Save Edit" button in the slide menu exits edit mode and saves the layout
+- [ ] The button label reverts to "Edit Layout" after saving
+- [ ] Furniture positions are persisted to `save_data.json`
+- [ ] Typecheck/lint passes
+- [ ] Verify in browser using dev-browser skill
 
-### US-004: Fix shop item visual fit (images and buttons)
-**Description:** As a player, I want shop item images to fit and align with buttons so the shop is readable and usable.
-
-**Acceptance Criteria:**
-- [ ] Item images fit inside their intended card/button bounds without overflow.
-- [ ] Image anchors/margins are aligned consistently with button labels and prices.
-- [ ] No item image overlaps neighboring controls in the tested shop viewport.
-- [ ] Verify in browser.
-
-### US-005: Fix shop buy action
-**Description:** As a player, I want the Buy action to complete reliably so purchased items are added correctly.
+### US-003: Fix shop panel image sizing and alignment
+**Description:** As a user, I want shop item images to fit properly within their grid cell buttons so the shop looks correct.
 
 **Acceptance Criteria:**
-- [ ] Clicking Buy on an affordable item completes purchase and updates inventory/coins immediately.
-- [ ] Clicking Buy on non-affordable item does not complete purchase and provides existing error/feedback behavior.
-- [ ] Rapid repeated clicks do not duplicate purchase beyond allowed quantity rules.
-- [ ] Verify in browser.
+- [ ] Investigate the image sizing in `_create_grid_cell()` (`scripts/shop.gd:141`) — the `TextureRect` uses `EXPAND_FIT_WIDTH_PROPORTIONAL` (line 159) and `PRESET_CENTER` anchors (line 161) which may cause the image to overflow the 64x64 button when the source texture is larger
+- [ ] Item images fit within their button bounds (64x64 cell, 48x48 icon target)
+- [ ] Images are centered within their buttons
+- [ ] No image overflow or clipping artifacts
+- [ ] Layout remains correct across different numbers of items (varying grid column counts)
+- [ ] Typecheck/lint passes
+- [ ] Verify in browser using dev-browser skill
 
-### US-006: Enforce node layering so pet is in front of UI/item layer
-**Description:** As a player, I want pet visibility/interaction to follow explicit node order, with UI elements and placeable items under the pet node.
+### US-004: Fix pet rendering layer — in front of furniture, behind menus
+**Description:** As a user, I want the pet to appear in front of furniture but behind UI menus so it looks natural and menus remain usable.
 
 **Acceptance Criteria:**
-- [ ] Scene tree contains a node grouping UI elements and placeable items behind the pet node.
-- [ ] Pet node renders in front according to node/canvas order (not only ad-hoc `z_index` overrides).
-- [ ] Dragging pet remains possible when overlapping furniture/menu visuals under the configured hierarchy.
-- [ ] Verify in browser.
+- [ ] Pet renders visually in front of all furniture sprites
+- [ ] Pet renders behind the slide menu, shop panel, inventory panel, settings panel, and pet selection panel
+- [ ] The current `z_index` approach (`scripts/main.gd:113`, pet z_index=1 vs furniture container z_index=0) may need to be replaced or supplemented — z_index only works within the same parent or CanvasLayer; UI Control nodes render on top regardless
+- [ ] Menus and panels remain fully clickable and visually on top of the pet
+- [ ] Typecheck/lint passes
+- [ ] Verify in browser using dev-browser skill
 
-## 4. Functional Requirements
+### US-005: Fix pet dragging when overlapping furniture
+**Description:** As a user, I want to grab and drag the pet even when it visually overlaps furniture, so it doesn't feel stuck.
 
-- FR-1: The system must gate remove controls (`X`) by layout edit mode state.
-- FR-2: When user clicks `X` during layout edit mode, the selected placed furniture must be removed from room and returned to inventory immediately.
-- FR-3: The system must persist current layout state when Save Layout is triggered and reload the same state later.
-- FR-4: Shop item image containers and button bounds must use consistent sizing/alignment rules so images do not exceed button/card layout.
-- FR-5: The Buy action must validate affordability and apply one authoritative transaction update to currency and inventory.
-- FR-6: Scene structure must place UI/menu and placeable item nodes in a layer/node that is behind the pet node.
-- FR-7: Pet drag hit-testing/input handling must remain active when pet overlaps visuals from lower-priority nodes.
+**Acceptance Criteria:**
+- [ ] Investigate the pet's `_is_point_on_pet()` (`scripts/pet.gd:673`) and `_input()` (`scripts/pet.gd:640`) — the pet's click detection may be blocked by the passthrough polygon or by furniture nodes consuming the input first
+- [ ] Pet can be grabbed by clicking on it even when it overlaps furniture
+- [ ] Dragging the pet works smoothly regardless of what's behind it
+- [ ] Releasing the pet after drag still triggers the FALLING state correctly
+- [ ] Pet cannot be grabbed when clicking on a menu or panel area (menus take priority)
+- [ ] Typecheck/lint passes
+- [ ] Verify in browser using dev-browser skill
 
-## 5. Non-Goals (Out of Scope)
+## Functional Requirements
 
-- Full redesign of shop or layout editor UX.
-- New inventory features, filters, or pagination.
-- New animation systems for furniture/pet interactions.
-- Major art/asset replacement for shop items.
-- Cross-platform UI overhaul beyond current target behavior.
+- FR-1: In edit mode, `_handle_edit_input()` must not consume input events that target remove buttons or the slide menu save button — these must propagate to Godot's GUI system
+- FR-2: The `_is_click_on_remove_button()` rect calculation must match the actual Button global rect as rendered on screen
+- FR-3: Shop grid cell `TextureRect` must be constrained to fit within the `ICON_SIZE` (48x48) bounds without overflow, regardless of source texture size
+- FR-4: Pet `z_index` must place it above the furniture container but the pet must not obscure UI Control nodes (menus, panels)
+- FR-5: Pet `_input()` click detection must have priority over furniture click handling in normal mode, so the pet can be grabbed when overlapping furniture
+- FR-6: The `mouse_passthrough_polygon` in `_update_passthrough()` must include the pet's area so clicks on the pet reach the window even when the pet overlaps furniture
 
-## 6. Design Considerations
+## Non-Goals
 
-- Preserve current visual style; only adjust sizing/alignment needed to make images/buttons fit.
-- Keep `X` affordance minimal and only visible during edit mode.
-- Avoid clutter in normal mode by keeping edit-only controls hidden.
+- No UX improvements or visual polish beyond fixing these bugs
+- No changes to edit mode drag-to-reposition behavior (this already works)
+- No changes to shop pricing, inventory logic, or furniture interaction system
+- No changes to pet animations, states, or AI behavior
+- No new features or UI redesign
 
-## 7. Technical Considerations
+## Technical Considerations
 
-- Prefer deterministic node hierarchy/layer organization for draw/input behavior instead of relying solely on high `z_index` values.
-- Ensure drag input routing for pet does not get blocked by overlay nodes that are visually behind/should be non-interactive for drag.
-- Reuse existing save/load pipeline for layout persistence, patching only broken wiring/state serialization points.
-- Maintain compatibility with existing item definitions and shop data structures.
+- The app uses Godot's `mouse_passthrough_polygon` for desktop pet click-through behavior — this is central to all click/drag issues and must be carefully considered when fixing input handling
+- `_input()` in Godot 4 fires before GUI event propagation — when `_handle_edit_input` returns without calling `set_input_as_handled()`, the event should reach Button controls, but verify this is actually happening
+- Control nodes (menus, panels) as children of the scene root render on a different layer than Node2D children — z_index on Node2D nodes doesn't affect Control node rendering order
+- The pet's `_is_point_on_pet()` does sprite-level hit detection — ensure this works correctly with the pet's global transform and scale
 
-## 8. Success Metrics
+## Success Metrics
 
-- `X` action works in edit mode and is unavailable outside edit mode.
-- Save Layout successfully persists arrangement in manual verification runs.
-- Shop visuals no longer show oversized/misaligned images relative to buttons.
-- Buy action completes expected transaction outcomes without obvious duplication/regression.
-- Pet remains draggable with configured node hierarchy where UI/items are behind pet.
-
-## 9. Open Questions
-
-- Should pet dragging be disabled while a modal dialog is open, or always remain available when visible?
-- Which exact scene/node names should be standardized for layering (`World`, `UILayer`, `PetLayer`, etc.) to reduce future regressions?
+- All "X" remove buttons respond to clicks in edit mode
+- Save button exits edit mode and persists layout on click
+- Shop item images are contained within button bounds and visually centered
+- Pet renders in front of furniture, behind all menus
+- Pet can be grabbed and dragged from any position, including when overlapping furniture

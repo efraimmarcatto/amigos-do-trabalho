@@ -66,11 +66,11 @@ func _ready() -> void:
 	# Start global input hooks for keyboard/mouse tracking
 	GlobalInput.start_hooks()
 
-	# Create furniture container (renders behind pet via z_index)
+	# Create furniture container — insert as first child so it renders behind pet and UI
 	_furniture_container = Node2D.new()
 	_furniture_container.name = "FurnitureContainer"
-	_furniture_container.z_index = 0
 	add_child(_furniture_container)
+	move_child(_furniture_container, 0)
 
 	# Update the mouse passthrough so transparent areas pass clicks through
 	_update_passthrough()
@@ -109,8 +109,8 @@ func _ready() -> void:
 	pet_sprite._furniture_nodes = _furniture_nodes
 	pet_sprite.floor_y = floor_y
 
-	# Ensure pet renders in front of furniture
-	pet_sprite.z_index = 1
+	# Pet renders in front of furniture (earlier in tree) but behind UI panels (later in tree)
+	# No z_index needed — tree order handles rendering: FurnitureContainer → PetSprite → UI Controls
 
 	# Position pet at floor level
 	var pet_half_h = (pet_sprite.get_sprite_size().y * pet_sprite.scale.abs().y) / 2.0
