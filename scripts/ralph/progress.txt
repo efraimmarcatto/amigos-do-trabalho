@@ -144,3 +144,21 @@ Started: Sat Mar 14 10:22:42 PDT 2026
   - The polygon auto-closes from the last vertex back to the first — no need to explicitly append the first point again
   - `Rect2.abs()` is needed before extracting corners to handle negative-dimension rects from UI elements at screen edges
 ---
+
+## 2026-03-21 - US-043
+- Verified settings panel already starts with `visible = false` in both .tscn and `_ready()`
+- Added `hint_arrow_duration` export var (default 5.0 seconds) to main.gd
+- Added `_has_seen_menu_hint` flag, saved/loaded from `save_data.json`
+- On first launch (no `has_seen_menu_hint` in save data), creates a yellow right-pointing triangle arrow (Sprite2D with procedural ImageTexture) positioned left of the menu toggle button
+- Arrow animates with horizontal bounce (Tween, infinite loop, SINE ease)
+- Arrow auto-dismisses after `hint_arrow_duration` seconds via SceneTree timer
+- Arrow immediately dismisses when player opens the menu (`menu_opened` signal connected)
+- After dismissal, saves `has_seen_menu_hint: true` to save_data.json and disconnects the signal
+- Hint arrow rect included in `_update_passthrough()` so it blocks click-through while visible
+- Files changed: `scripts/main.gd`
+- **Learnings for future iterations:**
+  - `Image.create()` + `ImageTexture.create_from_image()` is the way to create procedural textures in Godot 4 GDScript
+  - Tween `set_loops(0)` means infinite loops — use this for indefinite animations
+  - When connecting a signal for a one-time use, remember to disconnect it in the cleanup function to avoid double-calls (timer + signal can both trigger dismiss)
+  - `is_instance_valid()` is needed when checking nodes that may have been `queue_free()`'d — null check alone isn't sufficient
+---

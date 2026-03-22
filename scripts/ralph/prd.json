@@ -207,7 +207,7 @@
         "Typecheck passes"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "The settings panel may be getting opened during _load_state() or _ready() due to a bug — check the initialization flow. The arrow can be a programmatically created Sprite2D or TextureRect positioned near the menu toggle button. Use a Tween with a looping bounce (position.y oscillation). Connect to slide_menu's menu_opened signal to dismiss early."
     }
   ]
