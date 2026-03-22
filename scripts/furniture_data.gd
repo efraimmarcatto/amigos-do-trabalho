@@ -35,3 +35,7 @@ extends Resource
 @export var collision_size_override: Vector2 = Vector2.ZERO
 ## Offset of the collision shape from sprite center
 @export var collision_offset: Vector2 = Vector2.ZERO
+## Custom standing area size — when non-zero, defines where the pet can walk/stand
+@export var standing_size_override: Vector2 = Vector2.ZERO
+## Offset of the standing area from sprite center
+@export var standing_offset: Vector2 = Vector2.ZERO
