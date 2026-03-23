@@ -1,125 +1,152 @@
 {
   "project": "DesktopPet",
-  "branchName": "ralph/furniture-creator-tool",
-  "description": "Furniture editor enhancements — separate standing area for pet walk bounds, mouse-based drag/resize of collision and standing rectangles in preview, and parent furniture under existing Furnitures scene node",
+  "branchName": "ralph/passthrough-mood-plugin-readme",
+  "description": "Fix passthrough polygon transparency bug, add mood text to bubble, package GlobalInput as plugin, write project READMEs",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add standing area properties to FurnitureData",
-      "description": "As a furniture creator, I want standing_size_override and standing_offset properties on FurnitureData so walkable surfaces can be defined independently from interaction collision.",
+      "title": "Fix passthrough polygon merge to eliminate transparency holes",
+      "description": "As a user, I want overlapping sprites (pet + furniture) to remain fully visible so the desktop doesn't show through them.",
       "acceptanceCriteria": [
-        "Add '@export var standing_size_override: Vector2 = Vector2.ZERO' to scripts/furniture_data.gd — when non-zero, defines the area where the pet can walk/stand",
-        "Add '@export var standing_offset: Vector2 = Vector2.ZERO' to scripts/furniture_data.gd — offset from sprite center for the standing area",
-        "Existing .tres files remain compatible — new properties default to Vector2.ZERO so current behavior is unchanged",
+        "In _update_passthrough() in scripts/main.gd, refactor the polygon merge logic so overlapping rects produce a solid union with no interior holes",
+        "Use an iterative merge approach: start with the first polygon, then merge each subsequent polygon into the accumulated result using Geometry2D.merge_polygons()",
+        "When Geometry2D.merge_polygons() returns multiple polygons (disjoint islands), keep all of them in the accumulator and merge the next polygon against each island",
+        "Filter out rects with zero width or zero height before converting to polygons",
+        "Filter out duplicate or fully-contained rects that could create merge artifacts",
+        "The existing anchor-point path stitching (connecting disjoint islands through Vector2.ZERO for Linux stability) must still work correctly after the merge refactor",
+        "Verify: when pet sprite overlaps with sofa or any furniture, no transparent region appears — the overlapping area is fully opaque",
+        "Verify: clicking in the gap between two non-overlapping sprites still passes through to the desktop",
+        "No regression in passthrough for all existing UI elements: coin HUD, interaction menu, slide menu, shop, inventory, settings, pet selection, mood bubble, furniture, menu hint arrow",
         "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": ""
+      "notes": "The bug is confirmed via screenshot: where pet overlaps sofa, a transparent hole appears showing the desktop. The root cause is that Geometry2D.merge_polygons() can produce holes when polygons share interior regions and the winding order creates a subtraction. The fix must detect and discard inner/hole polygons (clockwise winding) from the merge result."
     },
     {
       "id": "US-002",
-      "title": "Use standing area for pet walk bounds at runtime",
-      "description": "As a player, I want my pet to walk across the full defined standing area of furniture, not just the sprite-derived bounds.",
+      "title": "Add emotion text label to pet mood bubble",
+      "description": "As a user, I want to see a text label ('Sad', 'Neutral', 'Happy') in the pet's mood bubble so I can understand the pet's emotional state without guessing what the colors mean.",
       "acceptanceCriteria": [
-        "In furniture.gd, get_surface_y() uses standing_size_override and standing_offset when standing_size_override != Vector2.ZERO — surface Y = global_position.y - standing_size_override.y / 2.0 + standing_offset.y + walk_surface_y_offset",
-        "In furniture.gd, get_left_x() uses standing area when defined: global_position.x - standing_size_override.x / 2.0 + standing_offset.x",
-        "In furniture.gd, get_right_x() uses standing area when defined: global_position.x + standing_size_override.x / 2.0 + standing_offset.x",
-        "When standing_size_override == Vector2.ZERO, all three methods behave identically to before (texture × display_scale)",
+        "In scripts/pet.gd, add a Label node to the mood bubble layout (inside _bubble_panel) that displays the mood name",
+        "Text values: 'Sad' for PetMood.SAD, 'Neutral' for PetMood.NEUTRAL, 'Happy' for PetMood.HAPPY",
+        "Use an HBoxContainer inside _bubble_panel to arrange the mood icon (TextureRect) and the text label side by side",
+        "Text must be legible: use a font size of at least 12px, dark text color (e.g. Color(0.2, 0.2, 0.2)) against the white bubble background",
+        "Text updates when mood changes (in _update_mood_display or equivalent)",
+        "The colored circle icon is still displayed alongside the text",
+        "Bubble panel size adjusts automatically to fit both icon and text (HBoxContainer handles this)",
+        "get_bubble_rect() still returns the correct rect for the new bubble size so passthrough remains correct",
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "The mood bubble is built programmatically in pet.gd around line 776-802. _bubble_panel is a PanelContainer, _bubble_icon is a TextureRect. The bubble shows/hides with fade animations via tweens."
     },
     {
       "id": "US-003",
-      "title": "Add standing area controls to furniture editor form",
-      "description": "As a furniture creator, I want form fields to configure the standing area in the editor, similar to the existing collision controls.",
+      "title": "Add exported texture properties for future emotion images",
+      "description": "As a developer, I want to configure emotion images via exported node properties on the pet so images can be added later without code changes.",
       "acceptanceCriteria": [
-        "Add 'Custom Standing Area' checkbox in the Behavior section, visible only when Walkable is checked",
-        "When checked, show Standing Size W/H SpinBoxes (range 1–9999) and Standing Offset X/Y SpinBoxes (range -9999 to 9999)",
-        "When checkbox is first enabled, pre-fill with auto-calculated values (texture × display_scale)",
-        "Show auto-calculated label when unchecked (like collision auto label)",
-        "Standing area values are saved to .tres files via standing_size_override and standing_offset properties in _do_save()",
-        "Standing area values are loaded from .tres files in _load_furniture_data() — checkbox enabled when standing_size_override != Vector2.ZERO",
-        "_reset_form() clears standing area controls (unchecked, hidden, values zeroed)",
+        "Add three @export properties to pet.gd: sad_texture: Texture2D, neutral_texture: Texture2D, happy_texture: Texture2D — all defaulting to null",
+        "In the mood display update logic, when a texture is assigned (non-null) for the current mood, set _bubble_icon.texture to that exported texture instead of the generated colored circle",
+        "When the exported texture is null for a mood, fall back to the existing generated colored circle texture from _build_mood_textures()",
+        "The text label (from US-002) is always shown regardless of whether an image or colored circle is used",
+        "Add a code comment above the @export vars explaining: 'Assign custom mood images (e.g. expressive face sprites). When set, replaces the default colored circle for that mood. Leave null to use the default.'",
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "This is architecture-only — no actual emotion images are included. The textures are configured in the Godot editor by assigning resources to the exported properties on the PetSprite node."
     },
     {
       "id": "US-004",
-      "title": "Display standing area overlay in preview",
-      "description": "As a furniture creator, I want to see the standing area visualized in the preview alongside the interaction collision area.",
+      "title": "Create GlobalInput plugin folder structure and plugin.cfg",
+      "description": "As a developer, I want the GlobalInput GDExtension packaged as a standard Godot addons plugin with plugin.cfg so it can be enabled/disabled in Project Settings.",
       "acceptanceCriteria": [
-        "preview_display.gd gains standing_size and standing_offset properties",
-        "update_preview() accepts standing_size and standing_offset parameters",
-        "Standing area renders as a green semi-transparent rectangle (Color(0.2, 0.8, 0.2, 0.3)) with green outline",
-        "Interaction collision area continues to render in blue",
-        "Both rectangles visible simultaneously when both are defined",
-        "furniture_creator_panel.gd _update_preview() passes standing area values to the preview",
+        "Create addons/global_input/ directory",
+        "Create addons/global_input/plugin.cfg with: [plugin] name='GlobalInput', description='Captures system-wide keyboard and mouse input outside the Godot window', author='Amigos do Trabalho', version='1.0.0', script='plugin.gd'",
+        "Create addons/global_input/plugin.gd — an EditorPlugin script that adds GlobalInput as an autoload singleton in _enter_tree() and removes it in _exit_tree()",
+        "Move gdextension/src/ contents (global_input.h, global_input.cpp, global_input_linux.cpp, global_input_windows.cpp, register_types.h, register_types.cpp) to addons/global_input/src/",
+        "Move gdextension/SConstruct to addons/global_input/SConstruct",
+        "Move or copy compiled binaries from gdextension/bin/ to addons/global_input/bin/",
+        "Create addons/global_input/global_input.gdextension manifest with library paths relative to the plugin folder (e.g. res://addons/global_input/bin/...)",
+        "Remove the old root-level global_input.gdextension file and gdextension/ folder",
+        "Update project.godot to reference the new .gdextension path and enable the plugin",
+        "Verify GlobalInput singleton is still accessible from scripts/coin_system.gd (no code changes needed there if autoload name stays 'GlobalInput')",
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "The existing gdextension files are at /workspace/gdextension/ with manifest at /workspace/global_input.gdextension. The plugin.gd script should use add_autoload_singleton('GlobalInput', 'res://addons/global_input/global_input.gdextension') in _enter_tree() and remove_autoload_singleton('GlobalInput') in _exit_tree(). Check how the existing project references GlobalInput to ensure no breakage."
     },
     {
       "id": "US-005",
-      "title": "Mouse drag-to-move rectangles in preview",
-      "description": "As a furniture creator, I want to click and drag collision or standing rectangles in the preview to reposition them.",
+      "title": "Write GlobalInput plugin README",
+      "description": "As a developer adopting GlobalInput in another project, I want clear documentation on installation, building, and API usage.",
       "acceptanceCriteria": [
-        "preview_display.gd handles _gui_input for mouse events",
-        "Clicking inside a rectangle starts a drag operation that moves it",
-        "Dragging updates the rectangle position in real-time via _draw()",
-        "When drag ends, emit a signal with the new offset values (e.g., collision_offset_changed or standing_offset_changed)",
-        "furniture_creator_panel.gd connects to these signals and updates the corresponding offset spinboxes",
-        "If rectangles overlap, the smaller rectangle gets click priority",
-        "Cursor changes to CURSOR_MOVE when hovering over a draggable rectangle",
+        "Create addons/global_input/README.md",
+        "Section: Overview — what GlobalInput does (captures system-wide keyboard/mouse input outside Godot window for tracking user activity)",
+        "Section: Prerequisites — godot-cpp submodule, SCons, C++ compiler, platform deps (X11 + Xtst on Linux, user32 on Windows)",
+        "Section: Installation — copy addons/global_input/ to your project's addons/ folder, enable in Project > Project Settings > Plugins",
+        "Section: Building — SCons commands for Linux (scons platform=linux) and Windows (scons platform=windows), mention godot-cpp must be initialized",
+        "Section: API Reference — document all public methods: start_hooks(), stop_hooks(), get_key_count(), get_click_count(), reset_counts() with one-line descriptions",
+        "Section: Usage Example — GDScript snippet showing the polling pattern (timer, get counts, reset, convert to application logic)",
+        "Section: Platform Notes — Linux requires X11 (not Wayland), may need input group membership; Windows uses low-level hooks with message loop thread",
+        "Section: License — placeholder (e.g. 'MIT License — see LICENSE file')",
+        "Written in clear English, suitable for developers unfamiliar with the extension",
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "Reference the source files for accurate API docs: global_input.h for the public interface, global_input_linux.cpp for X11 details, global_input_windows.cpp for Windows hook details."
     },
     {
       "id": "US-006",
-      "title": "Mouse handle-to-resize rectangles in preview",
-      "description": "As a furniture creator, I want to drag edge/corner handles on rectangles to resize them visually.",
+      "title": "Write Amigos do Trabalho project README — overview, features, setup",
+      "description": "As a new contributor, I want a project README covering the overview, feature list, and setup instructions.",
       "acceptanceCriteria": [
-        "Each rectangle shows 8 small square handles (4 corners + 4 edge midpoints) when hovered or being edited",
-        "Handles are ~6px squares drawn on top of the rectangle outlines",
-        "Dragging a corner handle resizes from that corner (opposite corner stays fixed)",
-        "Dragging an edge handle resizes only in that axis",
-        "Emit signals with new size and offset values when resize ends",
-        "furniture_creator_panel.gd connects to signals and updates size + offset spinboxes",
-        "Minimum size enforced at 4×4 px to prevent zero-size rectangles",
-        "Cursor changes to appropriate resize cursor (CURSOR_HSIZE, CURSOR_VSIZE, CURSOR_FDIAGSIZE, CURSOR_BDIAGSIZE) when hovering handles",
+        "Create README.md at the project root (/workspace/README.md)",
+        "Section: Project Overview — Amigos do Trabalho is a desktop pet companion that lives on your screen as a transparent overlay, with a brief description of the concept",
+        "Section: Features — bullet list covering: transparent desktop overlay, pixel-art pet with state machine AI, furniture system with shop/inventory, coin economy driven by keyboard/mouse activity, mood system, multi-monitor support, multi-language support, save/load persistence, pet selection system, furniture creator editor plugin",
+        "Section: Installation & Running — Godot 4.6+ requirement, clone repo, open in Godot, build GlobalInput native extension (link to plugin README), run the project",
+        "Section: Code Organization — directory structure table listing key directories (scripts/, scenes/, pet/, furniture/, addons/, assets/) and their purposes, plus a table of key script files (main.gd, pet.gd, coin_system.gd, furniture.gd, furniture_data.gd, etc.) with one-line descriptions",
+        "Written in clear English",
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "This is part 1 of the README — covers overview and structure. Part 2 covers configuration and extensibility."
     },
     {
       "id": "US-007",
-      "title": "Parent furniture under existing Furnitures scene node",
-      "description": "As a developer, I want runtime furniture to be added under the Furnitures node already in main.tscn instead of a dynamically created FurnitureContainer.",
+      "title": "Write Amigos do Trabalho README — configuration, interactions, pet creation",
+      "description": "As a new contributor, I want the README to explain how furniture is configured, how pet interactions work, and how to create new pets.",
       "acceptanceCriteria": [
-        "In main.gd, replace dynamic FurnitureContainer creation with a reference to the existing Furnitures node in the scene tree (use $Furnitures or @onready)",
-        "Remove the _furniture_container = Node2D.new() / add_child / move_child code from _ready()",
-        "The Furnitures node in main.tscn may need to be changed from Node to Node2D if spatial parenting requires it",
-        "_spawn_furniture() and _spawn_furniture_at() add children to the Furnitures node (replace _furniture_container references)",
-        "Furniture renders behind the pet (Furnitures node is earlier in the scene tree than the pet)",
-        "All existing features work: edit mode highlighting, dragging, stacking, removal, passthrough rect calculation",
+        "Append to the existing README.md created in US-006",
+        "Section: Furniture Configuration — explain FurnitureData resource properties (id, display_name, texture, coin_cost, walkable, jumpable, interaction_type, cooldown, display_scale, collision overrides, standing overrides, stackable), explain .tres files in furniture/data/, mention the Furniture Creator editor plugin for visual editing",
+        "Section: Pet Interactions & Animations — explain the pet state machine (IDLE, WALKING, FALLING, DRAGGED, INTERACTING, JUMP_PREP, JUMPING), how states transition, how interaction_type on furniture triggers INTERACTING state, how animations map to states (idle, walk, jump_prep, jump, fall, interact, dragged), the coin reward system on interaction, cooldown mechanics",
+        "Section: Creating New Pets — explain the SpriteFrames resource format, required animation names (idle, walk, jump_prep, jump, fall, interact, dragged), the directory convention (pet/data/petname.tres), auto-discovery by pet_selection_panel.gd, sprite sheet format expectations (rows/columns, frame size)",
+        "Section: Save Data — explain user://save_data.json format (coins, furniture_positions, inventory, selected_pet, language, monitor, etc.)",
+        "Section: GlobalInput Extension — brief overview with pointer to addons/global_input/README.md for details",
+        "Written in clear English, accessible to developers unfamiliar with the project",
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "This continues the README from US-006. Together they should form a comprehensive 3-5 page document. Reference actual file paths and property names from the codebase."
+    },
+    {
+      "id": "US-008",
+      "title": "Delete bug screenshot folder",
+      "description": "As a developer, I want the temporary bug-erase-me folder cleaned up after analysis.",
+      "acceptanceCriteria": [
+        "Delete the /workspace/bug-erase-me/ directory and its contents (overlaping_bug.jpg)",
+        "Verify the directory no longer exists",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Simple cleanup task. The bug screenshot has been analyzed and the fix is captured in US-001."
     }
   ]
 }
