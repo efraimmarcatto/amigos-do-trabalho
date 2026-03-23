@@ -105,6 +105,7 @@ var _frustrated_timer: float = 0.0
 # Speech bubble for mood display
 var _bubble_panel: PanelContainer = null
 var _bubble_icon: TextureRect = null
+var _bubble_label: Label = null
 var _bubble_fade_tween: Tween = null
 var _sad_reminder_timer: Timer = null
 
@@ -520,6 +521,8 @@ func _show_frustrated_reaction() -> void:
 	if _bubble_panel and _bubble_icon:
 		if PetMood.SAD in _mood_textures:
 			_bubble_icon.texture = _mood_textures[PetMood.SAD]
+		if _bubble_label:
+			_bubble_label.text = _get_mood_text(PetMood.SAD)
 		_update_bubble_position()
 		if _bubble_fade_tween and _bubble_fade_tween.is_valid():
 			_bubble_fade_tween.kill()
@@ -792,11 +795,22 @@ func _build_speech_bubble() -> void:
 	style.content_margin_bottom = 6
 	_bubble_panel.add_theme_stylebox_override("panel", style)
 
+	var hbox := HBoxContainer.new()
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_theme_constant_override("separation", 4)
+	_bubble_panel.add_child(hbox)
+
 	_bubble_icon = TextureRect.new()
 	_bubble_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_bubble_icon.custom_minimum_size = Vector2(24, 24)
 	_bubble_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bubble_panel.add_child(_bubble_icon)
+	hbox.add_child(_bubble_icon)
+
+	_bubble_label = Label.new()
+	_bubble_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bubble_label.add_theme_font_size_override("font_size", 14)
+	_bubble_label.add_theme_color_override("font_color", Color(0.2, 0.2, 0.2))
+	hbox.add_child(_bubble_label)
 
 	add_child(_bubble_panel)
 	_update_bubble_position()
@@ -835,12 +849,25 @@ func _on_sad_reminder_timeout() -> void:
 		_start_sad_reminder()
 
 
+func _get_mood_text(mood: PetMood) -> String:
+	match mood:
+		PetMood.SAD:
+			return "Sad"
+		PetMood.NEUTRAL:
+			return "Neutral"
+		PetMood.HAPPY:
+			return "Happy"
+	return ""
+
+
 func _show_mood_bubble() -> void:
-	## Show the speech bubble with the current mood icon.
+	## Show the speech bubble with the current mood icon and text.
 	if not _bubble_panel or not _bubble_icon:
 		return
 	if _current_mood in _mood_textures:
 		_bubble_icon.texture = _mood_textures[_current_mood]
+	if _bubble_label:
+		_bubble_label.text = _get_mood_text(_current_mood)
 
 	_update_bubble_position()
 
