@@ -222,11 +222,11 @@ Game state is persisted to `user://save_data.json` with the following structure:
   "coins": 42,
   "pet_mood": 1,
   "furniture_positions": {
-    "sofa": { "x": 200.0, "y": 500.0 },
-    "toy": { "x": 400.0, "y": 500.0 }
+	"sofa": { "x": 200.0, "y": 500.0 },
+	"toy": { "x": 400.0, "y": 500.0 }
   },
   "inventory": {
-    "food_bowl": 2
+	"food_bowl": 2
   },
   "language": "en",
   "monitor": 0,
