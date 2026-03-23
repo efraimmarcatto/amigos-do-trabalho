@@ -50,6 +50,12 @@ enum PetMood { SAD, NEUTRAL, HAPPY }
 ## Max consecutive failed jump attempts before giving up on a furniture target
 @export var max_jump_attempts: int = 3
 
+# Assign custom mood images (e.g. expressive face sprites). When set, replaces
+# the default colored circle for that mood. Leave null to use the default.
+@export var sad_texture: Texture2D = null
+@export var neutral_texture: Texture2D = null
+@export var happy_texture: Texture2D = null
+
 ## Frame count per animation (defaults to sheet_columns if 0)
 @export var idle_frames: int = 0
 @export var walk_frames: int = 0
@@ -519,8 +525,9 @@ func _show_frustrated_reaction() -> void:
 	_frustrated_timer = randf_range(1.0, 2.0)
 	# Show SAD mood bubble for the frustration
 	if _bubble_panel and _bubble_icon:
-		if PetMood.SAD in _mood_textures:
-			_bubble_icon.texture = _mood_textures[PetMood.SAD]
+		var tex := _get_mood_texture(PetMood.SAD)
+		if tex:
+			_bubble_icon.texture = tex
 		if _bubble_label:
 			_bubble_label.text = _get_mood_text(PetMood.SAD)
 		_update_bubble_position()
@@ -860,12 +867,30 @@ func _get_mood_text(mood: PetMood) -> String:
 	return ""
 
 
+func _get_mood_texture(mood: PetMood) -> Texture2D:
+	## Return the exported custom texture for a mood if set, else the generated circle.
+	var custom: Texture2D = null
+	match mood:
+		PetMood.SAD:
+			custom = sad_texture
+		PetMood.NEUTRAL:
+			custom = neutral_texture
+		PetMood.HAPPY:
+			custom = happy_texture
+	if custom != null:
+		return custom
+	if mood in _mood_textures:
+		return _mood_textures[mood]
+	return null
+
+
 func _show_mood_bubble() -> void:
 	## Show the speech bubble with the current mood icon and text.
 	if not _bubble_panel or not _bubble_icon:
 		return
-	if _current_mood in _mood_textures:
-		_bubble_icon.texture = _mood_textures[_current_mood]
+	var tex := _get_mood_texture(_current_mood)
+	if tex:
+		_bubble_icon.texture = tex
 	if _bubble_label:
 		_bubble_label.text = _get_mood_text(_current_mood)
 
