@@ -39,7 +39,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "The mood bubble is built programmatically in pet.gd around line 776-802. _bubble_panel is a PanelContainer, _bubble_icon is a TextureRect. The bubble shows/hides with fade animations via tweens."
     },
     {

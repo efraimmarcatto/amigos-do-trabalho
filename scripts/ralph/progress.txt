@@ -3,6 +3,7 @@
 - `Geometry2D.merge_polygons()` can return hole polygons (clockwise winding) — always filter with `Geometry2D.is_polygon_clockwise()` and discard clockwise results
 - Git config has broken `gpg.format` — use `GIT_CONFIG_GLOBAL=/dev/null` prefix for all git commands
 - No `godot` CLI available in this environment — typecheck cannot be run automatically
+- Mood bubble is shown in two places in pet.gd: `_show_mood_bubble()` and the jump-fail frustration block (~line 520) — both must be updated when changing bubble content
 
 # Ralph Progress Log
 Started: Mon Mar 23 13:24:51 PDT 2026
@@ -19,4 +20,17 @@ Started: Mon Mar 23 13:24:51 PDT 2026
   - `Geometry2D.merge_polygons()` returns both outer contours (counter-clockwise) and holes (clockwise) — must filter with `Geometry2D.is_polygon_clockwise()`
   - The passthrough system collects rects from ~12 different UI sources (pet, bubble, coin HUD, menus, panels, furniture, arrow) — any new UI element needs to be added here
   - `Rect2.encloses()` is useful for detecting fully-contained rects
+---
+
+## 2026-03-23 - US-002
+- Added mood text label ("Sad", "Neutral", "Happy") to the pet's speech bubble
+- Wrapped `_bubble_icon` and new `_bubble_label` in an HBoxContainer inside `_build_speech_bubble()`
+- Added `_get_mood_text()` helper to map PetMood enum to display strings
+- Updated both `_show_mood_bubble()` and the frustration bubble (jump fail) to set label text
+- Files changed: scripts/pet.gd
+- **Learnings for future iterations:**
+  - The mood bubble is built programmatically in `_build_speech_bubble()` — no .tscn scene file
+  - There are two places that show the mood bubble: `_show_mood_bubble()` (normal) and the jump-fail frustration code (~line 520) — both must be updated when changing bubble content
+  - `PanelContainer` auto-sizes to fit its child, so using HBoxContainer inside it handles layout automatically
+  - `get_bubble_rect()` returns `_bubble_panel.size` which auto-adjusts, so passthrough stays correct
 ---
