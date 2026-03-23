@@ -1,0 +1,47 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/furniture_creator/furniture_creator_panel.gd" id="1_panel"]
+
+[node name="FurnitureCreatorPanel" type="MarginContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_panel")
+
+[node name="HSplit" type="HSplitContainer" parent="."]
+layout_mode = 2
+
+[node name="LeftPanel" type="VBoxContainer" parent="HSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.6
+
+[node name="Title" type="Label" parent="HSplit/LeftPanel"]
+layout_mode = 2
+text = "Furniture Creator"
+horizontal_alignment = 1
+
+[node name="FormScroll" type="ScrollContainer" parent="HSplit/LeftPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="FormContainer" type="VBoxContainer" parent="HSplit/LeftPanel/FormScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RightPanel" type="VBoxContainer" parent="HSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.4
+
+[node name="PreviewTitle" type="Label" parent="HSplit/RightPanel"]
+layout_mode = 2
+text = "Preview"
+horizontal_alignment = 1
+
+[node name="PreviewArea" type="Panel" parent="HSplit/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3

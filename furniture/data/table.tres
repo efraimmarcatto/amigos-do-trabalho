@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="FurnitureData" format=3 uid="uid://b4gpbbtech6t3"]
+
+[ext_resource type="Script" uid="uid://cs01pwuerwdb3" path="res://scripts/furniture_data.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://do2kxbeegx1hp" path="res://assets/Top-Down_Retro_Interior/TopDownHouse_FurnitureState1.png" id="2_bbahb"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_cb61e"]
+atlas = ExtResource("2_bbahb")
+region = Rect2(1, 32, 46, 30)
+
+[resource]
+script = ExtResource("1_script")
+id = "table"
+display_name = "Table"
+texture = SubResource("AtlasTexture_cb61e")
+coin_cost = 120
+walkable = true
+jumpable = true
+display_scale = Vector2(4, 4)
+stackable = true

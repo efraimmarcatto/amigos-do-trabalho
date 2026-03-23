@@ -1,0 +1,134 @@
+# Ralph Progress Log
+Started: Sat Mar 14 10:22:42 PDT 2026
+---
+
+## Codebase Patterns
+- coin_hud.gd `setup()` signature: `(floor_y, toggle_x, toggle_w)` — no menu_panel_h param
+- slide_menu.gd declares `menu_opened` and `menu_closed` signals but they are not currently connected in main.gd
+- When removing unused code, grep all `.gd` files to confirm no remaining references before committing
+- Furniture display_scale is accessed as `fnode.data.display_scale` (a Vector2 on FurnitureData)
+- All furniture is spawned as children of `_furniture_container` (Node2D, z_index=0), pet sprite has z_index=1
+- During edit mode, ALL left mouse clicks/releases must be consumed in `_handle_edit_input` to prevent slide_menu's `_unhandled_input` from auto-closing the menu
+- `_edit_mode_placement` flag in main.gd tracks placement initiated from edit mode — re-enters edit mode after placement
+- Shop and PetSelection panels use GridContainer for icon grids; columns set dynamically based on panel width
+- Shop buy popup uses named child nodes (ItemName, QtyLabel, CostLabel, BuyBtn, MinusBtn) accessed via `get_node()`
+- Inventory action popup uses named child nodes (ItemName, PlaceBtn, DiscardBtn, CancelBtn) accessed via `get_node()`
+- Inventory and Shop panels share the same grid cell pattern: VBoxContainer with Button (icon + overlay) inside
+- ConfirmationDialog positioning: use `.position = Vector2i(x, y)` + `.popup()` instead of `.popup_centered()` for custom placement
+- Stackable items use `_get_stacked_furniture_ids(base_id)` to find items on top — checks X bounds and Y proximity (8px tolerance)
+- `_get_walkable_furniture_at_x(x)` returns the walkable Furniture node whose X bounds contain a given x coordinate
+- EditorPlugin bottom panels: use `add_control_to_bottom_panel()` / `remove_control_from_bottom_panel()` in `_enter_tree()` / `_exit_tree()`
+- Plugin .tscn files should NOT include hardcoded uid — let Godot assign one on first load
+
+---
+
+## 2026-03-14 - US-034
+- Removed `animate_up()` and `animate_down()` methods from coin_hud.gd
+- Removed `_pos_tween` and `_menu_panel_height` variables from coin_hud.gd
+- Removed `menu_panel_h` parameter from `coin_hud.setup()`
+- Removed commented-out `coin_hud.animate_up()`/`animate_down()` calls and empty `_on_menu_opened`/`_on_menu_closed` handlers from main.gd
+- Disconnected `menu_opened`/`menu_closed` signal connections in main.gd (signals still exist in slide_menu.gd)
+- Updated both `coin_hud.setup()` call sites in main.gd (in `_ready` and `_on_monitor_changed`)
+- Files changed: `scripts/coin_hud.gd`, `scripts/main.gd`
+- **Learnings for future iterations:**
+  - coin_hud.gd has a `_get_rect()` method used by main.gd's `_update_passthrough()` for click-through polygon
+  - The `toggle_w` parameter in `setup()` is declared but unused — left as-is to minimize scope
+  - slide_menu signals (`menu_opened`/`menu_closed`) are part of slide_menu's API but currently have no consumers
+---
+
+## 2026-03-14 - US-035
+- Added `_furniture_container` (Node2D) created programmatically in `_ready()` with `z_index = 0`
+- Set `pet_sprite.z_index = 1` so pet always renders in front of furniture
+- Changed both `_spawn_furniture()` and `_spawn_furniture_at()` to add furniture as children of `_furniture_container` instead of the main Control node
+- Files changed: `scripts/main.gd`
+- **Learnings for future iterations:**
+  - `_furniture_nodes` dict references nodes directly, so changing the parent node doesn't break any dict operations
+  - `global_position` works correctly regardless of parent hierarchy since Node2D computes it from the scene root
+  - The FurnitureContainer must be Node2D (not Control) since Furniture extends Node2D
+---
+
+## 2026-03-14 - US-036
+- Consumed ALL left mouse click/release events in `_handle_edit_input` to prevent slide_menu's `_unhandled_input` from auto-closing the menu during edit mode
+- Increased remove button Y offset from -48.0 to -64.0 so it doesn't obstruct furniture view
+- Verified existing `_edit_mode_placement` flow already supports: entering placement from edit mode, re-entering edit mode after placement, and reopening the menu
+- Verified `_on_edit_layout_requested` already keeps inventory open when entering edit mode (only closes shop, settings, pet_selection)
+- Verified `_is_click_on_menu_or_panels` already passes through clicks on menu, inventory, and shop panels during edit mode
+- Files changed: `scripts/main.gd`
+- **Learnings for future iterations:**
+  - slide_menu's `_unhandled_input` closes menu on outside clicks — during edit mode, all clicks must be consumed in `_input` to prevent propagation
+  - The `_edit_mode_placement` flag + `_enter_edit_mode()`/`_exit_edit_mode()` pattern handles the full edit→place→edit flow
+  - `_is_click_on_menu_or_panels` is the gatekeeper for UI interactions during edit mode — add new panels there if needed
+---
+
+## 2026-03-14 - US-037
+- Replaced shop vertical list layout with responsive icon grid using GridContainer
+- Each grid cell shows furniture icon (48x48 in 64x64 cell) with price below
+- Hovering shows item name via tooltip_text
+- Clicking an icon opens a buy popup with quantity selector (+/-), total cost, and Buy/Cancel buttons
+- Buy flow preserved: quantity selection, coin validation, inventory add, coin deduction
+- Changed Items node in main.tscn from VBoxContainer to GridContainer with columns=3
+- Grid columns calculated dynamically based on panel width
+- Files changed: `scripts/shop.gd`, `scenes/main.tscn`
+- **Learnings for future iterations:**
+  - Shop public API used by main.gd: `setup()`, `open_shop()`, `close_shop()`, `is_shop_open()`, `get_close_duration()`, `get_furniture_data()`, `get_global_rect()` — preserve these when refactoring
+  - PetSelectionPanel already uses GridContainer pattern — follow the same approach for consistency
+  - Buy popup is a PanelContainer child of ShopPanel, uses named nodes (ItemName, QtyLabel, etc.) for updates via `get_node()`
+---
+
+## 2026-03-14 - US-038
+- Replaced inventory vertical list layout with responsive icon grid using GridContainer (matching shop pattern from US-037)
+- Each grid cell shows furniture icon (48x48 in 64x64 cell) with quantity badge (e.g., "x3") in top-right corner
+- Hovering shows item name via tooltip_text
+- Clicking an icon opens an action popup with Place, Discard, and Cancel buttons
+- Place and Discard actions preserved: place removes from inventory and emits place_requested, discard shows confirmation dialog with refund
+- Changed Items node in main.tscn from VBoxContainer to GridContainer with columns=3
+- Grid columns calculated dynamically based on panel width
+- Files changed: `scripts/inventory_panel.gd`, `scenes/main.tscn`
+- **Learnings for future iterations:**
+  - Inventory public API used by main.gd: `setup()`, `open_panel()`, `close_panel()`, `is_panel_open()`, `get_close_duration()`, `get_furniture_data()`, `get_global_rect()`, `place_requested` signal — preserve these when refactoring
+  - The action popup pattern (PanelContainer child with named nodes) is shared between shop (buy popup) and inventory (action popup)
+  - Quantity badge is a Label child of the Button with anchors preset to TOP_RIGHT and negative left offset
+---
+
+## 2026-03-14 - US-039
+- Changed discard confirmation dialog from `popup_centered()` to calculated position near inventory panel
+- Dialog positioned to the left of the inventory panel, vertically centered with the panel
+- Added screen edge clamping to prevent off-screen overflow
+- Files changed: `scripts/inventory_panel.gd`
+- **Learnings for future iterations:**
+  - ConfirmationDialog inherits Window — use `.position` (Vector2i) and `.popup()` instead of `.popup_centered()` for custom positioning
+  - `global_position` on the inventory panel gives the screen-space position needed for dialog placement
+  - `DisplayServer.screen_get_size()` returns screen dimensions for clamping
+---
+
+## 2026-03-14 - US-040
+- Added `stackable: bool` export var to FurnitureData with default false
+- Updated placement mode: stackable items snap Y to walkable furniture surface when mouse is within that furniture's X bounds
+- Added `_get_walkable_furniture_at_x()` helper to find walkable furniture by X coordinate
+- Added `_get_stacked_furniture_ids()` helper to find stackable items on top of a base furniture (by X bounds + Y proximity)
+- Edit mode drag: stacked items move with base furniture (dx applied to all stacked items)
+- Edit mode remove: stacked items are returned to inventory when base is removed
+- Marked toy and food_bowl .tres files as `stackable = true`
+- Also committed leftover display_scale adjustments (bookshelf/sofa → Vector2(4,4)) and slide_menu edit mode fix
+- Files changed: `scripts/furniture_data.gd`, `scripts/main.gd`, `furniture/data/toy.tres`, `furniture/data/food_bowl.tres`, `furniture/data/bookshelf.tres`, `furniture/data/sofa.tres`, `scripts/slide_menu.gd`
+- **Learnings for future iterations:**
+  - When getting stacked items before moving the base, fetch IDs first to avoid X-bound mismatch
+  - The 8px Y tolerance in `_get_stacked_furniture_ids` accounts for floating-point position drift
+  - `_is_overlap_with_other` only checks the dragged piece, not stacked items — stacked items ride along freely
+  - Non-stackable items remain floor-only; the placement Y calculation branches on `fdata.stackable`
+---
+
+## 2026-03-21 - US-001 (Furniture Creator Tool)
+- Created Godot 4 EditorPlugin in `addons/furniture_creator/`
+- `plugin.cfg` registers the plugin with name "Furniture Creator"
+- `plugin.gd` extends EditorPlugin, adds a bottom panel via `add_control_to_bottom_panel()`
+- `furniture_creator_panel.tscn` + `.gd` provide the panel UI (HSplitContainer with left form area and right preview area)
+- Enabled plugin in `project.godot` under `[editor_plugins]`
+- Also added `tasks/prd-furniture-creator-tool.md` (source PRD) and created `bkp/ralph/prd.json` for this feature
+- Files changed: `addons/furniture_creator/plugin.cfg`, `addons/furniture_creator/plugin.gd`, `addons/furniture_creator/furniture_creator_panel.gd`, `addons/furniture_creator/furniture_creator_panel.tscn`, `project.godot`, `tasks/prd-furniture-creator-tool.md`
+- **Learnings for future iterations:**
+  - Godot 4 plugins go in `addons/<plugin_name>/` with `plugin.cfg` + main `.gd` script
+  - Bottom panels are added with `add_control_to_bottom_panel(control, "Tab Title")` — must be removed in `_exit_tree()`
+  - No Godot binary available in this environment for typecheck — manual review of GDScript required
+  - The panel .tscn should not have a hardcoded uid — Godot assigns one when first loaded
+---

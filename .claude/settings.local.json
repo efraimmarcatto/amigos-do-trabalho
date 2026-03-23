@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python3 -m pip install scons 2>&1 | tail -5 && python3 -m scons --version)",
+      "Bash(apt-get install:*)",
+      "Bash(sudo apt-get:*)",
+      "Bash(which g++ gcc clang 2>/dev/null; dpkg -l | grep -E \"scons|python3-scons|build-essential\" 2>/dev/null | head -10)",
+      "Bash(dpkg -l | grep -E \"scons|libx11|libxtst|python3\" | head -20)",
+      "Bash(dpkg -l | grep -E \"libxtst|xtst\" | head -10)",
+      "Bash(sudo -n apt-get install -y scons libxtst-dev 2>&1)",
+      "Read(//etc/sudoers.d/**)",
+      "Bash(sudo -l)",
+      "Bash(which pip:*)",
+      "Bash(curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && python3 /tmp/get-pip.py --user 2>&1 | tail -5)",
+      "Bash(apt-cache show:*)",
+      "Bash(mkdir -p /workspace/scripts/ralph/archive/2026-03-13-desktop-pet-upgrade && cp /workspace/scripts/ralph/prd.json /workspace/scripts/ralph/progress.txt /workspace/scripts/ralph/archive/2026-03-13-desktop-pet-upgrade/)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(mkdir:*)"
+    ]
+  }
+}

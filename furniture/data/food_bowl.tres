@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="FurnitureData" format=3 uid="uid://b8vw7yrnjvt0c"]
+
+[ext_resource type="Script" uid="uid://cs01pwuerwdb3" path="res://scripts/furniture_data.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://bkt43cqhfr3r3" path="res://assets/Top-Down_Retro_Interior/TopDownHouse_SmallItems.png" id="2_42f6p"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7a27p"]
+atlas = ExtResource("2_42f6p")
+region = Rect2(51, 40, 10, 7)
+
+[resource]
+script = ExtResource("1_script")
+id = "food_bowl"
+display_name = "Food Bowl"
+texture = SubResource("AtlasTexture_7a27p")
+coin_cost = 50
+can_fall_off_edge = false
+interaction_type = "eat"
+interaction_coin_bonus = 10
+interaction_cooldown = 60.0
+discard_refund_ratio = 0.4
+display_scale = Vector2(4, 4)
+stackable = true

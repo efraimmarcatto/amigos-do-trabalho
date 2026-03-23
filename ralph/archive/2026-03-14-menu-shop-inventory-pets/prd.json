@@ -1,0 +1,237 @@
+{
+  "project": "Amigos do Trabalho - Desktop Virtual Pet",
+  "branchName": "ralph/menu-shop-inventory-pets",
+  "description": "Menu & HUD Overhaul, Shop & Inventory System, Settings, and Pet Enhancements - Redesigned coin HUD, bulk purchases, inventory, furniture removal, settings, pet selection, mood speech bubbles, and held animation.",
+  "userStories": [
+    {
+      "id": "US-020",
+      "title": "Coin HUD redesign - styled panel with icon and animated counter",
+      "description": "As a player, I want a game-style coin display (icon + animated counter, no label) positioned next to the menu toggle button so the HUD feels polished and integrated.",
+      "acceptanceCriteria": [
+        "Replace CoinLabel with a PanelContainer containing an HBoxContainer with a coin icon (TextureRect with placeholder yellow circle) and a numeric Label",
+        "No 'Coins:' text label — only the icon and the number",
+        "White/light background with rounded corners (StyleBoxFlat)",
+        "Positioned directly to the left of the menu toggle button at the bottom-right",
+        "Counter animates on value change using a Tween that counts up/down over ~0.3s",
+        "Coin HUD moves upward smoothly when the slide menu opens (same tween timing as menu panel)",
+        "Returns to original position when menu closes",
+        "Included in the mouse passthrough polygon via a get_rect() helper method",
+        "CoinLabel node and all old coin label positioning code removed from main.gd and main.tscn",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "This is a UI-only change. The CoinSystem node and signals remain unchanged — only the display changes. The coin HUD should be a sibling of SlideMenu or a child of a shared bottom-right anchor. Use slide_menu.gd's get_toggle_rect() to position relative to the toggle button."
+    },
+    {
+      "id": "US-021",
+      "title": "Shop window positioning adjacent to menu with chained animation",
+      "description": "As a player, I want the shop window to appear next to the menu in a smooth visual sequence so the UI feels cohesive.",
+      "acceptanceCriteria": [
+        "Shop panel appears adjacent to (left of) the slide menu panel, not overlapping it",
+        "Shop opens with a tween animation that starts after a slight delay (~0.1s) following the menu open",
+        "Shop closes before or simultaneously with the menu when the menu is closed",
+        "If the menu is closed while the shop is open, the shop closes first then the menu slides closed",
+        "Shop panel is included in the mouse passthrough polygon when visible",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "This may require refactoring shop.gd's show/hide logic to use tweened positioning instead of simple visibility toggling. The shop panel's X position should be calculated relative to the menu panel's left edge."
+    },
+    {
+      "id": "US-022",
+      "title": "Add discard_refund_ratio to FurnitureData and inventory data structure",
+      "description": "As a developer, I need the data model foundations for inventory and discard before building the UI.",
+      "acceptanceCriteria": [
+        "Add `discard_refund_ratio: float` export var to FurnitureData (default 0.5)",
+        "Update all existing .tres files in furniture/data/ with discard_refund_ratio values (table: 0.5, sofa: 0.5, food_bowl: 0.4, toy: 0.4, bookshelf: 0.6)",
+        "Add inventory management functions to main.gd or a new inventory_system.gd: add_to_inventory(furniture_id, quantity), remove_from_inventory(furniture_id, quantity), get_inventory_count(furniture_id), get_all_inventory()",
+        "Inventory stored as Dictionary[String, int] mapping furniture_id to quantity",
+        "Inventory persisted in save_data.json under 'inventory' key",
+        "Inventory loads on startup and saves on changes",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "This is the data layer only — no UI yet. The inventory system should be a separate node/script (inventory_system.gd) similar to coin_system.gd, emitting signals like inventory_changed(furniture_id, new_count) for UI binding."
+    },
+    {
+      "id": "US-023",
+      "title": "Bulk purchase with quantity selector in shop",
+      "description": "As a player, I want to buy multiple units of the same furniture item at once so I can furnish my space efficiently.",
+      "acceptanceCriteria": [
+        "Each shop item row includes a quantity selector: minus button, quantity label (default 1), plus button",
+        "Minimum quantity is 1, no maximum",
+        "Total cost displayed dynamically next to the Buy button (unit price × quantity)",
+        "Buy button purchases the selected quantity if player has enough coins",
+        "Purchased items go to inventory via inventory_system (not immediate placement)",
+        "Remove the 'Owned' state — items can always be purchased again (no single-purchase limit)",
+        "Coins deducted for full quantity on purchase",
+        "The shop emits a signal or calls inventory_system to add items",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Depends on US-022 for inventory_system. Remove the _owned array and related logic from shop.gd. The shop no longer tracks ownership — it just sells items that go into inventory."
+    },
+    {
+      "id": "US-024",
+      "title": "Inventory panel UI with place and discard actions",
+      "description": "As a player, I want an inventory panel to view stored furniture, place items, and discard unwanted ones for a partial refund.",
+      "acceptanceCriteria": [
+        "New 'Inventory' button added to the slide menu (between Shop and Edit Layout)",
+        "Inventory panel opens adjacent to menu (same positioning pattern as shop panel)",
+        "Panel displays all inventory items with: icon, name, quantity, Place button, Discard button",
+        "Items with 0 quantity are hidden from the list",
+        "Clicking 'Place' triggers placement mode for that furniture item (decrements inventory count by 1 on successful placement)",
+        "Clicking 'Discard' shows a confirmation with the refund amount (coin_cost × discard_refund_ratio)",
+        "Confirming discard: credits coins, decrements inventory count by 1",
+        "Inventory panel included in mouse passthrough polygon when visible",
+        "Inventory and Shop cannot be open simultaneously — opening one closes the other",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Depends on US-022 (inventory system) and US-023 (shop sends to inventory). Place action reuses existing placement mode in main.gd but sourced from inventory instead of shop. Discard needs a simple confirmation popup (ConfirmationDialog or custom panel)."
+    },
+    {
+      "id": "US-025",
+      "title": "Furniture removal in edit mode with Save Edit button",
+      "description": "As a player, I want to remove placed furniture during edit mode and send it to inventory, with a clear Save Edit button.",
+      "acceptanceCriteria": [
+        "Each furniture piece shows a remove button (X icon) above or beside it when edit mode is active",
+        "Clicking the remove button removes the furniture from the scene and adds it to inventory (increments count by 1)",
+        "If the pet was standing on the removed furniture, pet enters FALLING state",
+        "The 'Edit Layout' button changes label to 'Save Edit' during edit mode (or a new prominent button appears)",
+        "Clicking 'Save Edit' exits edit mode and persists all changes (positions + removals)",
+        "Pressing Escape also exits edit mode and persists changes (existing behavior preserved)",
+        "Remove buttons are included in mouse passthrough polygon during edit mode",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Depends on US-022 (inventory system). The remove button can be a small Button node added as a child of the furniture scene dynamically when edit mode starts, removed when edit mode ends. Pet falling: check if pet's current surface furniture was removed and force FALLING state."
+    },
+    {
+      "id": "US-026",
+      "title": "Store-to-inventory chest icon during placement mode",
+      "description": "As a player, I want to store a furniture item directly into inventory during placement mode instead of placing it.",
+      "acceptanceCriteria": [
+        "A chest/inventory icon button is visible in a fixed UI position during placement mode",
+        "Clicking the chest icon cancels placement and sends the item to inventory (no coin refund — item is kept)",
+        "Right-click during placement also sends the item to inventory instead of refunding coins",
+        "Escape during placement also sends the item to inventory instead of refunding coins",
+        "The old refund-on-cancel behavior is fully removed",
+        "Chest icon button included in passthrough polygon during placement mode",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Depends on US-022 (inventory system). Modifies existing placement mode logic in main.gd. The key change: cancel no longer refunds coins, it stores to inventory. The chest button is an additional explicit way to do the same thing."
+    },
+    {
+      "id": "US-027",
+      "title": "Settings panel with language selection",
+      "description": "As a player, I want to select my preferred language from a settings menu so the game displays text in my language.",
+      "acceptanceCriteria": [
+        "'Settings' button in slide menu replaces the 'Settings (coming soon)' placeholder label",
+        "Settings panel opens adjacent to menu (same positioning pattern as shop/inventory)",
+        "Language section with a dropdown (OptionButton) listing available languages: English, Português",
+        "Create translation CSV file at res://translations/ with keys for all UI strings (menu buttons, shop labels, etc.)",
+        "Changing language calls TranslationServer.set_locale() and updates all UI text immediately",
+        "Selected language persisted in save_data.json under 'language' key",
+        "Language loaded and applied on startup",
+        "Settings panel included in mouse passthrough polygon when visible",
+        "Opening Settings closes Shop and Inventory panels",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Use Godot's built-in TranslationServer with CSV translation files. All hardcoded UI strings need to be replaced with tr() calls. The settings panel script should be similar in structure to shop.gd."
+    },
+    {
+      "id": "US-028",
+      "title": "Settings - monitor selection",
+      "description": "As a player, I want to choose which monitor the game renders on so I can position my desktop pet on my preferred screen.",
+      "acceptanceCriteria": [
+        "Monitor selection section added to the existing settings panel (below language)",
+        "Dropdown (OptionButton) lists all connected displays using DisplayServer.screen_get_count()",
+        "Each entry shows: 'Monitor N — WxH' (e.g., 'Monitor 1 — 1920×1080')",
+        "Selecting a monitor calls DisplayServer.window_set_current_screen(index) to move the window",
+        "Floor Y is recalculated via _compute_floor_y() after monitor change",
+        "All placed furniture repositioned: clamped to new screen bounds, Y set to new floor_y",
+        "Pet position clamped to new screen bounds",
+        "Selected monitor index persisted in save_data.json under 'monitor' key",
+        "Falls back to primary monitor (index 0) if saved monitor index exceeds screen_get_count()",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Depends on US-027 (settings panel exists). DisplayServer.window_set_current_screen() moves the window. After moving, must recompute floor_y and reposition everything. Consider that screen sizes differ between monitors."
+    },
+    {
+      "id": "US-029",
+      "title": "Pet selection UI driven by SpriteFrames resources",
+      "description": "As a player, I want to select my pet from a menu so I can choose my companion.",
+      "acceptanceCriteria": [
+        "'Select Pet' button added to the slide menu",
+        "Pet selection panel opens with a scrollable grid layout (GridContainer inside ScrollContainer)",
+        "Pets discovered dynamically by scanning res://pet/ directory for .tres SpriteFrames files using DirAccess",
+        "Each pet entry shows: preview sprite (first frame of 'idle' animation from the SpriteFrames) and pet name (derived from filename without extension, capitalized)",
+        "UI scales to any number of pets — scrollable grid with consistent thumbnail sizes",
+        "Selecting a pet swaps pet_sprite.sprite_frames on the AnimatedSprite2D node",
+        "Currently selected pet has a visible highlight/border",
+        "Selected pet persisted in save_data.json under 'selected_pet' key (stores filename without extension)",
+        "Ozzy is the default if no selection is saved or saved pet file is missing",
+        "Pet selection panel included in mouse passthrough polygon when visible",
+        "Opening pet selection closes Shop, Inventory, and Settings panels",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "The pet.gd currently builds SpriteFrames from a sprite_sheet texture via _setup_animations(). When swapping pets, load the .tres SpriteFrames directly and assign to sprite_frames property, bypassing _setup_animations(). May need to refactor pet.gd to support both modes (sprite sheet setup vs pre-built SpriteFrames)."
+    },
+    {
+      "id": "US-030",
+      "title": "Pet mood speech bubble with context-aware frequency",
+      "description": "As a player, I want my pet to show mood via image-based speech bubbles so I can understand how it feels without color tinting.",
+      "acceptanceCriteria": [
+        "Speech bubble node added as a child of PetSprite: a small Panel with a TextureRect for the mood image",
+        "Bubble positioned above the pet's head, follows pet movement",
+        "Mood images loaded from assets directory (placeholder icons: happy face, neutral face, sad/hungry face — can be simple colored circles initially)",
+        "Bubble appears on mood change events (coin threshold crossings between SAD/NEUTRAL/HAPPY)",
+        "Bubble appears after interactions (feed, play, sleep) showing the resulting mood",
+        "For SAD/hungry mood: bubble reappears at random intervals between 15-45 seconds as a reminder",
+        "For other moods: bubble only appears on change or interaction, not recurring",
+        "Bubble auto-hides after 3-5 seconds with a fade-out tween (modulate alpha 1.0 → 0.0)",
+        "Remove ALL existing modulate color changes from pet mood system (no more blue tint for SAD, green for HAPPY)",
+        "Pet sprite modulate stays at Color(1,1,1,1) at all times regardless of mood",
+        "Bubble included in mouse passthrough polygon when visible",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "The current mood system in pet.gd applies modulate tints — these must be completely removed. The speech bubble replaces all visual mood feedback. Use a Timer node for the random SAD reminder interval. The bubble should use Tween for fade animations."
+    },
+    {
+      "id": "US-031",
+      "title": "Pet dragged animation - exclusive animation for being held",
+      "description": "As a player, I want my pet to play a unique 'dragged' animation when I'm holding/dragging it so the interaction feels alive.",
+      "acceptanceCriteria": [
+        "When pet enters DRAGGED state, play the 'dragged' animation (already named 'dragged' in current code)",
+        "Create a distinct 'dragged' animation in the SpriteFrames that is visually different from idle (e.g., different row or programmatic variant)",
+        "'dragged' animation loops while the pet is held",
+        "On release (DRAGGED → FALLING), reverts to 'fall' animation",
+        "For Ozzy's sprite sheet: define 'dragged' animation using a dedicated row (row index configurable via export var held_row/dragged_row)",
+        "The _setup_animations() method builds the 'dragged' animation from its own sprite sheet row",
+        "If the dragged row is not available or has no frames, falls back to 'idle'",
+        "Works with any pet SpriteFrames — animation name convention is 'dragged'",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "The animation is named 'dragged' (not 'held'). Currently dragged reuses idle frames — this story makes it a distinct animation from its own sprite sheet row. Update _setup_animations() to build 'dragged' from a configurable dragged_row export var. The _change_state() DRAGGED case already plays 'dragged', so the main work is making the animation visually distinct."
+    }
+  ]
+}

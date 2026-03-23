@@ -1,0 +1,19 @@
+# Ralph Progress Log
+Started: Mon Mar 23 2026
+---
+
+## Codebase Patterns
+- Use `GIT_CONFIG_GLOBAL=/dev/null` with `-c user.name=... -c user.email=...` to work around broken gpg.format in .gitconfig
+- No typecheck tooling available for this Godot project — verify GDScript syntax manually
+- FurnitureData is a Resource class in scripts/furniture_data.gd; runtime node is Furniture in scripts/furniture.gd
+- Furniture Area2D `input_pickable` must be false — it's only for collision detection
+- Existing furniture .tres files: bookshelf, food_bowl, sofa, table, toy in furniture/data/
+- collision_size_override and collision_offset default to Vector2.ZERO — when zero, auto-sizing behavior is used
+- Passthrough system is in scripts/main.gd _update_passthrough() — collects rects from all interactive elements, merges into polygon, applies to window
+- Mood bubble built programmatically in scripts/pet.gd — PanelContainer with TextureRect icon, shows/hides with tween fade
+- GlobalInput GDExtension uses X11 XRecord on Linux, low-level hooks on Windows — polled by coin_system.gd every 1 second
+- Pet state machine in scripts/pet.gd: IDLE, WALKING, FALLING, DRAGGED, INTERACTING, JUMP_PREP, JUMPING
+- All editor plugin scripts must use @tool annotation
+- Pet SpriteFrames resources go in pet/data/ — auto-discovered by pet_selection_panel.gd
+
+---

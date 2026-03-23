@@ -1,12 +1,20 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene format=3 uid="uid://3qa75a5f4k1n"]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
-[ext_resource type="Texture2D" path="res://icon.svg" id="2_icon"]
-[ext_resource type="Script" path="res://scripts/coin_system.gd" id="3_coin"]
-[ext_resource type="Script" path="res://scripts/pet.gd" id="4_pet"]
-[ext_resource type="Script" path="res://scripts/interaction_menu.gd" id="5_menu"]
+[ext_resource type="Script" uid="uid://dkrliu7mhixev" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Texture2D" uid="uid://3kqr8fwd6ogi" path="res://icon.svg" id="2_icon"]
+[ext_resource type="SpriteFrames" uid="uid://cycsjda3go0wd" path="res://pet/data/ozzy.tres" id="2_tipki"]
+[ext_resource type="Script" uid="uid://dpvfgdkx7o4i0" path="res://scripts/coin_system.gd" id="3_coin"]
+[ext_resource type="Script" uid="uid://cs3du000k83pc" path="res://scripts/pet.gd" id="4_pet"]
+[ext_resource type="Script" uid="uid://buwscas5p16ym" path="res://scripts/interaction_menu.gd" id="5_menu"]
+[ext_resource type="Script" uid="uid://bqf6tu0fytkmq" path="res://scripts/shop.gd" id="6_shop"]
+[ext_resource type="Script" uid="uid://bye0way64lndc" path="res://scripts/slide_menu.gd" id="7_slide_menu"]
+[ext_resource type="Script" uid="uid://bfgwabfrbqboc" path="res://scripts/coin_hud.gd" id="8_coin_hud"]
+[ext_resource type="Script" uid="uid://dprlm267y1b6r" path="res://scripts/inventory_system.gd" id="9_inventory"]
+[ext_resource type="Script" uid="uid://elcwav4wt0tg" path="res://scripts/inventory_panel.gd" id="10_inv_panel"]
+[ext_resource type="Script" uid="uid://dhjk5tifpht32" path="res://scripts/settings_panel.gd" id="11_settings_panel"]
+[ext_resource type="Script" uid="uid://doi8dbowi14tq" path="res://scripts/pet_selection_panel.gd" id="12_pet_panel"]
 
-[node name="Main" type="Control"]
+[node name="Main" type="Control" unique_id=222507356]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -15,43 +23,231 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
-[node name="PetSprite" type="Sprite2D" parent="."]
-position = Vector2(200, 200)
-scale = Vector2(0.5, 0.5)
-texture = ExtResource("2_icon")
-script = ExtResource("4_pet")
+[node name="Furnitures" type="Node2D" parent="." unique_id=1962725627]
 
-[node name="CoinSystem" type="Node" parent="."]
+[node name="PetSprite" type="AnimatedSprite2D" parent="." unique_id=1104589341]
+position = Vector2(960, 1016)
+scale = Vector2(2, 2)
+sprite_frames = ExtResource("2_tipki")
+animation = &"dragged"
+autoplay = "idle"
+frame = 3
+script = ExtResource("4_pet")
+sprite_sheet = ExtResource("2_icon")
+
+[node name="CoinSystem" type="Node" parent="." unique_id=757001182]
 script = ExtResource("3_coin")
 
-[node name="CoinLabel" type="Label" parent="."]
-offset_left = 160.0
-offset_top = 260.0
-offset_right = 240.0
-offset_bottom = 280.0
-horizontal_alignment = 1
-text = "Coins: 0"
+[node name="InventorySystem" type="Node" parent="." unique_id=1087357402]
+script = ExtResource("9_inventory")
 
-[node name="InteractionMenu" type="PanelContainer" parent="."]
+[node name="CoinHud" type="PanelContainer" parent="." unique_id=1693477468]
+layout_mode = 0
+script = ExtResource("8_coin_hud")
+
+[node name="InteractionMenu" type="PanelContainer" parent="." unique_id=1796754085]
 visible = false
-offset_left = 240.0
-offset_top = 155.0
-offset_right = 370.0
-offset_bottom = 245.0
+layout_mode = 0
+offset_left = 1000.0
+offset_top = 960.0
+offset_right = 1130.0
+offset_bottom = 1050.0
 script = ExtResource("5_menu")
 
-[node name="VBox" type="VBoxContainer" parent="InteractionMenu"]
+[node name="VBox" type="VBoxContainer" parent="InteractionMenu" unique_id=1498219325]
 layout_mode = 2
 
-[node name="Title" type="Label" parent="InteractionMenu/VBox"]
+[node name="Title" type="Label" parent="InteractionMenu/VBox" unique_id=344591713]
 layout_mode = 2
 text = "Pet Actions"
 horizontal_alignment = 1
 
-[node name="FeedButton" type="Button" parent="InteractionMenu/VBox"]
+[node name="FeedButton" type="Button" parent="InteractionMenu/VBox" unique_id=97462417]
 layout_mode = 2
 text = "Feed (10 coins)"
 
-[node name="PlayButton" type="Button" parent="InteractionMenu/VBox"]
+[node name="PlayButton" type="Button" parent="InteractionMenu/VBox" unique_id=277471368]
 layout_mode = 2
 text = "Play (15 coins)"
+
+[node name="SlideMenu" type="Control" parent="." unique_id=415961158]
+anchors_preset = 0
+script = ExtResource("7_slide_menu")
+
+[node name="ToggleButton" type="Button" parent="SlideMenu" unique_id=711266759]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+text = "☰"
+
+[node name="MenuPanel" type="PanelContainer" parent="SlideMenu" unique_id=573443583]
+layout_mode = 0
+offset_right = 180.0
+offset_bottom = 160.0
+
+[node name="VBox" type="VBoxContainer" parent="SlideMenu/MenuPanel" unique_id=1550490150]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="SlideMenu/MenuPanel/VBox" unique_id=381363098]
+layout_mode = 2
+text = "Menu"
+horizontal_alignment = 1
+
+[node name="ShopButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=1175814831]
+layout_mode = 2
+text = "Shop"
+
+[node name="InventoryButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=1573490699]
+layout_mode = 2
+text = "Inventory"
+
+[node name="EditLayoutButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=1970582982]
+layout_mode = 2
+text = "Edit Layout"
+
+[node name="PetButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=139138969]
+layout_mode = 2
+text = "Select Pet"
+
+[node name="Separator" type="HSeparator" parent="SlideMenu/MenuPanel/VBox" unique_id=1705390882]
+layout_mode = 2
+
+[node name="SettingsButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=1835984327]
+layout_mode = 2
+text = "Settings"
+
+[node name="ExitButton" type="Button" parent="SlideMenu/MenuPanel/VBox" unique_id=996134682]
+layout_mode = 2
+text = "Exit"
+
+[node name="ShopPanel" type="PanelContainer" parent="." unique_id=759142325]
+visible = false
+layout_mode = 0
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 350.0
+offset_bottom = 400.0
+script = ExtResource("6_shop")
+
+[node name="VBox" type="VBoxContainer" parent="ShopPanel" unique_id=561217778]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="ShopPanel/VBox" unique_id=1388983363]
+layout_mode = 2
+text = "Furniture Shop"
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="ShopPanel/VBox" unique_id=1159981069]
+layout_mode = 2
+text = "Close"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ShopPanel/VBox" unique_id=594806675]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Items" type="GridContainer" parent="ShopPanel/VBox/ScrollContainer" unique_id=1588207456]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 3
+
+[node name="InventoryPanel" type="PanelContainer" parent="." unique_id=1219940549]
+visible = false
+layout_mode = 0
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 350.0
+offset_bottom = 400.0
+script = ExtResource("10_inv_panel")
+
+[node name="VBox" type="VBoxContainer" parent="InventoryPanel" unique_id=1228246473]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="InventoryPanel/VBox" unique_id=450139010]
+layout_mode = 2
+text = "Inventory"
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="InventoryPanel/VBox" unique_id=872446535]
+layout_mode = 2
+text = "Close"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="InventoryPanel/VBox" unique_id=1842349814]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Items" type="GridContainer" parent="InventoryPanel/VBox/ScrollContainer" unique_id=1366408448]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 3
+
+[node name="ConfirmDialog" type="ConfirmationDialog" parent="InventoryPanel" unique_id=1884183393]
+title = "Confirm Discard"
+size = Vector2i(300, 100)
+
+[node name="SettingsPanel" type="PanelContainer" parent="." unique_id=1371832605]
+visible = false
+layout_mode = 0
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 350.0
+offset_bottom = 400.0
+script = ExtResource("11_settings_panel")
+
+[node name="VBox" type="VBoxContainer" parent="SettingsPanel" unique_id=1754607590]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="SettingsPanel/VBox" unique_id=222915586]
+layout_mode = 2
+text = "Settings"
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="SettingsPanel/VBox" unique_id=851703004]
+layout_mode = 2
+text = "Close"
+
+[node name="LanguageLabel" type="Label" parent="SettingsPanel/VBox" unique_id=956782997]
+layout_mode = 2
+text = "Language"
+
+[node name="LanguageDropdown" type="OptionButton" parent="SettingsPanel/VBox" unique_id=1867478886]
+layout_mode = 2
+
+[node name="MonitorLabel" type="Label" parent="SettingsPanel/VBox" unique_id=2116354895]
+layout_mode = 2
+text = "Monitor"
+
+[node name="MonitorDropdown" type="OptionButton" parent="SettingsPanel/VBox" unique_id=413967208]
+layout_mode = 2
+
+[node name="PetSelectionPanel" type="PanelContainer" parent="." unique_id=1352778634]
+visible = false
+layout_mode = 0
+offset_left = 10.0
+offset_top = 50.0
+offset_right = 350.0
+offset_bottom = 400.0
+script = ExtResource("12_pet_panel")
+
+[node name="VBox" type="VBoxContainer" parent="PetSelectionPanel" unique_id=999651126]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PetSelectionPanel/VBox" unique_id=983554574]
+layout_mode = 2
+text = "Select Pet"
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="PetSelectionPanel/VBox" unique_id=1924048903]
+layout_mode = 2
+text = "Close"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="PetSelectionPanel/VBox" unique_id=562164359]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Grid" type="GridContainer" parent="PetSelectionPanel/VBox/ScrollContainer" unique_id=717372417]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 3

@@ -1,0 +1,31 @@
+# Ralph Progress Log
+Started: Thu Mar 12 2026
+---
+
+## Codebase Patterns
+- Godot 4.6 project using GL Compatibility renderer
+- GDScript files go in `scripts/`, scene files in `scenes/`
+- Use `GIT_CONFIG_NOSYSTEM=1 HOME=/tmp git -c user.name="Efraim Marcatto" -c user.email="esilva@fastprobr.com"` for all git commands (broken .gitconfig in container)
+- No Godot CLI available in container — cannot run automated GDScript syntax checks
+- Project name: "Amigos do Trabalho"
+- icon.svg (128x128) used as placeholder pet texture
+- GDExtension C++ files go in `gdextension/src/`, binaries in `gdextension/bin/`
+- `.gdextension` config file lives in project root (global_input.gdextension)
+- GlobalInput singleton registered via register_types.cpp using Engine::register_singleton
+- SConstruct expects godot-cpp at `gdextension/godot-cpp/` or via GODOT_CPP_PATH env var
+- Platform-specific start_hooks/stop_hooks are compiled via #ifdef guards; global_input.cpp has fallback for unsupported platforms
+- Use `_increment_key_count()` and `_increment_click_count()` public helpers to increment counters from platform hook callbacks
+- Autoload singletons in project.godot use `*` prefix: `GlobalInput="*res://scripts/mock_global_input.gd"`
+- GlobalInput API: `get_key_count()`, `get_click_count()`, `reset_counts()` — poll via Timer, then reset
+- CoinSystem API: `get_coins()`, `set_coins()`, `add_coins()`, `spend_coins(amount) -> bool`, signal `coins_changed(new_total: int)`
+- CoinSystem is a child node of Main scene (access via `$CoinSystem`), not an autoload
+- Pet script (pet.gd) is on PetSprite (Sprite2D) node — access siblings via `get_parent().get_node()`
+- Pet states: SAD (<10 coins), NEUTRAL (10-49), HAPPY (>=50) — uses modulate color tinting
+- Scene .tscn ext_resource IDs follow pattern: "1_main", "2_icon", "3_coin", "4_pet", "5_menu", etc.
+- InteractionMenu API: `show_menu(pos)`, signal `interaction_performed(name)` — positioned dynamically relative to pet
+- Passthrough polygon in main.gd must be expanded to include any visible popup UI
+- Save/load uses `user://save_data.json` with JSON class; JSON.parse() returns numbers as float — cast to int when needed
+- Furniture data resources go in `furniture/data/` as .tres files
+- Furniture scene: `scenes/furniture.tscn` with `scripts/furniture.gd`
+
+---

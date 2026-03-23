@@ -1,0 +1,214 @@
+{
+  "project": "Amigos do Trabalho - Desktop Virtual Pet",
+  "branchName": "ralph/menu-shop-inventory-pets",
+  "description": "Polish & Fixes Round 2 - Furniture scale/z-ordering, edit mode workflow, icon grid layouts, click passthrough, pet jump timeout, exit button, and first-launch hint.",
+  "userStories": [
+    {
+      "id": "US-032",
+      "title": "Furniture display scale configuration on FurnitureData",
+      "description": "As a developer, I want to configure the display scale of each furniture type in its FurnitureData resource so pixel art renders at the correct size.",
+      "acceptanceCriteria": [
+        "Add `display_scale: Vector2` export var to FurnitureData with default Vector2(1, 1)",
+        "When furniture is spawned in main.gd (_spawn_furniture or equivalent), set the Sprite2D scale to furniture_data.display_scale",
+        "The CollisionShape2D scales proportionally with the sprite (multiply shape extents by display_scale)",
+        "Update all existing .tres files in furniture/data/ with appropriate display_scale values (start with Vector2(2, 2) for all items since they are small pixel art)",
+        "Scale is applied consistently whether placing from inventory or loading from save",
+        "Pet surface calculations (get_surface_y, get_left_x, get_right_x) account for the display_scale",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "The furniture sprite is set in furniture.gd's setup() method. Apply display_scale there to both the Sprite2D and the CollisionShape2D. The collision shape is a RectangleShape2D whose extents are computed from the texture size — multiply by display_scale. Also update get_surface_y(), get_left_x(), get_right_x() in furniture.gd to account for scale."
+    },
+    {
+      "id": "US-033",
+      "title": "Exit game button in slide menu",
+      "description": "As a player, I want an exit button in the menu so I can close the application without using the taskbar.",
+      "acceptanceCriteria": [
+        "Add 'Exit' button to the slide menu below the Settings button",
+        "Remove excess empty panel area below the new button (tighten panel_height if needed)",
+        "Clicking the button calls get_tree().quit()",
+        "Button uses the same style as existing menu buttons",
+        "Add translation keys EXIT_BUTTON for English ('Exit') and Portuguese ('Sair') in translations.csv",
+        "Update _update_all_ui_text() in settings_panel.gd to refresh the Exit button text",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Add the button in slide_menu.gd after SettingsButton. Connect its pressed signal to get_tree().quit(). The panel_height export var on slide_menu controls the menu size — adjust so there's no excess space below Exit."
+    },
+    {
+      "id": "US-034",
+      "title": "Remove coin animation code and keep HUD static",
+      "description": "As a developer, I want the commented-out coin animation code removed and the coin HUD to stay in its fixed position at all times.",
+      "acceptanceCriteria": [
+        "Delete the animate_up() and animate_down() methods from coin_hud.gd",
+        "Delete the _pos_tween variable and _menu_panel_height variable from coin_hud.gd",
+        "Remove the menu_panel_h parameter from coin_hud.setup() since it's no longer needed",
+        "Remove the commented-out coin_hud.animate_up() and coin_hud.animate_down() calls in main.gd _on_menu_opened/_on_menu_closed",
+        "Remove the pass statements left behind in _on_menu_opened/_on_menu_closed (or remove the methods entirely if they do nothing else)",
+        "Update all calls to coin_hud.setup() in main.gd to remove the menu_panel_h argument",
+        "Coin HUD remains in its initial fixed position at all times",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Currently animate_up/animate_down are commented out in main.gd but the methods still exist in coin_hud.gd. Clean up both sides. The _on_menu_opened and _on_menu_closed methods in main.gd may have other logic — check before removing entirely. The setup() call appears in _ready() and _on_monitor_changed()."
+    },
+    {
+      "id": "US-035",
+      "title": "Furniture z-ordering behind pet using FurnitureContainer",
+      "description": "As a player, I want furniture to always render behind the pet so the pet is never obscured.",
+      "acceptanceCriteria": [
+        "Add a Node2D named 'FurnitureContainer' to the main scene (or create it programmatically in main.gd _ready)",
+        "Set FurnitureContainer z_index to a value lower than the pet sprite's z_index (e.g., furniture z_index=0, pet z_index=1)",
+        "All furniture spawning (from inventory placement and from save load) adds furniture as children of FurnitureContainer instead of directly to the scene root",
+        "Edit mode drag, remove buttons, and all furniture operations work correctly with the new parent node",
+        "Pet is always visible in front of all furniture pieces regardless of position",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Currently furniture is added as a child of the main Control node via add_child(). Change to _furniture_container.add_child(). The FurnitureContainer should be a Node2D (not Control) since furniture nodes are Node2D. Set z_index on both the container and the pet sprite. Check _furniture_nodes dict operations still work since they reference the node directly, not via parent."
+    },
+    {
+      "id": "US-036",
+      "title": "Edit mode - keep menu visible and allow inventory access",
+      "description": "As a player, I want the menu and Save Edit button to remain visible during edit mode, and to grab items from inventory to place them while editing.",
+      "acceptanceCriteria": [
+        "The slide menu is NOT hidden/closed when entering edit mode — it stays visible and interactive",
+        "The 'Save Edit' button text is always visible during edit mode (existing behavior, just ensure menu stays open)",
+        "The player can click the Inventory button in the menu during edit mode to open the inventory panel",
+        "Selecting an item from inventory during edit mode places it in the scene (same as normal placement but within edit mode context)",
+        "After placing an item from inventory during edit mode, the player returns to edit mode (not normal mode)",
+        "The remove/send-to-inventory button ('X') on each furniture is positioned above the furniture sprite height so it doesn't obstruct the furniture view — use a larger vertical offset",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Currently _on_edit_layout_requested() in main.gd closes all panels before entering edit mode. Change this to keep the menu open. The inventory panel close can also be skipped. The remove button position is set when creating the Button in edit mode — increase the Y offset so it's further above the sprite. When placement finishes during edit mode, re-enter edit mode instead of returning to normal mode. May need a flag like _edit_mode_placement to track this."
+    },
+    {
+      "id": "US-037",
+      "title": "Shop icon grid layout with price and hover tooltip",
+      "description": "As a player, I want the shop to display items as a responsive icon grid with prices below icons and names on hover.",
+      "acceptanceCriteria": [
+        "Replace the shop's vertical list layout with a responsive icon grid using GridContainer or FlowContainer",
+        "Number of columns adapts to panel width (fill as many icons as fit, e.g., 64px per cell with spacing)",
+        "Each grid cell shows the furniture texture/thumbnail at a consistent size (e.g., 48x48 or 64x64)",
+        "The item price (coin cost) is displayed below each icon",
+        "Hovering over an item shows the item name in a tooltip (use Godot's built-in tooltip_text property)",
+        "Clicking an item opens a small buy interface (popover or inline) with quantity selector and Buy button",
+        "The buy flow still works: select quantity, buy, items go to inventory, coins deducted",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "The current shop.gd builds rows with HBoxContainer per item. Replace with a GridContainer inside a ScrollContainer. Each cell is a VBoxContainer with: TextureRect (icon), Label (price). Use tooltip_text on the cell for the name. For the buy interface, consider a small popup panel that appears when clicking an icon, with quantity controls and a Buy button. Alternatively, clicking could select the item and show buy controls at the bottom of the shop panel."
+    },
+    {
+      "id": "US-038",
+      "title": "Inventory icon grid layout with quantity badge and hover tooltip",
+      "description": "As a player, I want the inventory to display items as a responsive icon grid with quantity badges and names on hover.",
+      "acceptanceCriteria": [
+        "Replace the inventory's vertical list layout with a responsive icon grid (same style as shop grid from US-037)",
+        "Number of columns adapts to panel width",
+        "Each grid cell shows the furniture texture/thumbnail at a consistent size",
+        "A quantity badge (e.g., 'x3') is shown in the corner of each icon",
+        "No price is shown in inventory (unlike shop)",
+        "Hovering over an item shows the item name in a tooltip",
+        "Clicking an item opens a small action interface with Place and Discard buttons",
+        "Place and Discard actions work as before (place enters placement mode, discard shows confirmation)",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Depends on US-037 for consistent visual style. Follow the same grid pattern from shop. The quantity badge can be a small Label positioned in the top-right corner of the cell with a dark background. Action interface on click: small popup with Place and Discard buttons, or selection + bottom action bar."
+    },
+    {
+      "id": "US-039",
+      "title": "Discard confirmation popup positioned near menu",
+      "description": "As a player, I want the discard confirmation popup to appear near the menu instead of screen center.",
+      "acceptanceCriteria": [
+        "Discard confirmation dialog appears near the inventory panel / slide menu area (bottom-right quadrant of screen)",
+        "Dialog position is calculated relative to the inventory panel's position",
+        "Dialog does not overflow off-screen edges",
+        "Confirm and Cancel buttons work as before",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "The discard confirmation is a ConfirmationDialog in inventory_panel.gd. ConfirmationDialog inherits from AcceptDialog which inherits from Window. Set its position using the popup's position property before showing it. Calculate position relative to the inventory panel's global position."
+    },
+    {
+      "id": "US-040",
+      "title": "Furniture stacking flag for decorative items",
+      "description": "As a developer, I want a stackable flag on FurnitureData so certain items like clocks and mugs can be placed on top of other furniture.",
+      "acceptanceCriteria": [
+        "Add `stackable: bool` export var to FurnitureData with default false",
+        "During placement mode, if the item is stackable and the mouse is over an existing walkable furniture piece, snap the preview Y to that furniture's surface Y",
+        "Non-stackable items can only be placed on the floor (existing behavior unchanged)",
+        "Stacked items save their absolute position (existing save format works)",
+        "During edit mode, dragging a base furniture piece also moves any items stacked on top of it",
+        "Removing a base furniture piece in edit mode also sends stacked items back to inventory",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Placement mode in main.gd constrains Y to floor_y. For stackable items, also check if mouse X is within any walkable furniture's X bounds, and if so, use that furniture's surface_y as the Y constraint. For edit mode drag/remove of stacked items, track parent-child relationships or use position overlap detection."
+    },
+    {
+      "id": "US-041",
+      "title": "Pet jump timeout with frustrated reaction",
+      "description": "As a player, I want my pet to stop trying to jump on furniture after repeated failures and show a brief frustrated reaction.",
+      "acceptanceCriteria": [
+        "Add `max_jump_attempts: int` export var to pet.gd (default 3, editable in Godot editor)",
+        "Pet tracks consecutive failed jump attempts toward the same furniture target",
+        "After max_jump_attempts failures, the pet gives up on that furniture target",
+        "On giving up, pet shows a frustrated/sad mood bubble (use existing speech bubble system)",
+        "After the reaction (1-2 seconds), pet resumes normal WALKING state on its current surface",
+        "Failed-attempt counter resets when the pet successfully jumps or targets different furniture",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "The pet jump logic is in pet.gd. Look for where the pet attempts jumps and detects failures (lands back on same surface without reaching target). Add a counter per target furniture ID. The mood bubble can be triggered via the existing show_mood_bubble() or similar method with the SAD mood."
+    },
+    {
+      "id": "US-042",
+      "title": "Fix mouse click passthrough using actual object shapes",
+      "description": "As a player, I want clicks to pass through to the desktop in empty spaces between objects instead of being blocked by invisible bounding rectangles.",
+      "acceptanceCriteria": [
+        "The passthrough polygon in _update_passthrough() is built from individual object rects (pet sprite, each furniture piece, each visible UI panel) rather than one large HUD bounding rectangle",
+        "Empty space between furniture pieces allows clicks to pass through to the desktop",
+        "Empty space between the pet and the menu allows clicks to pass through",
+        "All interactive UI elements (menu toggle, open panels, coin HUD) still correctly block clicks",
+        "All furniture pieces still correctly block clicks for pet interaction",
+        "Pet sprite still blocks clicks for dragging",
+        "The passthrough polygon is a PackedVector2Array built by combining individual rectangles as separate polygon regions",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Currently _update_passthrough() in main.gd collects rects and likely merges them into one bounding polygon. Instead, build the polygon as the outline of each individual rect appended sequentially. Godot's mouse_passthrough_polygon can represent multiple disconnected regions by using degenerate connecting edges (zero-width bridges between rects) or by listing each rect's 4 corners in sequence. Test that clicks between objects pass through correctly."
+    },
+    {
+      "id": "US-043",
+      "title": "Game start state fix and animated menu hint arrow",
+      "description": "As a player, I want the game to start with settings closed and see a brief animated arrow pointing to the menu on first launch.",
+      "acceptanceCriteria": [
+        "The settings panel is NOT visible on game start (ensure visible = false in _ready or in the .tscn)",
+        "On game start, if 'has_seen_menu_hint' is not true in save_data.json, show an animated arrow pointing at the hamburger menu button",
+        "The arrow is a simple sprite (triangle/chevron) with a bouncing/pulsing Tween animation",
+        "The arrow auto-disappears after a configurable duration (export var `hint_arrow_duration: float` in seconds, default 5.0, editable in Godot editor)",
+        "The arrow disappears immediately if the player opens the menu before the timer expires",
+        "After the arrow is shown (whether timed out or dismissed by menu open), save 'has_seen_menu_hint: true' in save_data.json",
+        "On subsequent launches, the arrow is not shown",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "The settings panel may be getting opened during _load_state() or _ready() due to a bug — check the initialization flow. The arrow can be a programmatically created Sprite2D or TextureRect positioned near the menu toggle button. Use a Tween with a looping bounce (position.y oscillation). Connect to slide_menu's menu_opened signal to dismiss early."
+    }
+  ]
+}

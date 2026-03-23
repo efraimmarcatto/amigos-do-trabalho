@@ -1,0 +1,21 @@
+# Ralph Progress Log
+Started: Fri Mar 13 2026
+---
+
+## Codebase Patterns
+- Passthrough polygon in main.gd `_update_passthrough()` must use `.abs()` on all Rect2 values before `.merge()` — Godot Rect2 can have negative dimensions from `get_global_rect()`
+- GDScript files live in `/workspace/scripts/`, scenes in `/workspace/scenes/`
+- No Godot binary is available in this dev environment — manual typecheck verification needed
+- Furniture system: FurnitureData resources in `/workspace/furniture/data/`, Furniture scene at `/workspace/scenes/furniture.tscn`
+- Floor Y is computed from `DisplayServer.screen_get_usable_rect()` in main.gd and shared to pet via `pet_sprite.floor_y` — all ground-level logic must use `floor_y` not `screen_get_size().y`
+- Slide menu in `scripts/slide_menu.gd` exposes `get_toggle_rect()` and `get_panel_rect()` for passthrough polygon inclusion — future UI panels should follow this pattern
+- When replacing UI elements, update both the `.tscn` node tree AND the `@onready` references in the parent script
+- To capture all input (disable passthrough), set `get_window().mouse_passthrough_polygon = PackedVector2Array()` and skip `_update_passthrough()` in `_process()`
+- Pet can be paused externally via `pet_sprite.paused = true` — `_process()` early-returns, keeping pet frozen in current state
+- AnimatedSprite2D uses `sprite_frames` not `texture` — use `get_sprite_size()` helper for frame dimensions instead of `texture.get_size()`
+- Animation states: idle, walk, jump_prep, jump, fall, interact — played via `_play_anim()` in `_change_state()`
+- Pet jump states: JUMP_PREP (pause before launch) → JUMPING (arc with gravity) — `_jump_target_furniture` tracks the destination
+- FurnitureData `jumpable` flag controls whether pet can jump onto furniture; jumpable implies walkable
+- Furniture .tres resources live in `/workspace/furniture/data/`, NOT `/workspace/resources/furniture/`
+---
+

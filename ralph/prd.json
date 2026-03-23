@@ -1,0 +1,152 @@
+{
+  "project": "DesktopPet",
+  "branchName": "ralph/passthrough-mood-plugin-readme",
+  "description": "Fix passthrough polygon transparency bug, add mood text to bubble, package GlobalInput as plugin, write project READMEs",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Fix passthrough polygon merge to eliminate transparency holes",
+      "description": "As a user, I want overlapping sprites (pet + furniture) to remain fully visible so the desktop doesn't show through them.",
+      "acceptanceCriteria": [
+        "In _update_passthrough() in scripts/main.gd, refactor the polygon merge logic so overlapping rects produce a solid union with no interior holes",
+        "Use an iterative merge approach: start with the first polygon, then merge each subsequent polygon into the accumulated result using Geometry2D.merge_polygons()",
+        "When Geometry2D.merge_polygons() returns multiple polygons (disjoint islands), keep all of them in the accumulator and merge the next polygon against each island",
+        "Filter out rects with zero width or zero height before converting to polygons",
+        "Filter out duplicate or fully-contained rects that could create merge artifacts",
+        "The existing anchor-point path stitching (connecting disjoint islands through Vector2.ZERO for Linux stability) must still work correctly after the merge refactor",
+        "Verify: when pet sprite overlaps with sofa or any furniture, no transparent region appears — the overlapping area is fully opaque",
+        "Verify: clicking in the gap between two non-overlapping sprites still passes through to the desktop",
+        "No regression in passthrough for all existing UI elements: coin HUD, interaction menu, slide menu, shop, inventory, settings, pet selection, mood bubble, furniture, menu hint arrow",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "The bug is confirmed via screenshot: where pet overlaps sofa, a transparent hole appears showing the desktop. The root cause is that Geometry2D.merge_polygons() can produce holes when polygons share interior regions and the winding order creates a subtraction. The fix must detect and discard inner/hole polygons (clockwise winding) from the merge result."
+    },
+    {
+      "id": "US-002",
+      "title": "Add emotion text label to pet mood bubble",
+      "description": "As a user, I want to see a text label ('Sad', 'Neutral', 'Happy') in the pet's mood bubble so I can understand the pet's emotional state without guessing what the colors mean.",
+      "acceptanceCriteria": [
+        "In scripts/pet.gd, add a Label node to the mood bubble layout (inside _bubble_panel) that displays the mood name",
+        "Text values: 'Sad' for PetMood.SAD, 'Neutral' for PetMood.NEUTRAL, 'Happy' for PetMood.HAPPY",
+        "Use an HBoxContainer inside _bubble_panel to arrange the mood icon (TextureRect) and the text label side by side",
+        "Text must be legible: use a font size of at least 12px, dark text color (e.g. Color(0.2, 0.2, 0.2)) against the white bubble background",
+        "Text updates when mood changes (in _update_mood_display or equivalent)",
+        "The colored circle icon is still displayed alongside the text",
+        "Bubble panel size adjusts automatically to fit both icon and text (HBoxContainer handles this)",
+        "get_bubble_rect() still returns the correct rect for the new bubble size so passthrough remains correct",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "The mood bubble is built programmatically in pet.gd around line 776-802. _bubble_panel is a PanelContainer, _bubble_icon is a TextureRect. The bubble shows/hides with fade animations via tweens."
+    },
+    {
+      "id": "US-003",
+      "title": "Add exported texture properties for future emotion images",
+      "description": "As a developer, I want to configure emotion images via exported node properties on the pet so images can be added later without code changes.",
+      "acceptanceCriteria": [
+        "Add three @export properties to pet.gd: sad_texture: Texture2D, neutral_texture: Texture2D, happy_texture: Texture2D — all defaulting to null",
+        "In the mood display update logic, when a texture is assigned (non-null) for the current mood, set _bubble_icon.texture to that exported texture instead of the generated colored circle",
+        "When the exported texture is null for a mood, fall back to the existing generated colored circle texture from _build_mood_textures()",
+        "The text label (from US-002) is always shown regardless of whether an image or colored circle is used",
+        "Add a code comment above the @export vars explaining: 'Assign custom mood images (e.g. expressive face sprites). When set, replaces the default colored circle for that mood. Leave null to use the default.'",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "This is architecture-only — no actual emotion images are included. The textures are configured in the Godot editor by assigning resources to the exported properties on the PetSprite node."
+    },
+    {
+      "id": "US-004",
+      "title": "Create GlobalInput plugin folder structure and plugin.cfg",
+      "description": "As a developer, I want the GlobalInput GDExtension packaged as a standard Godot addons plugin with plugin.cfg so it can be enabled/disabled in Project Settings.",
+      "acceptanceCriteria": [
+        "Create addons/global_input/ directory",
+        "Create addons/global_input/plugin.cfg with: [plugin] name='GlobalInput', description='Captures system-wide keyboard and mouse input outside the Godot window', author='Amigos do Trabalho', version='1.0.0', script='plugin.gd'",
+        "Create addons/global_input/plugin.gd — an EditorPlugin script that adds GlobalInput as an autoload singleton in _enter_tree() and removes it in _exit_tree()",
+        "Move gdextension/src/ contents (global_input.h, global_input.cpp, global_input_linux.cpp, global_input_windows.cpp, register_types.h, register_types.cpp) to addons/global_input/src/",
+        "Move gdextension/SConstruct to addons/global_input/SConstruct",
+        "Move or copy compiled binaries from gdextension/bin/ to addons/global_input/bin/",
+        "Create addons/global_input/global_input.gdextension manifest with library paths relative to the plugin folder (e.g. res://addons/global_input/bin/...)",
+        "Remove the old root-level global_input.gdextension file and gdextension/ folder",
+        "Update project.godot to reference the new .gdextension path and enable the plugin",
+        "Verify GlobalInput singleton is still accessible from scripts/coin_system.gd (no code changes needed there if autoload name stays 'GlobalInput')",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "The existing gdextension files are at /workspace/gdextension/ with manifest at /workspace/global_input.gdextension. The plugin.gd script should use add_autoload_singleton('GlobalInput', 'res://addons/global_input/global_input.gdextension') in _enter_tree() and remove_autoload_singleton('GlobalInput') in _exit_tree(). Check how the existing project references GlobalInput to ensure no breakage."
+    },
+    {
+      "id": "US-005",
+      "title": "Write GlobalInput plugin README",
+      "description": "As a developer adopting GlobalInput in another project, I want clear documentation on installation, building, and API usage.",
+      "acceptanceCriteria": [
+        "Create addons/global_input/README.md",
+        "Section: Overview — what GlobalInput does (captures system-wide keyboard/mouse input outside Godot window for tracking user activity)",
+        "Section: Prerequisites — godot-cpp submodule, SCons, C++ compiler, platform deps (X11 + Xtst on Linux, user32 on Windows)",
+        "Section: Installation — copy addons/global_input/ to your project's addons/ folder, enable in Project > Project Settings > Plugins",
+        "Section: Building — SCons commands for Linux (scons platform=linux) and Windows (scons platform=windows), mention godot-cpp must be initialized",
+        "Section: API Reference — document all public methods: start_hooks(), stop_hooks(), get_key_count(), get_click_count(), reset_counts() with one-line descriptions",
+        "Section: Usage Example — GDScript snippet showing the polling pattern (timer, get counts, reset, convert to application logic)",
+        "Section: Platform Notes — Linux requires X11 (not Wayland), may need input group membership; Windows uses low-level hooks with message loop thread",
+        "Section: License — placeholder (e.g. 'MIT License — see LICENSE file')",
+        "Written in clear English, suitable for developers unfamiliar with the extension",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Reference the source files for accurate API docs: global_input.h for the public interface, global_input_linux.cpp for X11 details, global_input_windows.cpp for Windows hook details."
+    },
+    {
+      "id": "US-006",
+      "title": "Write Amigos do Trabalho project README — overview, features, setup",
+      "description": "As a new contributor, I want a project README covering the overview, feature list, and setup instructions.",
+      "acceptanceCriteria": [
+        "Create README.md at the project root (/workspace/README.md)",
+        "Section: Project Overview — Amigos do Trabalho is a desktop pet companion that lives on your screen as a transparent overlay, with a brief description of the concept",
+        "Section: Features — bullet list covering: transparent desktop overlay, pixel-art pet with state machine AI, furniture system with shop/inventory, coin economy driven by keyboard/mouse activity, mood system, multi-monitor support, multi-language support, save/load persistence, pet selection system, furniture creator editor plugin",
+        "Section: Installation & Running — Godot 4.6+ requirement, clone repo, open in Godot, build GlobalInput native extension (link to plugin README), run the project",
+        "Section: Code Organization — directory structure table listing key directories (scripts/, scenes/, pet/, furniture/, addons/, assets/) and their purposes, plus a table of key script files (main.gd, pet.gd, coin_system.gd, furniture.gd, furniture_data.gd, etc.) with one-line descriptions",
+        "Written in clear English",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "This is part 1 of the README — covers overview and structure. Part 2 covers configuration and extensibility."
+    },
+    {
+      "id": "US-007",
+      "title": "Write Amigos do Trabalho README — configuration, interactions, pet creation",
+      "description": "As a new contributor, I want the README to explain how furniture is configured, how pet interactions work, and how to create new pets.",
+      "acceptanceCriteria": [
+        "Append to the existing README.md created in US-006",
+        "Section: Furniture Configuration — explain FurnitureData resource properties (id, display_name, texture, coin_cost, walkable, jumpable, interaction_type, cooldown, display_scale, collision overrides, standing overrides, stackable), explain .tres files in furniture/data/, mention the Furniture Creator editor plugin for visual editing",
+        "Section: Pet Interactions & Animations — explain the pet state machine (IDLE, WALKING, FALLING, DRAGGED, INTERACTING, JUMP_PREP, JUMPING), how states transition, how interaction_type on furniture triggers INTERACTING state, how animations map to states (idle, walk, jump_prep, jump, fall, interact, dragged), the coin reward system on interaction, cooldown mechanics",
+        "Section: Creating New Pets — explain the SpriteFrames resource format, required animation names (idle, walk, jump_prep, jump, fall, interact, dragged), the directory convention (pet/data/petname.tres), auto-discovery by pet_selection_panel.gd, sprite sheet format expectations (rows/columns, frame size)",
+        "Section: Save Data — explain user://save_data.json format (coins, furniture_positions, inventory, selected_pet, language, monitor, etc.)",
+        "Section: GlobalInput Extension — brief overview with pointer to addons/global_input/README.md for details",
+        "Written in clear English, accessible to developers unfamiliar with the project",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "This continues the README from US-006. Together they should form a comprehensive 3-5 page document. Reference actual file paths and property names from the codebase."
+    },
+    {
+      "id": "US-008",
+      "title": "Delete bug screenshot folder",
+      "description": "As a developer, I want the temporary bug-erase-me folder cleaned up after analysis.",
+      "acceptanceCriteria": [
+        "Delete the /workspace/bug-erase-me/ directory and its contents (overlaping_bug.jpg)",
+        "Verify the directory no longer exists",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Simple cleanup task. The bug screenshot has been analyzed and the fix is captured in US-001."
+    }
+  ]
+}

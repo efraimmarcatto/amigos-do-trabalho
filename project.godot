@@ -17,16 +17,18 @@ config/icon="res://icon.svg"
 
 [display]
 
-window/size/viewport_width=400
-window/size/viewport_height=400
-window/size/transparent=true
+window/size/viewport_width=1920
+window/size/viewport_height=1080
 window/size/borderless=true
 window/size/always_on_top=true
+window/size/transparent=true
+window/size/window_width_override=1920
+window/size/window_height_override=1080
 window/per_pixel_transparency/allowed=true
 
-[autoload]
+[editor_plugins]
 
-GlobalInput="*res://scripts/mock_global_input.gd"
+enabled=PackedStringArray("res://addons/furniture_creator/plugin.cfg", "res://addons/global_input/plugin.cfg")
 
 [physics]
 
@@ -34,6 +36,7 @@ GlobalInput="*res://scripts/mock_global_input.gd"
 
 [rendering]
 
+textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
