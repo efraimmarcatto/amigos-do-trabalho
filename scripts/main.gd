@@ -812,104 +812,132 @@ func _is_overlap_with_other(furniture_id: String, x_pos: float) -> bool:
 			return true
 	return false
 
-
 func _update_passthrough() -> void:
-	# Godot's mouse_passthrough_polygon: if set, only the area INSIDE the polygon
-	# receives mouse events; everything outside is passed through.
-	# We build individual rects for each interactive element and connect them
-	# with zero-width bridges so clicks pass through empty space between objects.
-
 	var rects: Array[Rect2] = []
 
-	# Include pet sprite rect
+	# --- 1. COLETA DE DADOS (Mantendo sua lógica de detecção) ---
 	if pet_sprite and pet_sprite.sprite_frames:
 		var pet_pos: Vector2 = pet_sprite.global_position
 		var tex_size: Vector2 = pet_sprite.get_sprite_size() * pet_sprite.scale
-		var half_size: Vector2 = tex_size / 2.0
-		rects.append(Rect2(pet_pos - half_size, tex_size))
+		rects.append(Rect2(pet_pos - (tex_size / 2.0), tex_size))
 
-	# Include mood speech bubble when visible
 	if pet_sprite:
 		var bubble_rect = pet_sprite.get_bubble_rect()
-		if bubble_rect.size.x > 0:
-			rects.append(bubble_rect)
+		if bubble_rect.size.x > 0: rects.append(bubble_rect)
 
-	# Include coin HUD rect
 	if coin_hud and coin_hud.visible:
 		rects.append(coin_hud.get_rect())
 
-	# Include interaction menu when visible
 	if interaction_menu and interaction_menu.visible:
 		rects.append(interaction_menu.get_global_rect())
 
-	# Include slide menu toggle button (always visible)
 	if slide_menu:
 		var toggle_rect = slide_menu.get_toggle_rect()
-		if toggle_rect.size.x > 0:
-			rects.append(toggle_rect)
+		if toggle_rect.size.x > 0: rects.append(toggle_rect)
 		var panel_rect = slide_menu.get_panel_rect()
-		if panel_rect.size.x > 0:
-			rects.append(panel_rect)
+		if panel_rect.size.x > 0: rects.append(panel_rect)
 
-	# Include shop panel when open
 	if shop_panel and shop_panel.is_shop_open():
 		rects.append(shop_panel.get_global_rect())
 
-	# Include inventory panel when open
 	if inventory_panel and inventory_panel.is_panel_open():
 		rects.append(inventory_panel.get_global_rect())
 
-	# Include settings panel when open
 	if settings_panel and settings_panel.is_panel_open():
 		rects.append(settings_panel.get_global_rect())
 
-	# Include pet selection panel when open
 	if pet_selection_panel and pet_selection_panel.is_panel_open():
 		rects.append(pet_selection_panel.get_global_rect())
 
-	# Include hint arrow when visible
 	if _hint_arrow and is_instance_valid(_hint_arrow):
-		var arrow_pos: Vector2 = _hint_arrow.global_position
 		var arrow_size: Vector2 = Vector2(24, 24) * _hint_arrow.scale
-		var arrow_half: Vector2 = arrow_size / 2.0
-		rects.append(Rect2(arrow_pos - arrow_half, arrow_size))
+		rects.append(Rect2(_hint_arrow.global_position - (arrow_size / 2.0), arrow_size))
 
-	# Include all spawned furniture
 	for fid in _furniture_nodes:
 		var fnode: Furniture = _furniture_nodes[fid]
 		if fnode and fnode.data and fnode.data.texture:
-			var fpos: Vector2 = fnode.global_position
 			var ftex_size: Vector2 = fnode.data.texture.get_size() * fnode.data.display_scale
-			var fhalf: Vector2 = ftex_size / 2.0
-			rects.append(Rect2(fpos - fhalf, ftex_size))
+			rects.append(Rect2(fnode.global_position - (ftex_size / 2.0), ftex_size))
+
+	# Filter out rects with zero width or zero height
+	rects = rects.filter(func(r: Rect2) -> bool: return r.abs().size.x > 0 and r.abs().size.y > 0)
+
+	# Filter out duplicate or fully-contained rects that could create merge artifacts
+	var filtered_rects: Array[Rect2] = []
+	for i in rects.size():
+		var dominated := false
+		var r_i := rects[i].abs()
+		for j in rects.size():
+			if i == j: continue
+			var r_j := rects[j].abs()
+			if r_j.encloses(r_i):
+				# r_i is fully contained in r_j — skip r_i
+				dominated = true
+				break
+		if not dominated:
+			filtered_rects.append(rects[i])
+	rects = filtered_rects
 
 	if rects.is_empty():
 		get_window().mouse_passthrough_polygon = PackedVector2Array()
 		return
 
-	# Build polygon from individual rects connected by round-trip zero-width
-	# bridges from a common anchor point. Each rect is traced as:
-	#   anchor → tl → tr → br → bl → tl → (back to anchor for next rect)
-	# The bridge edges (anchor→tl and tl→anchor) overlap in opposite directions,
-	# so they cancel out in ray-casting point-in-polygon tests — only the rect
-	# interiors count as "inside" the polygon.
-	var polygon: PackedVector2Array = PackedVector2Array()
-	var anchor: Vector2 = rects[0].abs().position
-	for i in range(rects.size()):
-		var r := rects[i].abs()
-		var tl := r.position
-		var tr := Vector2(r.end.x, r.position.y)
-		var br := r.end
-		var bl := Vector2(r.position.x, r.end.y)
-		polygon.append(anchor)
-		polygon.append(tl)
-		polygon.append(tr)
-		polygon.append(br)
-		polygon.append(bl)
-		polygon.append(tl)
-	# Polygon auto-closes back to anchor (first point)
+	# --- 2. Convert rects to polygons ---
+	var individual_polys: Array[PackedVector2Array] = []
+	for r in rects:
+		var r_abs = r.abs()
+		individual_polys.append(PackedVector2Array([
+			r_abs.position,
+			Vector2(r_abs.end.x, r_abs.position.y),
+			r_abs.end,
+			Vector2(r_abs.position.x, r_abs.end.y)
+		]))
 
-	get_window().mouse_passthrough_polygon = polygon
+	# --- 3. Iterative polygon merge (fixes overlapping transparency bug) ---
+	var merged_polys: Array[PackedVector2Array] = []
+	for new_poly in individual_polys:
+		if merged_polys.is_empty():
+			merged_polys.append(new_poly)
+			continue
+
+		var temp_list: Array[PackedVector2Array] = []
+		var poly_to_merge = new_poly
+
+		for existing in merged_polys:
+			var result = Geometry2D.merge_polygons(existing, poly_to_merge)
+			# Filter out hole polygons (clockwise winding) — these cause
+			# transparent regions when overlapping shapes share interior area
+			var outer_polys: Array[PackedVector2Array] = []
+			for p in result:
+				if not Geometry2D.is_polygon_clockwise(p):
+					outer_polys.append(p)
+			if outer_polys.size() == 1:
+				# Merged into a single outer polygon
+				poly_to_merge = outer_polys[0]
+			elif outer_polys.size() == 0:
+				# Shouldn't happen, but keep the existing polygon as fallback
+				temp_list.append(existing)
+			else:
+				# Disjoint islands — keep existing islands, continue merging new poly
+				temp_list.append(existing)
+
+		temp_list.append(poly_to_merge)
+		merged_polys = temp_list
+
+	# --- 4. MONTAGEM DO CAMINHO FINAL (CONECTANDO ILHAS) ---
+	var final_path: PackedVector2Array = PackedVector2Array()
+	var anchor = Vector2.ZERO # Âncora estática para estabilidade no Linux
+
+	for poly in merged_polys:
+		if poly.is_empty(): continue
+		final_path.append(anchor)
+		for point in poly:
+			final_path.append(point)
+		final_path.append(poly[0]) # Fecha o contorno da ilha
+		final_path.append(anchor)  # Retorna para a âncora
+
+	# Aplica o polígono final à janela
+	get_window().mouse_passthrough_polygon = final_path
 
 
 func _input(event: InputEvent) -> void:
