@@ -4,6 +4,9 @@
 - Git config has broken `gpg.format` — use `GIT_CONFIG_GLOBAL=/dev/null` prefix for all git commands
 - No `godot` CLI available in this environment — typecheck cannot be run automatically
 - Mood bubble is shown in two places in pet.gd: `_show_mood_bubble()` and the jump-fail frustration block (~line 520) — both must be updated when changing bubble content
+- Use `_get_mood_texture(mood)` to get the correct texture for a mood — it checks exported custom textures first, then falls back to generated circles
+- Godot plugins live in addons/<name>/ with plugin.cfg + plugin.gd; enable in project.godot [editor_plugins] section
+- GlobalInput is now at addons/global_input/ — scripts reference it by autoload singleton name "GlobalInput", not file path
 
 # Ralph Progress Log
 Started: Mon Mar 23 13:24:51 PDT 2026
@@ -33,4 +36,81 @@ Started: Mon Mar 23 13:24:51 PDT 2026
   - There are two places that show the mood bubble: `_show_mood_bubble()` (normal) and the jump-fail frustration code (~line 520) — both must be updated when changing bubble content
   - `PanelContainer` auto-sizes to fit its child, so using HBoxContainer inside it handles layout automatically
   - `get_bubble_rect()` returns `_bubble_panel.size` which auto-adjusts, so passthrough stays correct
+---
+
+## 2026-03-23 - US-003
+- Added three @export properties: sad_texture, neutral_texture, happy_texture (all Texture2D, default null)
+- Added `_get_mood_texture()` helper that returns exported texture if set, else falls back to generated colored circle
+- Updated `_show_mood_bubble()` and frustration block to use `_get_mood_texture()` instead of directly accessing `_mood_textures`
+- Added comment above exports explaining usage
+- Files changed: scripts/pet.gd
+- **Learnings for future iterations:**
+  - The `_get_mood_texture()` helper centralizes texture selection — use it instead of accessing `_mood_textures` directly
+  - Both mood display sites (normal + frustration) now go through the same helper, so future texture logic changes only need one update
+---
+
+## 2026-03-23 - US-004
+- Packaged GlobalInput GDExtension as a standard Godot addons plugin
+- Created addons/global_input/ with plugin.cfg, plugin.gd, global_input.gdextension
+- Moved source files from gdextension/src/ to addons/global_input/src/
+- Moved SConstruct and binaries to addons/global_input/
+- Created plugin.gd EditorPlugin that registers GlobalInput as autoload singleton
+- Updated .gdextension manifest with new res://addons/global_input/bin/ paths
+- Removed old gdextension/ directory and root-level global_input.gdextension
+- Updated project.godot to enable the new plugin
+- Files changed: addons/global_input/* (new), project.godot, removed gdextension/, global_input.gdextension
+- **Learnings for future iterations:**
+  - Godot plugins follow a standard structure: addons/<name>/plugin.cfg + plugin.gd
+  - EditorPlugin uses add_autoload_singleton/remove_autoload_singleton for GDExtension singletons
+  - The existing furniture_creator plugin is a good reference for plugin structure
+  - SConstruct uses relative paths so it works from any directory without modification
+  - coin_system.gd references GlobalInput by singleton name, not path — so no code changes needed when moving
+---
+
+## 2026-03-23 - US-005
+- Created addons/global_input/README.md with full documentation
+- Sections: Overview, Prerequisites, Installation, Building, API Reference, Usage Example, Platform Notes, License
+- API documented from global_input.h: start_hooks(), stop_hooks(), get_key_count(), get_click_count(), reset_counts()
+- Usage example based on the polling pattern in coin_system.gd
+- Platform notes sourced from actual Linux (XRecord) and Windows (low-level hooks) implementations
+- Files changed: addons/global_input/README.md (new)
+- **Learnings for future iterations:**
+  - global_input.h is the canonical source for the public API — 5 public methods
+  - Linux implementation uses XRecord with two Display connections; Windows uses WH_KEYBOARD_LL/WH_MOUSE_LL hooks with a message loop thread
+  - coin_system.gd is the primary consumer of GlobalInput — good reference for usage patterns
+---
+
+## 2026-03-23 - US-006
+- Created project README.md at workspace root with overview, features, and setup sections
+- Sections: Project Overview, Features (11 bullet points), Installation & Running (prerequisites, setup steps), Code Organization (directory structure table, key scripts table)
+- Files changed: README.md
+- **Learnings for future iterations:**
+  - project.godot `config/features` confirms Godot 4.6 and GL Compatibility renderer
+  - Two plugins are enabled: furniture_creator and global_input — both need to be mentioned in setup
+  - Translations are CSV-based with .translation compiled files (en, pt)
+  - Pet data uses SpriteFrames .tres resources in pet/data/, furniture uses FurnitureData .tres in furniture/data/
+---
+
+## 2026-03-23 - US-007
+- Appended 5 new sections to README.md: Furniture Configuration, Pet Interactions & Animations, Creating New Pets, Save Data, GlobalInput Extension
+- Furniture Configuration documents all 18 FurnitureData @export properties with types and descriptions, lists current .tres files, mentions Furniture Creator plugin
+- Pet Interactions covers state machine (7 states), state transitions, animation name mappings, interaction trigger flow, coin rewards, cooldowns, and mood system
+- Creating New Pets explains SpriteFrames format, required/optional animation names, auto-discovery from pet/data/
+- Save Data documents the user://save_data.json structure with all fields
+- GlobalInput Extension provides brief overview with pointer to plugin README
+- Files changed: README.md
+- **Learnings for future iterations:**
+  - furniture_data.gd has 18 @export properties — collision and standing overrides use Vector2.ZERO as "auto" sentinel
+  - Interaction types are string-based: "sleep", "eat", "play", or empty string for none
+  - Pet animations use has_animation() checks with graceful fallback to "idle" — only "idle" is truly mandatory
+  - Save data includes a legacy "owned_furniture" array field for backward compatibility
+---
+
+## 2026-03-23 - US-008
+- Deleted /workspace/bug-erase-me/ directory containing overlaping_bug.jpg
+- Directory was untracked so no git rm needed — just filesystem deletion
+- Verified directory no longer exists
+- Files changed: bug-erase-me/ (deleted)
+- **Learnings for future iterations:**
+  - Untracked directories don't need git staging for deletion — just remove from filesystem
 ---

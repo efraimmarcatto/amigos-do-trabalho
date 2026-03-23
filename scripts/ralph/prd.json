@@ -55,7 +55,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "This is architecture-only — no actual emotion images are included. The textures are configured in the Godot editor by assigning resources to the exported properties on the PetSprite node."
     },
     {
@@ -76,7 +76,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "The existing gdextension files are at /workspace/gdextension/ with manifest at /workspace/global_input.gdextension. The plugin.gd script should use add_autoload_singleton('GlobalInput', 'res://addons/global_input/global_input.gdextension') in _enter_tree() and remove_autoload_singleton('GlobalInput') in _exit_tree(). Check how the existing project references GlobalInput to ensure no breakage."
     },
     {
@@ -97,7 +97,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Reference the source files for accurate API docs: global_input.h for the public interface, global_input_linux.cpp for X11 details, global_input_windows.cpp for Windows hook details."
     },
     {
@@ -114,7 +114,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "This is part 1 of the README — covers overview and structure. Part 2 covers configuration and extensibility."
     },
     {
@@ -132,7 +132,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "This continues the README from US-006. Together they should form a comprehensive 3-5 page document. Reference actual file paths and property names from the codebase."
     },
     {
@@ -145,7 +145,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Simple cleanup task. The bug screenshot has been analyzed and the fix is captured in US-001."
     }
   ]
