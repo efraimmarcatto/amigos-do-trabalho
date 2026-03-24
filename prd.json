@@ -99,7 +99,7 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Current bug: _spawn_furniture_at() in main.gd uses furniture_id as dict key, so _furniture_nodes.has(furniture_id) returns true and blocks placing a second item of the same type. The Furniture node's data.id still holds the furniture type — only the dictionary keys need to change."
     },
     {
@@ -114,7 +114,7 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "This story depends on US-007's new keying system being in place. Must handle migration from old save format where keys were bare furniture_ids."
     }
   ]

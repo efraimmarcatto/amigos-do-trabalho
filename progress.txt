@@ -8,6 +8,9 @@
 - `get_bubble_rect()` must use `to_global()` not `global_position + local_position` to correctly handle parent transform/scale
 - Root Control nodes (child of Node2D) may have `size == (0,0)` — use `get_combined_minimum_size()` as fallback for passthrough rect calculations
 - When emitting visibility signals that trigger passthrough updates, use `call_deferred()` so the layout pass computes panel size first
+- `_furniture_nodes` and `_furniture_positions` use instance keys (e.g., `sofa_1`) — use `_get_furniture_type()` to extract the base furniture ID, and `_generate_instance_key()` to create new keys
+- Inventory enforces placement limits: `remove_from_inventory()` is called before placement and returns false if count is 0
+- Save/load migrates old bare furniture keys to instance keys on load — use `_is_instance_key()` to detect format
 
 ---
 
@@ -73,4 +76,31 @@
   - Control nodes parented to Node2D (root Controls) may not have their `size` property auto-computed — always check for zero size and fall back to `get_combined_minimum_size()`
   - On Windows, `mouse_passthrough_polygon` determines visual opacity too — any area not covered by the polygon is fully transparent to the compositor
   - When a signal triggers a layout-dependent calculation, defer the call so the layout pass runs first
+---
+
+## 2026-03-24 - US-007
+- Changed `_furniture_nodes` and `_furniture_positions` dictionaries to use unique instance keys (`sofa_1`, `sofa_2`) instead of bare furniture IDs
+- Added `_generate_instance_key()` to create unique keys and `_get_furniture_type()` to extract base type from instance keys
+- Updated `_spawn_furniture_at()` to generate unique keys and removed the early-return guard
+- Updated `_spawn_furniture()` to extract furniture type from instance key for data lookup
+- Updated `_on_remove_furniture()` to return items to inventory using the base furniture type
+- Placement count enforcement is handled by the inventory system (deducts before placement)
+- Files changed: `scripts/main.gd`, `scripts/pet.gd`
+- **Learnings for future iterations:**
+  - The inventory panel calls `remove_from_inventory()` before emitting `place_requested` — this naturally prevents placing more items than owned
+  - `_get_furniture_type()` uses `rfind("_")` + `is_valid_int()` to parse instance keys — supports multi-underscore furniture IDs like `wooden_table_1`
+  - Pet script iterates `_furniture_nodes` by value only, so instance key changes are transparent to it
+  - Old save format with bare keys (e.g., `"sofa"`) is handled by backwards compat in `_get_furniture_type()` — no numeric suffix means return as-is
+---
+
+## 2026-03-24 - US-008
+- Updated save/load to handle instance keys and migrate old bare furniture_id keys
+- Added `_is_instance_key()` helper to detect whether a key is in instance format (`sofa_1`) vs bare (`sofa`)
+- `_load_state()` now converts bare keys to instance keys (e.g., `"sofa"` → `"sofa_1"`) during load
+- Legacy `owned_furniture` array entries also migrated to instance key format
+- Files changed: `scripts/main.gd`
+- **Learnings for future iterations:**
+  - The save format is plain JSON at `user://save_data.json` — no schema versioning, so migrations must be inline and backwards-compatible
+  - `_is_instance_key()` reuses the same `rfind("_") + is_valid_int()` logic as `_get_furniture_type()` — keep them in sync if naming convention changes
+  - After migration, old saves are re-saved in the new instance key format on next `_save_state()` call, so the migration only runs once per save file
 ---
