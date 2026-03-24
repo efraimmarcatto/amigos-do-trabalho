@@ -19,9 +19,9 @@ const FURNITURE_SCENE := preload("res://scenes/furniture.tscn")
 @onready var settings_panel: PanelContainer = $SettingsPanel
 @onready var pet_selection_panel: PanelContainer = $PetSelectionPanel
 
-# Spawned furniture instances keyed by furniture_id
+# Spawned furniture instances keyed by unique instance key (e.g., "sofa_1", "sofa_2")
 var _furniture_nodes: Dictionary = {}
-# Saved positions keyed by furniture_id (as {x, y} dicts)
+# Saved positions keyed by unique instance key (as {x, y} dicts)
 var _furniture_positions: Dictionary = {}
 # Floor Y coordinate — top of taskbar (bottom of usable screen rect)
 var floor_y: float = 0.0
@@ -526,26 +526,26 @@ func _on_placement_chest_pressed() -> void:
 
 
 func _spawn_furniture_at(furniture_id: String, pos: Vector2) -> void:
-	if _furniture_nodes.has(furniture_id):
-		return
 	var fdata = shop_panel.get_furniture_data(furniture_id)
 	if not fdata:
 		return
 
+	var instance_key := _generate_instance_key(furniture_id)
 	var node: Furniture = FURNITURE_SCENE.instantiate()
 	node.data = fdata
 	_furniture_container.add_child(node)
-	_furniture_nodes[furniture_id] = node
+	_furniture_nodes[instance_key] = node
 	node.global_position = pos
-	_furniture_positions[furniture_id] = {"x": pos.x, "y": pos.y}
+	_furniture_positions[instance_key] = {"x": pos.x, "y": pos.y}
 	if _edit_mode:
 		_sync_edit_mode_furniture_state()
 	_save_state()
 
 
-func _spawn_furniture(furniture_id: String) -> void:
-	if _furniture_nodes.has(furniture_id):
+func _spawn_furniture(instance_key: String) -> void:
+	if _furniture_nodes.has(instance_key):
 		return
+	var furniture_id := _get_furniture_type(instance_key)
 	var fdata = shop_panel.get_furniture_data(furniture_id)
 	if not fdata:
 		return
@@ -553,15 +553,15 @@ func _spawn_furniture(furniture_id: String) -> void:
 	var node: Furniture = FURNITURE_SCENE.instantiate()
 	node.data = fdata
 	_furniture_container.add_child(node)
-	_furniture_nodes[furniture_id] = node
+	_furniture_nodes[instance_key] = node
 
 	# Position: use saved position or assign a default
-	if _furniture_positions.has(furniture_id):
-		var pos = _furniture_positions[furniture_id]
+	if _furniture_positions.has(instance_key):
+		var pos = _furniture_positions[instance_key]
 		node.global_position = Vector2(float(pos["x"]), float(pos["y"]))
 	else:
 		node.global_position = _default_furniture_position(furniture_id)
-		_furniture_positions[furniture_id] = {"x": node.global_position.x, "y": node.global_position.y}
+		_furniture_positions[instance_key] = {"x": node.global_position.x, "y": node.global_position.y}
 	if _edit_mode:
 		_sync_edit_mode_furniture_state()
 
@@ -575,6 +575,28 @@ func _compute_floor_y() -> float:
 	if uy <= 0.0:
 		uy = float(DisplayServer.screen_get_size().y)
 	return uy
+
+
+func _generate_instance_key(furniture_id: String) -> String:
+	## Generates a unique instance key like "sofa_1", "sofa_2" for placing multiple
+	## copies of the same furniture type.
+	var idx := 1
+	while _furniture_nodes.has(furniture_id + "_" + str(idx)):
+		idx += 1
+	return furniture_id + "_" + str(idx)
+
+
+func _get_furniture_type(instance_key: String) -> String:
+	## Extracts the base furniture type from an instance key.
+	## e.g., "sofa_2" -> "sofa", "wooden_table_3" -> "wooden_table"
+	## For backwards compatibility, if the key has no numeric suffix, returns as-is.
+	var last_underscore := instance_key.rfind("_")
+	if last_underscore == -1:
+		return instance_key
+	var suffix := instance_key.substr(last_underscore + 1)
+	if suffix.is_valid_int():
+		return instance_key.substr(0, last_underscore)
+	return instance_key
 
 
 func _default_furniture_position(furniture_id: String) -> Vector2:
@@ -667,7 +689,7 @@ func _sync_edit_mode_furniture_state() -> void:
 			_remove_remove_button(fnode)
 
 
-func _add_remove_button(furniture_id: String, fnode: Furniture) -> void:
+func _add_remove_button(instance_key: String, fnode: Furniture) -> void:
 	## Adds a small "X" button above the furniture piece for removal during edit mode.
 	var btn := fnode.get_node_or_null("RemoveButton") as Button
 	if btn == null:
@@ -675,7 +697,7 @@ func _add_remove_button(furniture_id: String, fnode: Furniture) -> void:
 		btn.name = "RemoveButton"
 		btn.text = "X"
 		btn.size = Vector2(28, 28)
-		btn.pressed.connect(_on_remove_furniture.bind(furniture_id))
+		btn.pressed.connect(_on_remove_furniture.bind(instance_key))
 		# Style the button with a red-ish background
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color(0.8, 0.2, 0.2, 0.9)
@@ -700,25 +722,25 @@ func _remove_remove_button(fnode: Furniture) -> void:
 		btn.queue_free()
 
 
-func _on_remove_furniture(furniture_id: String) -> void:
+func _on_remove_furniture(instance_key: String) -> void:
 	## Removes furniture from the scene during edit mode and adds it to inventory.
 	## Also removes any stackable items sitting on top of this furniture.
 	if not _edit_mode:
 		return
-	if not _furniture_nodes.has(furniture_id):
+	if not _furniture_nodes.has(instance_key):
 		return
 
 	# First, remove any stacked items on top of this furniture
-	var stacked := _get_stacked_furniture_ids(furniture_id)
+	var stacked := _get_stacked_furniture_ids(instance_key)
 	for sid in stacked:
 		var snode: Furniture = _furniture_nodes[sid]
 		_remove_remove_button(snode)
 		snode.queue_free()
 		_furniture_nodes.erase(sid)
 		_furniture_positions.erase(sid)
-		inventory_system.add_to_inventory(sid)
+		inventory_system.add_to_inventory(_get_furniture_type(sid))
 
-	var fnode: Furniture = _furniture_nodes[furniture_id]
+	var fnode: Furniture = _furniture_nodes[instance_key]
 
 	# Check if pet is standing on this furniture — force FALLING state
 	if pet_sprite._current_surface == fnode:
@@ -727,11 +749,11 @@ func _on_remove_furniture(furniture_id: String) -> void:
 
 	# Remove from scene and tracking
 	fnode.queue_free()
-	_furniture_nodes.erase(furniture_id)
-	_furniture_positions.erase(furniture_id)
+	_furniture_nodes.erase(instance_key)
+	_furniture_positions.erase(instance_key)
 
 	# Add back to inventory
-	inventory_system.add_to_inventory(furniture_id)
+	inventory_system.add_to_inventory(_get_furniture_type(instance_key))
 
 
 func _get_stacked_furniture_ids(base_id: String) -> Array[String]:

@@ -81,7 +81,7 @@ var _idle_timer: float = 0.0
 var _walk_target_x: float = 0.0
 
 # Furniture surface tracking
-var _furniture_nodes: Dictionary = {}  # Set by main.gd — keyed by furniture_id
+var _furniture_nodes: Dictionary = {}  # Set by main.gd — keyed by instance key (e.g., "sofa_1")
 var _current_surface: Furniture = null  # null = screen floor
 
 # Floor Y coordinate — set by main.gd (top of taskbar / bottom of usable rect)
