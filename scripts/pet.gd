@@ -792,30 +792,30 @@ func _build_speech_bubble() -> void:
 	# Style: white background with rounded corners
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(1, 1, 1, 0.95)
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	style.content_margin_left = 6
-	style.content_margin_right = 6
-	style.content_margin_top = 6
-	style.content_margin_bottom = 6
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	style.content_margin_left = 3
+	style.content_margin_right = 3
+	style.content_margin_top = 3
+	style.content_margin_bottom = 3
 	_bubble_panel.add_theme_stylebox_override("panel", style)
 
 	var hbox := HBoxContainer.new()
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_theme_constant_override("separation", 4)
+	hbox.add_theme_constant_override("separation", 2)
 	_bubble_panel.add_child(hbox)
 
 	_bubble_icon = TextureRect.new()
 	_bubble_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_bubble_icon.custom_minimum_size = Vector2(24, 24)
+	_bubble_icon.custom_minimum_size = Vector2(12, 12)
 	_bubble_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(_bubble_icon)
 
 	_bubble_label = Label.new()
 	_bubble_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bubble_label.add_theme_font_size_override("font_size", 14)
+	_bubble_label.add_theme_font_size_override("font_size", 8)
 	_bubble_label.add_theme_color_override("font_color", Color(0.2, 0.2, 0.2))
 	hbox.add_child(_bubble_label)
 
@@ -829,7 +829,7 @@ func _update_bubble_position() -> void:
 		return
 	var sprite_size := get_sprite_size()
 	# Position above the sprite (negative Y since sprite is centered)
-	_bubble_panel.position = Vector2(-18, -sprite_size.y / 2.0 - 44)
+	_bubble_panel.position = Vector2(-9, -sprite_size.y / 2.0 - 24)
 
 
 func _setup_sad_reminder_timer() -> void:
