@@ -216,6 +216,14 @@ func _process(delta: float) -> void:
 		PetState.JUMPING:
 			_process_jumping(delta)
 
+	# Keep bubble upright when pet flips (scale.x goes negative)
+	if _bubble_panel:
+		var sx := signf(scale.x) if scale.x != 0.0 else 1.0
+		_bubble_panel.scale.x = sx
+		# Counter-mirror position.x so bubble stays visually in the same spot
+		var base_x := -9.0
+		_bubble_panel.position.x = base_x * sx
+
 
 func _process_idle(delta: float) -> void:
 	if menu_open:
@@ -923,6 +931,9 @@ func get_bubble_rect() -> Rect2:
 	## Returns the global rect of the speech bubble for passthrough polygon.
 	if _bubble_panel and _bubble_panel.visible:
 		var bubble_size := _bubble_panel.size
-		var bubble_global_pos := global_position + _bubble_panel.position
+		var bubble_global_pos := to_global(_bubble_panel.position)
+		# When pet is flipped, bubble has scale.x = -1 so it draws leftward from its anchor
+		if scale.x < 0.0:
+			bubble_global_pos.x -= bubble_size.x
 		return Rect2(bubble_global_pos, bubble_size)
 	return Rect2()
