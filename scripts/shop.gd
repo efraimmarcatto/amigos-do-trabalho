@@ -266,10 +266,10 @@ func _update_buy_popup() -> void:
 
 	var vbox := _buy_popup.get_child(0)
 	var name_label: Label = vbox.get_node("ItemName")
-	var qty_label: Label = vbox.get_node("QtyLabel")
+	var qty_label: Label = vbox.find_child("QtyLabel", true, false)
 	var cost_label: Label = vbox.get_node("CostLabel")
 	var buy_btn: Button = vbox.get_node("BuyBtn")
-	var minus_btn: Button = vbox.get_node("MinusBtn")
+	var minus_btn: Button = vbox.find_child("MinusBtn", true, false)
 
 	name_label.text = _selected_item.display_name
 	qty_label.text = str(qty)
