@@ -29,7 +29,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "The error stack trace shows _update_buy_popup() at shop.gd:269 cannot find QtyLabel and MinusBtn nodes. The popup is created by _create_buy_popup() — investigate whether nodes are being added to the wrong parent or the popup structure changed."
     },
     {
@@ -42,7 +42,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "The images are misaligned, and in the case of the shop button, both misaligned and cropped. Check stretch_mode, expand_icon, and sizing properties on the buttons."
     },
     {
@@ -56,7 +56,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Current bubble uses 24x24 icon, standard label font, and 8px padding in _build_speech_bubble(). Scale all down by ~50%."
     },
     {
@@ -70,7 +70,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "The pet flips via scale.x in _process_walking(). The bubble is a child of the pet node so it inherits the flip. Fix by counter-scaling the bubble panel (e.g., _bubble_panel.scale.x = sign(scale.x)) or adjusting the position offset based on direction."
     },
     {
@@ -83,7 +83,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "On Windows, the bubble only appears when overlapped by furniture. This is likely because the passthrough polygon does not include the bubble's area, causing the transparent window compositor to treat it as click-through/invisible. Check _on_mood_bubble_changed() and _update_passthrough() in main.gd."
     },
     {

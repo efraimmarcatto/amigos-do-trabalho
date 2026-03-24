@@ -2,6 +2,12 @@
 - No `godot` CLI available in this environment — typecheck cannot be run automatically
 - Git config has empty `gpg.format` — use `GIT_CONFIG_GLOBAL=/dev/null` with `-c user.name` and `-c user.email` flags for commits
 - GlobalInput plugin at `addons/global_input/plugin.gd` is a `@tool` EditorPlugin — autoload registration was removed; _enter_tree/_exit_tree now just `pass`
+- In the shop buy popup, `QtyLabel` and `MinusBtn` are inside a nested HBoxContainer — use `find_child()` not `get_node()` for nested nodes
+- For shop/inventory grid icons: use `PRESET_FULL_RECT` + `EXPAND_IGNORE_SIZE` + `STRETCH_KEEP_ASPECT_CENTERED` + `clip_contents = true` on parent Button — avoids misalignment and cropping
+- Bubble is child of pet node — inherits `scale.x` flip. Counter-scale with `_bubble_panel.scale.x = signf(scale.x)` in `_process()` and mirror `position.x` accordingly
+- `get_bubble_rect()` must use `to_global()` not `global_position + local_position` to correctly handle parent transform/scale
+- Root Control nodes (child of Node2D) may have `size == (0,0)` — use `get_combined_minimum_size()` as fallback for passthrough rect calculations
+- When emitting visibility signals that trigger passthrough updates, use `call_deferred()` so the layout pass computes panel size first
 
 ---
 
@@ -12,4 +18,59 @@
 - **Learnings for future iterations:**
   - The file on `ralph/bug-fixes-batch` branch had active (uncommented) autoload lines, not commented-out ones as described in the PRD — the PRD description was based on a different branch state
   - Git config in this environment has broken gpg.format setting; must use workaround for commits
+---
+
+## 2026-03-24 - US-002
+- Fixed shop buy popup crash caused by `get_node()` failing to find `QtyLabel` and `MinusBtn`
+- These nodes are nested inside a `qty_row` HBoxContainer, not direct children of vbox
+- Changed to `find_child("QtyLabel", true, false)` and `find_child("MinusBtn", true, false)` for recursive lookup
+- Files changed: `scripts/shop.gd`
+- **Learnings for future iterations:**
+  - When `_create_buy_popup()` builds the node tree, some nodes are nested inside intermediate containers (e.g., qty_row). `get_node()` only finds direct children — use `find_child()` for nested lookups
+  - The popup structure: `_buy_popup > VBoxContainer > {ItemName, HBoxContainer(MinusBtn, QtyLabel, PlusBtn), CostLabel, BuyBtn, CancelBtn}`
+---
+
+## 2026-03-24 - US-003
+- Fixed shop and inventory button images being misaligned and cropped
+- Root cause: `PRESET_CENTER` anchor on TextureRect before it's in the scene tree results in zero-size placement; shop also had unnecessary explicit `size` and `custom_minimum_size` on the icon
+- Changed both shop.gd and inventory_panel.gd to use `PRESET_FULL_RECT` so TextureRect fills the button, with `STRETCH_KEEP_ASPECT_CENTERED` handling visual centering
+- Made inventory consistent with shop: added `clip_contents = true`, used `EXPAND_IGNORE_SIZE`
+- Files changed: `scripts/shop.gd`, `scripts/inventory_panel.gd`
+- **Learnings for future iterations:**
+  - `set_anchors_and_offsets_preset(PRESET_CENTER)` on a node not yet in the tree uses its current (zero) size for offsets — the node renders as a point. Use `PRESET_FULL_RECT` + stretch_mode instead
+  - Shop and inventory grid cells should use identical icon setup for consistency
+---
+
+## 2026-03-24 - US-004
+- Reduced mood bubble size by ~50%: icon 24→12, font 14→8, padding 6→3, corner radius 8→4, hbox separation 4→2
+- Adjusted bubble position offset from (-18, -44) to (-9, -24) to match smaller size
+- Files changed: `scripts/pet.gd`
+- **Learnings for future iterations:**
+  - Mood bubble is built programmatically in `_build_speech_bubble()` in pet.gd — all sizing is in code, no scene file
+  - Position is set in `_update_bubble_position()` separately from the build function
+  - The bubble is a child of the pet node, so it inherits pet transforms (relevant for US-005 flip fix)
+---
+
+## 2026-03-24 - US-005
+- Fixed mood bubble flipping when pet walks left by counter-scaling `_bubble_panel` in `_process()`
+- Added `_bubble_panel.scale.x = signf(scale.x)` to keep bubble upright regardless of pet direction
+- Also mirror `position.x` with `base_x * sx` so the bubble stays visually in the same spot
+- Fixed `get_bubble_rect()` to use `to_global()` instead of raw position addition, with adjustment for flipped state
+- Files changed: `scripts/pet.gd`
+- **Learnings for future iterations:**
+  - Child Control nodes of a Node2D inherit the parent's scale transform — any UI elements (bubbles, labels) need counter-scaling to stay upright when the parent flips
+  - `global_position + child.position` does NOT account for parent scale; use `to_global(child.position)` instead
+  - The base position offset (-9.0) is hardcoded — if `_update_bubble_position()` changes, the `_process()` counter-mirror must be updated too
+---
+
+## 2026-03-24 - US-006
+- Fixed mood bubble being invisible on Windows unless overlapped by furniture
+- Root cause: `_bubble_panel.size` returns `(0, 0)` for root Control nodes (PanelContainer as child of Node2D) because the layout system doesn't auto-compute size for Controls outside the Control tree
+- Added fallback to `get_combined_minimum_size()` in `get_bubble_rect()` when `size` is zero — this correctly computes size from children's minimum sizes
+- Deferred `_update_passthrough()` call in `_on_mood_bubble_changed()` so the panel layout pass runs before the passthrough polygon is rebuilt
+- Files changed: `scripts/pet.gd`, `scripts/main.gd`
+- **Learnings for future iterations:**
+  - Control nodes parented to Node2D (root Controls) may not have their `size` property auto-computed — always check for zero size and fall back to `get_combined_minimum_size()`
+  - On Windows, `mouse_passthrough_polygon` determines visual opacity too — any area not covered by the polygon is fully transparent to the compositor
+  - When a signal triggers a layout-dependent calculation, defer the call so the layout pass runs first
 ---
