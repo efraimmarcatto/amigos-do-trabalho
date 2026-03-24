@@ -175,7 +175,11 @@ func _load_state() -> void:
 		for fid in data["furniture_positions"]:
 			var pos = data["furniture_positions"][fid]
 			if pos is Dictionary and pos.has("x") and pos.has("y"):
-				_furniture_positions[fid] = {"x": float(pos["x"]), "y": float(pos["y"])}
+				# Migrate old bare furniture_id keys to instance keys
+				var key: String = fid
+				if not _is_instance_key(fid):
+					key = fid + "_1"
+				_furniture_positions[key] = {"x": float(pos["x"]), "y": float(pos["y"])}
 	if data.has("inventory") and data["inventory"] is Dictionary:
 		var inv_data: Dictionary = {}
 		for key in data["inventory"]:
@@ -206,8 +210,10 @@ func _load_state() -> void:
 	# Legacy: if there are owned_furniture entries not in furniture_positions, spawn those too
 	if data.has("owned_furniture") and data["owned_furniture"] is Array:
 		for item in data["owned_furniture"]:
-			if item is String and not _furniture_positions.has(item):
-				furniture_to_spawn.append(item)
+			if item is String:
+				var key: String = item if _is_instance_key(item) else item + "_1"
+				if not _furniture_positions.has(key):
+					furniture_to_spawn.append(key)
 	for fid in furniture_to_spawn:
 		_spawn_furniture(fid)
 
@@ -597,6 +603,15 @@ func _get_furniture_type(instance_key: String) -> String:
 	if suffix.is_valid_int():
 		return instance_key.substr(0, last_underscore)
 	return instance_key
+
+
+func _is_instance_key(key: String) -> bool:
+	## Returns true if the key is in instance-key format (e.g., "sofa_1").
+	## A bare furniture ID like "sofa" returns false.
+	var last_underscore := key.rfind("_")
+	if last_underscore == -1:
+		return false
+	return key.substr(last_underscore + 1).is_valid_int()
 
 
 func _default_furniture_position(furniture_id: String) -> Vector2:
