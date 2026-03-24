@@ -280,7 +280,8 @@ func _on_coins_changed(new_total: int) -> void:
 
 
 func _on_mood_bubble_changed(_is_visible: bool) -> void:
-	_update_passthrough()
+	# Defer so the bubble panel has a chance to compute its layout/size
+	_update_passthrough.call_deferred()
 
 
 func _handle_menu_close() -> void:

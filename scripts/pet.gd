@@ -931,6 +931,11 @@ func get_bubble_rect() -> Rect2:
 	## Returns the global rect of the speech bubble for passthrough polygon.
 	if _bubble_panel and _bubble_panel.visible:
 		var bubble_size := _bubble_panel.size
+		# Root Controls (child of Node2D) may not auto-compute size from layout;
+		# fall back to the minimum size so the passthrough polygon always includes
+		# the bubble area — fixes invisible bubble on Windows.
+		if bubble_size.x <= 0.0 or bubble_size.y <= 0.0:
+			bubble_size = _bubble_panel.get_combined_minimum_size()
 		var bubble_global_pos := to_global(_bubble_panel.position)
 		# When pet is flipped, bubble has scale.x = -1 so it draws leftward from its anchor
 		if scale.x < 0.0:
