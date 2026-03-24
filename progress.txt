@@ -1,0 +1,15 @@
+## Codebase Patterns
+- No `godot` CLI available in this environment — typecheck cannot be run automatically
+- Git config has empty `gpg.format` — use `GIT_CONFIG_GLOBAL=/dev/null` with `-c user.name` and `-c user.email` flags for commits
+- GlobalInput plugin at `addons/global_input/plugin.gd` is a `@tool` EditorPlugin — autoload registration was removed; _enter_tree/_exit_tree now just `pass`
+
+---
+
+## 2026-03-24 - US-001
+- Removed `add_autoload_singleton` and `remove_autoload_singleton` calls from `addons/global_input/plugin.gd`
+- Both `_enter_tree()` and `_exit_tree()` now contain only `pass`
+- Files changed: `addons/global_input/plugin.gd`
+- **Learnings for future iterations:**
+  - The file on `ralph/bug-fixes-batch` branch had active (uncommented) autoload lines, not commented-out ones as described in the PRD — the PRD description was based on a different branch state
+  - Git config in this environment has broken gpg.format setting; must use workaround for commits
+---

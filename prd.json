@@ -1,0 +1,121 @@
+{
+  "project": "Amigos do Trabalho",
+  "branchName": "ralph/bug-fixes-batch",
+  "description": "Bug Fixes Batch — Fix shop crash, duplicate furniture placement, mood bubble issues, button visuals, and plugin cleanup",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Clean up GlobalInput plugin dead code",
+      "description": "As a developer, I want the GlobalInput plugin file to be clean and free of commented-out code.",
+      "acceptanceCriteria": [
+        "Remove the commented-out add_autoload_singleton and remove_autoload_singleton lines from addons/global_input/plugin.gd",
+        "_enter_tree() and _exit_tree() contain only pass",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Fix shop buy popup crash",
+      "description": "As a player, I want to click items in the shop without the game crashing so that I can browse and buy furniture.",
+      "acceptanceCriteria": [
+        "Clicking any item in the shop opens the buy popup without errors",
+        "QtyLabel, MinusBtn, and all other popup nodes are found correctly by _update_buy_popup()",
+        "Quantity controls (+/-) work and update the displayed quantity and cost",
+        "Buy button is disabled when the player doesn't have enough coins",
+        "No Node not found or null instance errors in the output log",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "The error stack trace shows _update_buy_popup() at shop.gd:269 cannot find QtyLabel and MinusBtn nodes. The popup is created by _create_buy_popup() — investigate whether nodes are being added to the wrong parent or the popup structure changed."
+    },
+    {
+      "id": "US-003",
+      "title": "Fix shop and inventory button images",
+      "description": "As a player, I want the shop and inventory buttons to display their images correctly without misalignment or cropping.",
+      "acceptanceCriteria": [
+        "Shop button image is fully visible, not cropped",
+        "Both shop and inventory button images are properly aligned within their buttons",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "The images are misaligned, and in the case of the shop button, both misaligned and cropped. Check stretch_mode, expand_icon, and sizing properties on the buttons."
+    },
+    {
+      "id": "US-004",
+      "title": "Reduce mood bubble size by 50%",
+      "description": "As a player, I want the mood bubble to be smaller so it doesn't dominate the screen relative to the pet.",
+      "acceptanceCriteria": [
+        "Mood bubble is approximately 50% smaller than current size (icon, text, padding all scaled down proportionally)",
+        "Bubble is still legible and recognizable at the reduced size",
+        "Bubble position above the pet is adjusted to match the new size",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Current bubble uses 24x24 icon, standard label font, and 8px padding in _build_speech_bubble(). Scale all down by ~50%."
+    },
+    {
+      "id": "US-005",
+      "title": "Fix mood bubble flipping when pet walks left",
+      "description": "As a player, I want the mood bubble to stay upright when the pet walks to the left so that the text and icon remain readable.",
+      "acceptanceCriteria": [
+        "When the pet faces left (negative scale.x), the bubble does not mirror/flip",
+        "Bubble content (icon + text) remains left-to-right readable regardless of pet direction",
+        "Bubble stays positioned above the pet correctly in both directions",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "The pet flips via scale.x in _process_walking(). The bubble is a child of the pet node so it inherits the flip. Fix by counter-scaling the bubble panel (e.g., _bubble_panel.scale.x = sign(scale.x)) or adjusting the position offset based on direction."
+    },
+    {
+      "id": "US-006",
+      "title": "Fix mood bubble visibility on Windows",
+      "description": "As a player on Windows, I want to see the mood bubble at all times when it's active, not only when furniture overlaps it.",
+      "acceptanceCriteria": [
+        "Mood bubble is visible when shown, regardless of whether furniture is nearby",
+        "The passthrough polygon in main.gd _update_passthrough() correctly includes the bubble's screen rect when the bubble is visible",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "On Windows, the bubble only appears when overlapped by furniture. This is likely because the passthrough polygon does not include the bubble's area, causing the transparent window compositor to treat it as click-through/invisible. Check _on_mood_bubble_changed() and _update_passthrough() in main.gd."
+    },
+    {
+      "id": "US-007",
+      "title": "Allow placing multiple furniture of the same type — keying and spawn logic",
+      "description": "As a player, I want to place multiple copies of the same furniture type so that I can decorate freely with items I've purchased.",
+      "acceptanceCriteria": [
+        "_furniture_nodes and _furniture_positions dictionaries use unique instance keys (e.g., sofa_1, sofa_2) instead of bare furniture_id",
+        "_spawn_furniture_at() generates a unique key and no longer early-returns when the furniture_id already exists",
+        "The number of placed items of a given type cannot exceed the inventory count for that type",
+        "Picking up a placed item returns it to inventory and frees its unique key",
+        "All other code referencing _furniture_nodes and _furniture_positions (edit mode, passthrough, removal) works with the new unique keys",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Current bug: _spawn_furniture_at() in main.gd uses furniture_id as dict key, so _furniture_nodes.has(furniture_id) returns true and blocks placing a second item of the same type. The Furniture node's data.id still holds the furniture type — only the dictionary keys need to change."
+    },
+    {
+      "id": "US-008",
+      "title": "Update save/load for multiple furniture of the same type",
+      "description": "As a player, I want my multiple placed furniture items to persist correctly across game sessions.",
+      "acceptanceCriteria": [
+        "Save serialization writes unique instance keys and their positions to save_data.json",
+        "Load deserialization restores all placed items with their correct positions using unique instance keys",
+        "Existing save files that use bare furniture_id keys (e.g., {\"sofa\": {\"x\": 100, \"y\": 200}}) still load correctly (backwards compatibility)",
+        "Round-trip test: place 3 items of same type, save, reload — all 3 appear at correct positions",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "This story depends on US-007's new keying system being in place. Must handle migration from old save format where keys were bare furniture_ids."
+    }
+  ]
+}
